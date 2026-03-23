@@ -42,5 +42,110 @@ Make it simple to adopt Platform with as few `Add*` registrations as possible, w
 
 Discovered during Quilt4Net Server migration to Platform 2.0.1-pre.1. These same issues will affect PlutusWave, FortDocs Web, and any other project adopting Platform. Each project currently needs to independently discover the correct combination of registration calls and workarounds.
 
+## Bug: TeamComponent requires ITeamManagementService and scope claims but neither is auto-registered (2.0.1-pre.3)
+
+**Reported:** 2026-03-23
+**Found in:** Quilt4Net Server after upgrading Tharga.Team.* packages from 2.0.1-pre.2 to 2.0.1-pre.3
+
+### Issue 1: ITeamManagementService not registered
+
+`TeamComponent` has `[Inject] ITeamManagementService` but neither `AddThargaPlatform()` nor `AddThargaTeamBlazor()` registers it. The team page crashes with:
+
+```
+InvalidOperationException: Cannot provide a value for property 'TeamManagementService'
+on type 'TeamComponent`1[...]'. There is no registered service of type
+'Tharga.Team.ITeamManagementService'.
+```
+
+**Workaround (consumer side):**
+```csharp
+builder.Services.AddScoped<ITeamManagementService, TeamManagementService<TeamMemberModel>>();
+```
+
+**Fix:** `AddThargaTeamBlazor()` (or `AddThargaPlatform()`) should register `ITeamManagementService` → `TeamManagementService<TMember>` when `RegisterTeamService<>()` is called, since it knows the `TMember` type.
+
+### Issue 2: No "simple mode" — management UI hidden without explicit scope registration
+
+`TeamComponent` checks for scope claims (`team:manage`, `member:invite`, etc.) to show/hide management buttons. When `ConfigureScopes` is null (the default per docs: "scope registration is skipped"), no `IScopeRegistry` is registered, so no scope claims are added. As a result, team owners see only "Create team" — all management options (rename, delete, invite, remove member, change role) are hidden.
+
+**Workaround (consumer side):**
+```csharp
+builder.Services.AddThargaScopes(scopes =>
+{
+    scopes.Register(TeamScopes.Read, AccessLevel.Viewer);
+    scopes.Register(TeamScopes.Manage, AccessLevel.Administrator);
+    scopes.Register(TeamScopes.MemberInvite, AccessLevel.Administrator);
+    scopes.Register(TeamScopes.MemberRemove, AccessLevel.Administrator);
+    scopes.Register(TeamScopes.MemberRole, AccessLevel.Administrator);
+});
+```
+Plus adding scope claims in a custom `IClaimsTransformation`.
+
+**Expected behavior:** When no scopes are configured, the `TeamComponent` should fall back to access-level-based visibility (Owner/Admin sees everything, User/Viewer sees limited options) — not hide all management UI. The built-in `TeamScopes` should be auto-registered as defaults by `AddThargaTeamBlazor()` so the team management UI works out of the box.
+
+### Issue 3: IApiKeyManagementService not registered
+
+`ApiKeyView` requires `IApiKeyManagementService` but `AddThargaApiKeyAuthentication()` / `AddThargaApiKeys()` only registers `IApiKeyAdministrationService`. The API key page shows: "API key management is not configured. Register IApiKeyManagementService in Program.cs to enable this view."
+
+**Workaround (consumer side):**
+```csharp
+builder.Services.AddScoped<IApiKeyManagementService, ApiKeyManagementService>();
+```
+Plus registering `ApiKeyScopes.Manage` in the scope registry.
+
+**Fix:** `AddThargaApiKeys()` should also register `IApiKeyManagementService` → `ApiKeyManagementService`, and `ApiKeyScopes.Manage` should be auto-registered in the scope registry defaults.
+
+### Suggested fix
+
+In `AddThargaTeamBlazor()` (when `RegisterTeamService<TTeam, TUser>()` is called):
+1. Auto-register `ITeamManagementService` → `TeamManagementService<TMember>`
+2. Auto-register `IScopeRegistry` with `TeamScopes` + `ApiKeyScopes` defaults (if not already registered)
+3. Or: make `TeamComponent` and `ApiKeyView` fall back to `AccessLevel`-based visibility when no scope claims are present
+
+In `AddThargaApiKeys()`:
+4. Auto-register `IApiKeyManagementService` → `ApiKeyManagementService`
+
+## Feature Request: Improve member invite flow and add email sending
+
+**Requested by:** Daniel Bohlin
+**Date:** 2026-03-23
+
+### Current behavior
+
+When inviting a member via the `TeamComponent`, email is mandatory and name is optional. No email is actually sent — the user must copy and share the invite link manually, but there is no indication of this.
+
+### Requested changes
+
+#### 1. Make email optional, name mandatory
+- Name should be the required field (to identify the invited member in the team list)
+- Email should be optional — when provided, an invitation email should be sent
+
+#### 2. Email sending
+- When email is provided and email sending is configured, send an invitation email with the invite link
+- If email sending is not implemented or not configured, show a clear message such as: "Email sending is not configured. Copy the invite link below and send it manually."
+- The invite link should always be available for manual copying regardless of email configuration
+
+#### 3. Implement an email sender
+- Add an `IEmailSender` (or similar) abstraction that consumers can configure
+- Provide a default implementation (e.g. SMTP) or allow consumers to plug in their own
+- Registration via `AddThargaPlatform()` options or a dedicated `AddThargaEmailSender()` call
+
+## Feature Request: AuditLogView should show caller name, not ID
+
+**Requested by:** Daniel Bohlin
+**Date:** 2026-03-23
+
+### Current behavior
+
+The `AuditLogView` component displays `CallerIdentity` which is typically a user ID or API key identifier. This is too abstract — it's hard to tell who actually made the call.
+
+### Requested change
+
+Show the **name** of the caller instead of the raw ID:
+- For **web/user calls**: resolve and display the user's display name (from `IUserService` or the `name`/`preferred_username` claim)
+- For **API key calls**: display the API key's name (from `IApiKeyAdministrationService`)
+
+The raw ID should still be available (e.g. as a tooltip or secondary column) for debugging, but the primary display should be human-readable.
+
 ## External References
 - **Backlog**: `c:\Users\danie\SynologyDrive\Documents\Notes\Tharga\Toolkit\Platform.md`
