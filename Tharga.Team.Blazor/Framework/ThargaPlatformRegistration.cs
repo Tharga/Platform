@@ -54,6 +54,7 @@ public static class ThargaPlatformRegistration
             o.SkipAuthStateDecoration = options.Blazor.SkipAuthStateDecoration;
             o._teamService = options.Blazor._teamService;
             o._userService = options.Blazor._userService;
+            o._memberType = options.Blazor._memberType;
             o._apiKeyService = options.Blazor._apiKeyService;
         }, builder.Configuration);
 

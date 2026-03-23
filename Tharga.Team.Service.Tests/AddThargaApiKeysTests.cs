@@ -22,4 +22,13 @@ public class AddThargaApiKeysTests
 
         Assert.Contains(services, d => d.ServiceType == typeof(IApiKeyRepositoryCollection));
     }
+
+    [Fact]
+    public void Registers_IApiKeyManagementService()
+    {
+        var services = new ServiceCollection();
+        services.AddThargaApiKeys();
+
+        Assert.Contains(services, d => d.ServiceType == typeof(IApiKeyManagementService));
+    }
 }
