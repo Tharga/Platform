@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Tharga.Blazor.Framework;
 using Tharga.Team.Blazor.Features.Team;
+using Tharga.Team.Service;
 
 namespace Tharga.Team.Blazor.Framework;
 
@@ -26,10 +27,30 @@ public static class ThargaBlazorRegistration
             services.AddScoped(o._userService);
             services.AddScoped(typeof(IUserService), sp => sp.GetRequiredService(o._userService));
 
+            if (o._memberType != null)
+            {
+                var managementServiceType = typeof(TeamManagementService<>).MakeGenericType(o._memberType);
+                services.AddScoped(typeof(ITeamManagementService), managementServiceType);
+            }
+
             if (o._apiKeyService != null)
             {
                 services.AddScoped(o._apiKeyService);
                 services.AddScoped(typeof(IApiKeyAdministrationService), sp => sp.GetRequiredService(o._apiKeyService));
+            }
+
+            // Register default team and API key scopes unless already registered
+            if (!services.Any(d => d.ServiceType == typeof(IScopeRegistry)))
+            {
+                services.AddThargaScopes(scopes =>
+                {
+                    scopes.Register(TeamScopes.Read, AccessLevel.Viewer);
+                    scopes.Register(TeamScopes.Manage, AccessLevel.Administrator);
+                    scopes.Register(TeamScopes.MemberInvite, AccessLevel.Administrator);
+                    scopes.Register(TeamScopes.MemberRemove, AccessLevel.Administrator);
+                    scopes.Register(TeamScopes.MemberRole, AccessLevel.Administrator);
+                    scopes.Register(ApiKeyScopes.Manage, AccessLevel.Administrator);
+                });
             }
 
             if (!o.SkipAuthStateDecoration)
