@@ -94,4 +94,40 @@ When all planned steps are done:
 - `.claude/feature.md` is archived to `.claude/features-done/<feature-name>.md` and both `.claude/feature.md` and `.claude/plan.md` should be deleted
 - Remove the corresponding file from `.claude/features-planned/` if one exists
 - A final commit is made with message: `feat: <feature-name> complete`
-- Merge to originating branch using `git merge --no-ff` (always create a merge commit) and delete feature branch only when the user explicitly asks
+- Merge to originating branch and delete feature branch only when the user explicitly asks
+
+## Feature Requests (cross-project)
+
+Projects can request features from each other via `.claude/requests.md`.
+
+- Read `~/.claude/projects.md` (or `$OBSIDIAN_VAULT/Tharga/projects.md`) to discover other projects
+- Read `.claude/requests.md` on startup — show pending requests and new notifications to the user
+- Writing feature requests to other projects is **exempt from the cross-project guard**
+- For mono-repos: requests go to the root, not sub-projects (see projects.md for details)
+- Never mark a request as done without user confirmation
+- When a request is completed: update status to Done and write a notification back to the requester's `.claude/requests.md`
+
+### Request format
+```markdown
+## Pending
+
+### <short description>
+- **From:** <project name> (`<project path>`)
+- **Date:** <YYYY-MM-DD>
+- **Priority:** <High/Medium/Low>
+- **Description:** <what is needed and why>
+- **Status:** Pending
+
+## Notifications
+
+### <short description> — DONE
+- **From:** <project name> (`<project path>`)
+- **Completed:** <YYYY-MM-DD>
+- **Summary:** <what was done>
+- **Branch/Version:** <branch or version>
+```
+
+## Backlog Hygiene
+- When a task from the backlog (in `mission.md` or linked external files) is completed, mark it as done or remove it
+- When fixing a bug listed in the backlog, remove the bug entry after the fix is verified
+- Keep the backlog current — do not leave completed items lingering
