@@ -1,6 +1,5 @@
 using MongoDB.Bson.Serialization.Attributes;
 using Tharga.MongoDB;
-using Tharga.Team;
 
 namespace Tharga.Team.Service;
 

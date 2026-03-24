@@ -1,4 +1,5 @@
 ﻿@using System.Text.Json
+@using Microsoft.Extensions.DependencyInjection
 @using Microsoft.Extensions.Options
 @using Microsoft.JSInterop
 @using Tharga.Team
@@ -15,8 +16,7 @@
 @inject NavigationManager NavigationManager
 @inject NotificationService NotificationService
 @inject IOptions<ThargaBlazorOptions> BlazorOptions
-@inject IScopeRegistry ScopeRegistry
-@inject ITenantRoleRegistry TenantRoleRegistry
+@inject IServiceProvider ServiceProvider
 
 @if (_teams == null)
 {
@@ -174,6 +174,8 @@ else
     private bool _canRemove;
     private bool _canChangeRole;
     private string[] _allScopeNames = Array.Empty<string>();
+    private IScopeRegistry _scopeRegistry;
+    private ITenantRoleRegistry _tenantRoleRegistry;
 
     protected override async Task OnInitializedAsync()
     {
@@ -184,12 +186,15 @@ else
         _canRemove = claims.HasClaim(TeamClaimTypes.Scope, TeamScopes.MemberRemove);
         _canChangeRole = claims.HasClaim(TeamClaimTypes.Scope, TeamScopes.MemberRole);
 
-        _showMemberRoles = BlazorOptions.Value.ShowMemberRoles;
-        _showScopeOverrides = BlazorOptions.Value.ShowScopeOverrides;
+        _scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
+        _tenantRoleRegistry = ServiceProvider.GetService<ITenantRoleRegistry>();
+
+        _showMemberRoles = BlazorOptions.Value.ShowMemberRoles && _tenantRoleRegistry != null;
+        _showScopeOverrides = BlazorOptions.Value.ShowScopeOverrides && _scopeRegistry != null;
         if (_showMemberRoles)
-            _availableRoles = TenantRoleRegistry.All.Select(r => r.Name).ToArray();
+            _availableRoles = _tenantRoleRegistry!.All.Select(r => r.Name).ToArray();
         if (_showMemberRoles || _showScopeOverrides)
-            _allScopeNames = ScopeRegistry.All.Select(s => s.Name).ToArray();
+            _allScopeNames = _scopeRegistry!.All.Select(s => s.Name).ToArray();
 
         _users = await UserService.GetAsync().ToArrayAsync();
         _user = await UserService.GetCurrentUserAsync();
@@ -201,12 +206,15 @@ else
 
     private string GetEffectiveScopesWithOriginText(TMember member)
     {
-        var accessLevelScopes = ScopeRegistry.GetScopesForAccessLevel(member.AccessLevel);
-        var roleScopes = TenantRoleRegistry.GetScopesForRoles(member.TenantRoles ?? Array.Empty<string>());
+        if (_scopeRegistry == null) return "";
+
+        var accessLevelScopes = _scopeRegistry.GetScopesForAccessLevel(member.AccessLevel);
+        var roleScopes = _tenantRoleRegistry?.GetScopesForRoles(member.TenantRoles ?? Array.Empty<string>())
+            ?? (IReadOnlyList<string>)Array.Empty<string>();
         var overrides = member.ScopeOverrides ?? Array.Empty<string>();
 
         var lines = new List<string>();
-        var allScopes = ScopeRegistry.GetEffectiveScopes(member.AccessLevel, member.TenantRoles, member.ScopeOverrides);
+        var allScopes = _scopeRegistry.GetEffectiveScopes(member.AccessLevel, member.TenantRoles, member.ScopeOverrides);
         foreach (var scope in allScopes)
         {
             var origin = overrides.Contains(scope) ? "override"
@@ -255,10 +263,44 @@ else
     {
         var result = await DialogService.OpenAsync<InviteUserDialog>(
             "Invite User",
-            new Dictionary<string, object> { { "TeamKey", team.Key } },
+            new Dictionary<string, object> { { "TeamKey", team.Key }, { "TeamName", team.Name } },
             new DialogOptions { Resizable = true, Draggable = true });
 
-        if (result == true) await ReloadTeams();
+        if (result is InviteUserDialog.InviteResult inviteResult && inviteResult.Success)
+        {
+            await ReloadTeams();
+
+            var updatedTeam = await TeamService.GetTeamAsync<TMember>(team.Key);
+            var invitedMember = updatedTeam?.Members
+                .FirstOrDefault(m => m.Invitation != null && m.Name == inviteResult.Name);
+
+            if (invitedMember?.Invitation != null)
+            {
+                var link = BuildInviteLink(updatedTeam.Key, invitedMember.Invitation.InviteKey);
+
+                var emailSender = ServiceProvider.GetService<ITeamEmailSender>();
+                if (emailSender != null && !string.IsNullOrWhiteSpace(inviteResult.Email))
+                {
+                    try
+                    {
+                        await emailSender.SendInviteAsync(inviteResult.Email, inviteResult.Name, link, team.Name);
+                        NotificationService.Notify(NotificationSeverity.Success,
+                            "Invitation sent", $"Email sent to {inviteResult.Email}");
+                    }
+                    catch (Exception ex)
+                    {
+                        NotificationService.Notify(NotificationSeverity.Warning,
+                            "Email failed", $"Could not send email: {ex.Message}");
+                    }
+                }
+
+                await Js.InvokeVoidAsync("clipboard.copyText", link);
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Summary = "The invitation link has been copied to the clipboard."
+                });
+            }
+        }
     }
 
     private async Task RemoveUserFromTeam(ITeam<TMember> team, string userKey)
@@ -308,28 +350,24 @@ else
 
     private async Task CopyInvitationLink(ITeam<TMember> team, string userKey)
     {
-        var members = team.Members.Where(x => x.Key == userKey).ToArray();
-        if (!members.Any()) throw new InvalidOperationException($"No member matches the user key '{userKey}' in team '{team.Key}'.");
-        if (members.Length > 1) throw new InvalidOperationException($"Members {string.Join(",", members.Select(x => x.Name))} matches the user key '{userKey}' in team '{team.Key}'.");
+        var member = team.Members.SingleOrDefault(x => x.Key == userKey);
+        if (member?.Invitation == null) return;
 
-        var member = team.Members.Single(x => x.Key == userKey);
-        var baseUri = NavigationManager.BaseUri;
-
-        var inviteModel = new InviteModel
-        {
-            TeamKey = team.Key,
-            Code = member.Invitation.InviteKey,
-        };
-        var inviteModelJson = JsonSerializer.Serialize(inviteModel);
-        var inviteCode = inviteModelJson.ToBase64();
-
-        var link = $"{baseUri}team?{Constants.TeamInviteCode}={inviteCode}";
+        var link = BuildInviteLink(team.Key, member.Invitation.InviteKey);
 
         await Js.InvokeVoidAsync("clipboard.copyText", link);
         NotificationService.Notify(new NotificationMessage
         {
-            Summary = $"The invitation link '{link}' has been copied to the clipboard."
+            Summary = "The invitation link has been copied to the clipboard."
         });
+    }
+
+    private string BuildInviteLink(string teamKey, string inviteKey)
+    {
+        var inviteModel = new InviteModel { TeamKey = teamKey, Code = inviteKey };
+        var inviteModelJson = JsonSerializer.Serialize(inviteModel);
+        var inviteCode = inviteModelJson.ToBase64();
+        return $"{NavigationManager.BaseUri}team?{Constants.TeamInviteCode}={inviteCode}";
     }
 
 }

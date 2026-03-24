@@ -1,6 +1,5 @@
 using System.Reflection;
 using Microsoft.AspNetCore.Http;
-using Tharga.Team;
 
 namespace Tharga.Team.Service;
 

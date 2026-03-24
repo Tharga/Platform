@@ -1,18 +1,24 @@
+@using Microsoft.Extensions.DependencyInjection
 @using Microsoft.Extensions.Options
 @using Microsoft.JSInterop
 @using Tharga.Team
 @using Tharga.Team.Blazor.Features.Team
 @using Microsoft.AspNetCore.Components.Authorization
 @inject ITeamStateService TeamStateService
-@inject IApiKeyManagementService ApiKeyManagementService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IOptions<ApiKeyOptions> ApiKeyOptionsAccessor
-@inject IScopeRegistry ScopeRegistry
+@inject IServiceProvider ServiceProvider
 @inject IJSRuntime Js
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 
-@if (!_hasAccess)
+@if (_apiKeyServiceMissing)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat">
+        API key management is not configured. Register <code>IApiKeyManagementService</code> in Program.cs to enable this view.
+    </RadzenAlert>
+}
+else if (!_hasAccess)
 {
     <RadzenText>Access denied. You need the API key management permission to view this page.</RadzenText>
 }
@@ -57,18 +63,21 @@ else
                     }
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Title="" Width="40px">
-                <Template>
-                    <span title="@GetKeyScopesText(context)">
-                        <RadzenIcon Icon="info" Style="cursor: help;" />
-                    </span>
-                </Template>
-            </RadzenDataGridColumn>
+            @if (_scopeRegistry != null)
+            {
+                <RadzenDataGridColumn Title="" Width="40px">
+                    <Template>
+                        <span title="@GetKeyScopesText(context)">
+                            <RadzenIcon Icon="info" Style="cursor: help;" />
+                        </span>
+                    </Template>
+                </RadzenDataGridColumn>
+            }
             <RadzenDataGridColumn Width="@(_options.AdvancedMode ? "220px" : "180px")">
                 <Template>
                     <RadzenButton Icon="visibility" Click="@(_ => context.VisibleKey = context.ApiKey)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey == _apiKeyMask)" />
                     <RadzenButton Icon="visibility_off" Click="@(_ => context.VisibleKey = _apiKeyMask)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey != _apiKeyMask)" />
-                    <RadzenButton Icon="content_copy" Click="@(_ => CopyToClipboard(context))" Visible="@(IsKeyVisible(context))" />
+                    <RadzenButton Icon="content_copy" Click="@(_ => CopyToClipboard(context))" Visible="@(!string.IsNullOrEmpty(context.ApiKey))" />
                     <RadzenButton Icon="lock" Click="@(_ => LockKeyAsync(context))" Visible="@(!string.IsNullOrEmpty(context.ApiKey))" />
                     <RadzenButton Icon="refresh" Click="@(_ => RefreshAsync(context))" />
                     <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Click="@(_ => DeleteAsync(context))" Visible="@(_options.AdvancedMode)" />
@@ -104,10 +113,13 @@ else
 }
 
 @code {
+    private bool _apiKeyServiceMissing;
+    private IApiKeyManagementService _apiKeyManagementService;
     private bool _hasAccess;
     private ITeam _selectedTeam;
     private ApiKeyModel[] _keys;
     private ApiKeyOptions _options;
+    private IScopeRegistry _scopeRegistry;
     private readonly string _apiKeyMask = "**********";
     private readonly AccessLevel[] _accessLevels = Enum.GetValues<AccessLevel>().Where(x => x != AccessLevel.Owner).ToArray();
 
@@ -117,11 +129,19 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        _apiKeyManagementService = ServiceProvider.GetService<IApiKeyManagementService>();
+        if (_apiKeyManagementService == null)
+        {
+            _apiKeyServiceMissing = true;
+            return;
+        }
+
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
         _hasAccess = user.HasClaim(TeamClaimTypes.Scope, ApiKeyScopes.Manage);
         if (!_hasAccess) { await base.OnInitializedAsync(); return; }
 
+        _scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
         _options = ApiKeyOptionsAccessor.Value;
         _newExpiryDate = _options.MaxExpiryDays.HasValue
             ? DateTime.UtcNow.AddDays(_options.MaxExpiryDays.Value).Date
@@ -135,7 +155,7 @@ else
     {
         if (_selectedTeam?.Key == null) return;
 
-        var keys = await ApiKeyManagementService.GetKeysAsync(_selectedTeam.Key).ToArrayAsync();
+        var keys = await _apiKeyManagementService.GetKeysAsync(_selectedTeam.Key).ToArrayAsync();
         _keys = keys
             .Select(x =>
             {
@@ -160,7 +180,7 @@ else
     {
         try
         {
-            var created = await ApiKeyManagementService.CreateKeyAsync(_selectedTeam.Key, _newName, _newAccessLevel, null, _newExpiryDate);
+            var created = await _apiKeyManagementService.CreateKeyAsync(_selectedTeam.Key, _newName, _newAccessLevel, null, _newExpiryDate);
             _newName = "";
             _newAccessLevel = AccessLevel.User;
             _newExpiryDate = _options.MaxExpiryDays.HasValue
@@ -181,7 +201,7 @@ else
         var result = await DialogService.Confirm($"The {context.Name} key will be regenerated.", "Confirm regenerate API key");
         if (result != true) return;
 
-        var refreshed = await ApiKeyManagementService.RefreshKeyAsync(_selectedTeam.Key, context.Key);
+        var refreshed = await _apiKeyManagementService.RefreshKeyAsync(_selectedTeam.Key, context.Key);
         await ReloadData();
         ShowKeyOnce(refreshed);
     }
@@ -199,9 +219,11 @@ else
 
     private string GetKeyScopesText(ApiKeyModel context)
     {
-        var accessLevelScopes = ScopeRegistry.GetScopesForAccessLevel(context.AccessLevel);
+        if (_scopeRegistry == null) return "";
+
+        var accessLevelScopes = _scopeRegistry.GetScopesForAccessLevel(context.AccessLevel);
         var overrides = context.ScopeOverrides ?? Array.Empty<string>();
-        var allScopes = ScopeRegistry.GetEffectiveScopes(context.AccessLevel, context.Roles, context.ScopeOverrides);
+        var allScopes = _scopeRegistry.GetEffectiveScopes(context.AccessLevel, context.Roles, context.ScopeOverrides);
 
         var lines = new List<string>();
         foreach (var scope in allScopes)
@@ -234,7 +256,7 @@ else
         var result = await DialogService.Confirm($"The {context.Name} key will be locked. After that, it cannot be retrieved.", "Confirm lock API key");
         if (result != true) return;
 
-        await ApiKeyManagementService.LockKeyAsync(_selectedTeam.Key, context.Key);
+        await _apiKeyManagementService.LockKeyAsync(_selectedTeam.Key, context.Key);
         await ReloadData();
     }
 
@@ -245,7 +267,7 @@ else
 
         try
         {
-            await ApiKeyManagementService.DeleteKeyAsync(_selectedTeam.Key, context.Key);
+            await _apiKeyManagementService.DeleteKeyAsync(_selectedTeam.Key, context.Key);
             await ReloadData();
             NotificationService.Notify(NotificationSeverity.Success, "API key deleted");
         }

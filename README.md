@@ -25,18 +25,78 @@ Tharga.Team ── plain .NET, no external dependencies
     └── + Tharga.MongoDB, ASP.NET Core
 ```
 
-## Getting started
+## Quick Start
 
-See the **[Implementation Guide](docs/implementation-guide.md)** for step-by-step instructions on adding each feature to your Blazor application. Each step covers packages, Program.cs changes, _Imports.razor, configuration, and what becomes available.
-
-### Quick start
+Install the packages:
 
 ```
-dotnet add package Tharga.Blazor              # Step 1: UI components
-dotnet add package Tharga.Team.Blazor         # Step 2: Authentication + Step 4: Team management UI
-dotnet add package Tharga.Team.Service        # Step 3: API controllers + Step 5-8: Server features
-dotnet add package Tharga.Team.MongoDB        # Step 4: Team persistence
+dotnet add package Tharga.Team.Blazor
+dotnet add package Tharga.Team.Service
+dotnet add package Tharga.Team.MongoDB
 ```
+
+Register everything in `Program.cs`:
+
+```csharp
+// One call to set up auth, Blazor, controllers, API keys
+builder.AddThargaPlatform(o =>
+{
+    o.Blazor.Title = "My App";
+    o.Blazor.RegisterTeamService<MyTeamService, MyUserService>();
+});
+
+// MongoDB persistence (requires consumer-specific entity types)
+builder.Services.AddMongoDB(o => { /* connection config */ });
+builder.Services.AddThargaTeamRepository(o =>
+{
+    o.UseUserEntity<MyUserEntity>();
+    o.UseTeamEntity<MyTeamEntity, MyTeamMember>();
+});
+
+var app = builder.Build();
+
+app.UseThargaPlatform();
+```
+
+Add to `appsettings.json`:
+
+```json
+{
+  "AzureAd": {
+    "Authority": "https://your-tenant.ciamlogin.com/your-tenant-id",
+    "ClientId": "your-client-id",
+    "TenantId": "your-tenant-id",
+    "CallbackPath": "/signin-oidc"
+  }
+}
+```
+
+Optional features (pass via `ThargaPlatformOptions`):
+
+```csharp
+builder.AddThargaPlatform(o =>
+{
+    // Fine-grained scopes
+    o.ConfigureScopes = scopes =>
+    {
+        scopes.Register("orders:read", AccessLevel.Viewer);
+        scopes.Register("orders:write", AccessLevel.Administrator);
+    };
+
+    // Named roles that bundle scopes
+    o.ConfigureTenantRoles = roles =>
+    {
+        roles.Register("Editor", new[] { "orders:read", "orders:write" });
+    };
+
+    // Audit logging
+    o.Audit = new AuditOptions { StorageMode = AuditStorageMode.MongoDB };
+});
+```
+
+## Advanced Usage
+
+Individual `Add*` methods remain available for partial/custom setups. See the **[Implementation Guide](docs/implementation-guide.md)** for step-by-step instructions.
 
 ## Links
 

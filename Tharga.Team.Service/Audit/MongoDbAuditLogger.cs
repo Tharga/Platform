@@ -43,7 +43,7 @@ public class MongoDbAuditLogger : BackgroundService, IAuditLogger
         var collection = _serviceProvider.GetService<IAuditRepositoryCollection>();
         if (collection == null) return new AuditQueryResult();
 
-        var options = new Tharga.MongoDB.Options<AuditEntryEntity>
+        var options = new MongoDB.Options<AuditEntryEntity>
         {
             Sort = BuildSort(query),
             Skip = query.Skip,

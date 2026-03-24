@@ -1,24 +1,26 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 using Radzen;
 using Radzen.Blazor;
 using Tharga.Team.Service.Audit;
-using Tharga.Team;
 
 namespace Tharga.Team.Blazor.Features.Audit;
 
 public partial class AuditLogView : ComponentBase
 {
-    [Inject] private CompositeAuditLogger AuditLogger { get; set; }
-    [Inject] private ITeamService TeamService { get; set; }
-    [Inject] private NotificationService NotificationService { get; set; }
-    [Inject] private IJSRuntime JS { get; set; }
+    [Inject] private IServiceProvider ServiceProvider { get; init; }
+    [Inject] private ITeamService TeamService { get; init; }
+    [Inject] private NotificationService NotificationService { get; init; }
+    [Inject] private IJSRuntime JS { get; init; }
 
     [Parameter] public string TeamKey { get; set; }
     [Parameter] public AuditCallerType? RestrictCallerType { get; set; }
 
     private const int ChartQueryLimit = 5000;
 
+    private CompositeAuditLogger _auditLogger;
+    private bool _auditLoggerMissing;
     private bool? _mongoAvailable;
     private IReadOnlyList<AuditEntry> _entries = Array.Empty<AuditEntry>();
     private IReadOnlyList<AuditEntry> _chartEntries = Array.Empty<AuditEntry>();
@@ -26,6 +28,9 @@ public partial class AuditLogView : ComponentBase
     private int _pageSize = 8;
     private RadzenDataGrid<AuditEntry> _grid;
     private bool _initialLoadDone;
+
+    // Caller name resolution
+    internal Dictionary<string, string> _callerNameCache = new(StringComparer.OrdinalIgnoreCase);
 
     // Top-bar filters
     private string _datePeriod = "today";
@@ -47,9 +52,16 @@ public partial class AuditLogView : ComponentBase
 
     protected override async Task OnInitializedAsync()
     {
+        _auditLogger = ServiceProvider.GetService<CompositeAuditLogger>();
+        if (_auditLogger == null)
+        {
+            _auditLoggerMissing = true;
+            return;
+        }
+
         try
         {
-            await AuditLogger.QueryAsync(new AuditQuery { Take = 1 });
+            await _auditLogger.QueryAsync(new AuditQuery { Take = 1 });
             _mongoAvailable = true;
         }
         catch
@@ -68,7 +80,7 @@ public partial class AuditLogView : ComponentBase
         }
 
         // Load distinct values for filter options
-        var recentResult = await AuditLogger.QueryAsync(new AuditQuery
+        var recentResult = await _auditLogger.QueryAsync(new AuditQuery
         {
             TeamKey = TeamKey,
             From = DateTime.UtcNow.AddDays(-30),
@@ -77,6 +89,29 @@ public partial class AuditLogView : ComponentBase
         _features = recentResult.Items.Where(e => e.Feature != null).Select(e => e.Feature).Distinct().OrderBy(f => f).ToList();
         _actions = recentResult.Items.Where(e => e.Action != null).Select(e => e.Action).Distinct().OrderBy(a => a).ToList();
         _sources = recentResult.Items.Select(e => e.CallerSource.ToString()).Distinct().OrderBy(s => s).ToList();
+
+        await BuildCallerNameCacheAsync();
+    }
+
+    private async Task BuildCallerNameCacheAsync()
+    {
+        var userService = ServiceProvider.GetService<IUserService>();
+        if (userService != null)
+        {
+            await foreach (var user in userService.GetAsync())
+            {
+                if (!string.IsNullOrEmpty(user.Identity))
+                    _callerNameCache.TryAdd(user.Identity, user.EMail ?? user.Identity);
+                if (!string.IsNullOrEmpty(user.EMail))
+                    _callerNameCache.TryAdd(user.EMail, user.EMail);
+            }
+        }
+    }
+
+    internal string GetCallerDisplayName(AuditEntry entry)
+    {
+        if (string.IsNullOrEmpty(entry.CallerIdentity)) return "";
+        return _callerNameCache.TryGetValue(entry.CallerIdentity, out var name) ? name : entry.CallerIdentity;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -102,7 +137,7 @@ public partial class AuditLogView : ComponentBase
         try
         {
             var query = BuildQuery(args.Skip ?? 0, args.Top ?? _pageSize, args.OrderBy, args.Filters);
-            var result = await AuditLogger.QueryAsync(query);
+            var result = await _auditLogger.QueryAsync(query);
             _entries = result.Items;
             _totalCount = result.TotalCount;
 
@@ -223,7 +258,7 @@ public partial class AuditLogView : ComponentBase
     {
         try
         {
-            var result = await AuditLogger.QueryAsync(BuildQuery(take: ChartQueryLimit));
+            var result = await _auditLogger.QueryAsync(BuildQuery(take: ChartQueryLimit));
             _chartEntries = result.Items;
         }
         catch (Exception ex)
@@ -256,7 +291,7 @@ public partial class AuditLogView : ComponentBase
             .Select(g => new ChartItem { Label = g.Key, Count = g.Count() }).OrderByDescending(x => x.Count).Take(10).ToList();
 
     private List<ChartItem> GetTopCallers() =>
-        _chartEntries.Where(e => e.CallerIdentity != null).GroupBy(e => e.CallerIdentity)
+        _chartEntries.Where(e => e.CallerIdentity != null).GroupBy(e => GetCallerDisplayName(e))
             .Select(g => new ChartItem { Label = g.Key, Count = g.Count() }).OrderByDescending(x => x.Count).Take(10).ToList();
 
     private List<ChartValue> GetResponseTimeOverTime()
@@ -278,7 +313,7 @@ public partial class AuditLogView : ComponentBase
     {
         try
         {
-            var result = await AuditLogger.QueryAsync(BuildQuery(take: 100_000));
+            var result = await _auditLogger.QueryAsync(BuildQuery(take: 100_000));
             var exportEntries = result.Items;
 
             if (!exportEntries.Any())
@@ -302,12 +337,13 @@ public partial class AuditLogView : ComponentBase
                 var sb = new System.Text.StringBuilder();
                 var includeTeam = string.IsNullOrEmpty(TeamKey);
                 sb.AppendLine(includeTeam
-                    ? "Timestamp,Team,Caller,Source,Feature,Action,Method,Duration,Success,EventType,Scope,ScopeResult,ErrorMessage"
-                    : "Timestamp,Caller,Source,Feature,Action,Method,Duration,Success,EventType,Scope,ScopeResult,ErrorMessage");
+                    ? "Timestamp,Team,Caller,CallerID,Source,Feature,Action,Method,Duration,Success,EventType,Scope,ScopeResult,ErrorMessage"
+                    : "Timestamp,Caller,CallerID,Source,Feature,Action,Method,Duration,Success,EventType,Scope,ScopeResult,ErrorMessage");
                 foreach (var e in exportEntries)
                 {
                     var team = includeTeam ? $"{Escape(e.TeamKey)}," : "";
-                    sb.AppendLine($"{e.Timestamp:O},{team}{Escape(e.CallerIdentity)},{e.CallerSource},{Escape(e.Feature)},{Escape(e.Action)},{Escape(e.MethodName)},{e.DurationMs},{e.Success},{e.EventType},{Escape(e.ScopeChecked)},{e.ScopeResult},{Escape(e.ErrorMessage)}");
+                    var callerName = Escape(GetCallerDisplayName(e));
+                    sb.AppendLine($"{e.Timestamp:O},{team}{callerName},{Escape(e.CallerIdentity)},{e.CallerSource},{Escape(e.Feature)},{Escape(e.Action)},{Escape(e.MethodName)},{e.DurationMs},{e.Success},{e.EventType},{Escape(e.ScopeChecked)},{e.ScopeResult},{Escape(e.ErrorMessage)}");
                 }
                 content = sb.ToString();
                 mimeType = "text/csv";

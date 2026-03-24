@@ -1,8 +1,10 @@
 ﻿@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.DependencyInjection
 @using Tharga.Team
 @attribute [Authorize]
 @inject DialogService DialogService
 @inject ITeamService TeamService
+@inject IServiceProvider ServiceProvider
 
 <RadzenTemplateForm TItem="InviteUserModel" Data=@Model Submit=@OnSubmit Style="height: 100%;">
     <RadzenStack Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" Style="height: 100%;">
@@ -11,17 +13,28 @@
                 <RadzenColumn>
                     <RadzenText TextStyle="TextStyle.Caption">Name</RadzenText>
                     <div><RadzenTextBox Name="Name" @bind-Value="@Model.Name" Style="width: 100%; min-width: 174px;" /></div>
+                    <RadzenRequiredValidator Component="Name" Text="Name is required." />
                 </RadzenColumn>
             </RadzenRow>
 
             <RadzenRow>
                 <RadzenColumn>
-                    <RadzenText TextStyle="TextStyle.Caption">Email</RadzenText>
-                    <div><RadzenTextBox Name="Email" @bind-Value="@Model.Email" Style="width: 100%; min-width: 174px;"/></div>
-                    <RadzenRequiredValidator Component="Email" Text="Email is required."/>
-                    <RadzenEmailValidator Component="Email"/>
+                    <RadzenText TextStyle="TextStyle.Caption">Email (optional)</RadzenText>
+                    <div><RadzenTextBox Name="Email" @bind-Value="@Model.Email" Style="width: 100%; min-width: 174px;" /></div>
+                    <RadzenEmailValidator Component="Email" Text="Enter a valid email address." />
                 </RadzenColumn>
             </RadzenRow>
+
+            @if (!string.IsNullOrEmpty(Model.Email) && !_emailSenderAvailable)
+            {
+                <RadzenRow>
+                    <RadzenColumn>
+                        <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" Variant="Variant.Flat" Size="AlertSize.ExtraSmall">
+                            Email sending is not configured. The invite link will be available for manual sharing.
+                        </RadzenAlert>
+                    </RadzenColumn>
+                </RadzenRow>
+            }
 
             <RadzenRow>
                 <RadzenColumn>
@@ -47,9 +60,13 @@
 @code {
     private string _errorMessage;
     private AccessLevel[] _accessLevels;
+    private bool _emailSenderAvailable;
 
     [Parameter]
     public string TeamKey { get; set; }
+
+    [Parameter]
+    public string TeamName { get; set; }
 
     private InviteUserModel Model { get; set; }
 
@@ -60,6 +77,7 @@
             AccessLevel = AccessLevel.User
         };
         _accessLevels = Enum.GetValues<AccessLevel>().Where(x => x != AccessLevel.Owner).ToArray();
+        _emailSenderAvailable = ServiceProvider.GetService<ITeamEmailSender>() != null;
 
         await base.OnInitializedAsync();
     }
@@ -70,7 +88,7 @@
         {
             await TeamService.AddMemberAsync(TeamKey, model);
 
-            DialogService.Close(true);
+            DialogService.Close(new InviteResult { Success = true, Email = model.Email, Name = model.Name });
         }
         catch (Exception e)
         {
@@ -82,5 +100,12 @@
     {
         DialogService.Close();
         return Task.CompletedTask;
+    }
+
+    public record InviteResult
+    {
+        public bool Success { get; init; }
+        public string Email { get; init; }
+        public string Name { get; init; }
     }
 }
