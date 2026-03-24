@@ -29,6 +29,9 @@ public partial class AuditLogView : ComponentBase
     private RadzenDataGrid<AuditEntry> _grid;
     private bool _initialLoadDone;
 
+    // Caller name resolution
+    internal Dictionary<string, string> _callerNameCache = new(StringComparer.OrdinalIgnoreCase);
+
     // Top-bar filters
     private string _datePeriod = "today";
     private IEnumerable<string> _filterTeams = Enumerable.Empty<string>();
@@ -86,6 +89,29 @@ public partial class AuditLogView : ComponentBase
         _features = recentResult.Items.Where(e => e.Feature != null).Select(e => e.Feature).Distinct().OrderBy(f => f).ToList();
         _actions = recentResult.Items.Where(e => e.Action != null).Select(e => e.Action).Distinct().OrderBy(a => a).ToList();
         _sources = recentResult.Items.Select(e => e.CallerSource.ToString()).Distinct().OrderBy(s => s).ToList();
+
+        await BuildCallerNameCacheAsync();
+    }
+
+    private async Task BuildCallerNameCacheAsync()
+    {
+        var userService = ServiceProvider.GetService<IUserService>();
+        if (userService != null)
+        {
+            await foreach (var user in userService.GetAsync())
+            {
+                if (!string.IsNullOrEmpty(user.Identity))
+                    _callerNameCache.TryAdd(user.Identity, user.EMail ?? user.Identity);
+                if (!string.IsNullOrEmpty(user.EMail))
+                    _callerNameCache.TryAdd(user.EMail, user.EMail);
+            }
+        }
+    }
+
+    internal string GetCallerDisplayName(AuditEntry entry)
+    {
+        if (string.IsNullOrEmpty(entry.CallerIdentity)) return "";
+        return _callerNameCache.TryGetValue(entry.CallerIdentity, out var name) ? name : entry.CallerIdentity;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -265,7 +291,7 @@ public partial class AuditLogView : ComponentBase
             .Select(g => new ChartItem { Label = g.Key, Count = g.Count() }).OrderByDescending(x => x.Count).Take(10).ToList();
 
     private List<ChartItem> GetTopCallers() =>
-        _chartEntries.Where(e => e.CallerIdentity != null).GroupBy(e => e.CallerIdentity)
+        _chartEntries.Where(e => e.CallerIdentity != null).GroupBy(e => GetCallerDisplayName(e))
             .Select(g => new ChartItem { Label = g.Key, Count = g.Count() }).OrderByDescending(x => x.Count).Take(10).ToList();
 
     private List<ChartValue> GetResponseTimeOverTime()
@@ -311,12 +337,13 @@ public partial class AuditLogView : ComponentBase
                 var sb = new System.Text.StringBuilder();
                 var includeTeam = string.IsNullOrEmpty(TeamKey);
                 sb.AppendLine(includeTeam
-                    ? "Timestamp,Team,Caller,Source,Feature,Action,Method,Duration,Success,EventType,Scope,ScopeResult,ErrorMessage"
-                    : "Timestamp,Caller,Source,Feature,Action,Method,Duration,Success,EventType,Scope,ScopeResult,ErrorMessage");
+                    ? "Timestamp,Team,Caller,CallerID,Source,Feature,Action,Method,Duration,Success,EventType,Scope,ScopeResult,ErrorMessage"
+                    : "Timestamp,Caller,CallerID,Source,Feature,Action,Method,Duration,Success,EventType,Scope,ScopeResult,ErrorMessage");
                 foreach (var e in exportEntries)
                 {
                     var team = includeTeam ? $"{Escape(e.TeamKey)}," : "";
-                    sb.AppendLine($"{e.Timestamp:O},{team}{Escape(e.CallerIdentity)},{e.CallerSource},{Escape(e.Feature)},{Escape(e.Action)},{Escape(e.MethodName)},{e.DurationMs},{e.Success},{e.EventType},{Escape(e.ScopeChecked)},{e.ScopeResult},{Escape(e.ErrorMessage)}");
+                    var callerName = Escape(GetCallerDisplayName(e));
+                    sb.AppendLine($"{e.Timestamp:O},{team}{callerName},{Escape(e.CallerIdentity)},{e.CallerSource},{Escape(e.Feature)},{Escape(e.Action)},{Escape(e.MethodName)},{e.DurationMs},{e.Success},{e.EventType},{Escape(e.ScopeChecked)},{e.ScopeResult},{Escape(e.ErrorMessage)}");
                 }
                 content = sb.ToString();
                 mimeType = "text/csv";

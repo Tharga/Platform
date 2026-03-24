@@ -132,7 +132,11 @@ else
                             <Template>@GetTeamName(context.TeamKey)</Template>
                         </RadzenDataGridColumn>
                         <RadzenDataGridColumn Title="Caller" Property="@nameof(AuditEntry.CallerIdentity)" Width="180px"
-                                              Sortable="true" />
+                                              Sortable="true">
+                            <Template>
+                                <span title="@context.CallerIdentity">@GetCallerDisplayName(context)</span>
+                            </Template>
+                        </RadzenDataGridColumn>
                         <RadzenDataGridColumn Title="Source" Width="70px" Filterable="false" Sortable="false">
                             <Template>@context.CallerSource</Template>
                         </RadzenDataGridColumn>
@@ -246,7 +250,11 @@ else
                                     <RadzenDataGridColumn Title="Action" Property="@nameof(AuditEntry.Action)" Width="80px" />
                                     <RadzenDataGridColumn Title="Method" Property="@nameof(AuditEntry.MethodName)" Width="120px" />
                                     <RadzenDataGridColumn Title="Duration (ms)" Property="@nameof(AuditEntry.DurationMs)" Width="100px" TextAlign="TextAlign.End" />
-                                    <RadzenDataGridColumn Title="Caller" Property="@nameof(AuditEntry.CallerIdentity)" Width="160px" />
+                                    <RadzenDataGridColumn Title="Caller" Width="160px">
+                                        <Template>
+                                            <span title="@context.CallerIdentity">@GetCallerDisplayName(context)</span>
+                                        </Template>
+                                    </RadzenDataGridColumn>
                                 </Columns>
                             </RadzenDataGrid>
                         </RadzenCard>
