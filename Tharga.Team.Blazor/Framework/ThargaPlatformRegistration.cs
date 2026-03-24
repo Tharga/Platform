@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Tharga.Team;
 using Tharga.Team.Blazor.Features.Authentication;
 using Tharga.Team.Service;
 using Tharga.Team.Service.Audit;
+using Tharga.Team.Service.Email;
 
 namespace Tharga.Team.Blazor.Framework;
 
@@ -94,6 +97,27 @@ public static class ThargaPlatformRegistration
                 o.BatchSize = options.Audit.BatchSize;
                 o.FlushIntervalSeconds = options.Audit.FlushIntervalSeconds;
             });
+        }
+
+        // Email sender: custom type > SMTP (if EmailOptions set) > nothing
+        if (options._emailSenderType != null)
+        {
+            builder.Services.AddScoped(typeof(ITeamEmailSender), options._emailSenderType);
+        }
+        else if (options.Email != null)
+        {
+            var fromName = options.Email.FromName ?? options.Blazor.Title;
+            builder.Services.Configure<EmailOptions>(o =>
+            {
+                o.SmtpHost = options.Email.SmtpHost;
+                o.SmtpPort = options.Email.SmtpPort;
+                o.UseSsl = options.Email.UseSsl;
+                o.Username = options.Email.Username;
+                o.Password = options.Email.Password;
+                o.FromAddress = options.Email.FromAddress;
+                o.FromName = fromName;
+            });
+            builder.Services.AddScoped<ITeamEmailSender, SmtpTeamEmailSender>();
         }
     }
 

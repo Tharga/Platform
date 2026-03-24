@@ -1,6 +1,8 @@
+using Tharga.Team;
 using Tharga.Team.Blazor.Features.Authentication;
 using Tharga.Team.Service;
 using Tharga.Team.Service.Audit;
+using Tharga.Team.Service.Email;
 
 namespace Tharga.Team.Blazor.Framework;
 
@@ -10,6 +12,8 @@ namespace Tharga.Team.Blazor.Framework;
 /// </summary>
 public class ThargaPlatformOptions
 {
+    internal Type _emailSenderType;
+
     /// <summary>
     /// Options for the Blazor UI layer (title, team service types, auth state decoration).
     /// </summary>
@@ -47,4 +51,19 @@ public class ThargaPlatformOptions
     /// Options for audit logging. Set to null to skip audit registration.
     /// </summary>
     public AuditOptions Audit { get; set; }
+
+    /// <summary>
+    /// Options for email sending (SMTP). When set and no custom email service is registered,
+    /// the built-in SmtpTeamEmailSender is used. Set to null to disable email.
+    /// </summary>
+    public EmailOptions Email { get; set; }
+
+    /// <summary>
+    /// Register a custom email sender implementation. When set, this takes precedence
+    /// over the built-in SMTP sender regardless of EmailOptions.
+    /// </summary>
+    public void AddEmailService<T>() where T : class, ITeamEmailSender
+    {
+        _emailSenderType = typeof(T);
+    }
 }
