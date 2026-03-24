@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Tharga.Blazor.Framework;
 using Tharga.Team.Blazor.Features.Team;
+using Tharga.Team.Service;
 
 namespace Tharga.Team.Blazor.Framework;
 
@@ -26,31 +27,54 @@ public static class ThargaBlazorRegistration
             services.AddScoped(o._userService);
             services.AddScoped(typeof(IUserService), sp => sp.GetRequiredService(o._userService));
 
+            if (o._memberType != null)
+            {
+                var managementServiceType = typeof(TeamManagementService<>).MakeGenericType(o._memberType);
+                services.AddScoped(typeof(ITeamManagementService), managementServiceType);
+            }
+
             if (o._apiKeyService != null)
             {
                 services.AddScoped(o._apiKeyService);
                 services.AddScoped(typeof(IApiKeyAdministrationService), sp => sp.GetRequiredService(o._apiKeyService));
             }
 
-            // Decorate the existing AuthenticationStateProvider with team claims augmentation.
-            // Move the current registration to a keyed service so the wrapper can resolve it.
-            var existing = services.LastOrDefault(d => d.ServiceType == typeof(AuthenticationStateProvider));
-            if (existing != null)
+            // Register default team and API key scopes unless already registered
+            if (!services.Any(d => d.ServiceType == typeof(IScopeRegistry)))
             {
-                services.Remove(existing);
-
-                if (existing.ImplementationType != null)
+                services.AddThargaScopes(scopes =>
                 {
-                    services.AddKeyedScoped(typeof(AuthenticationStateProvider), "inner-auth-state", existing.ImplementationType);
-                }
-                else if (existing.ImplementationFactory != null)
-                {
-                    var factory = existing.ImplementationFactory;
-                    services.AddKeyedScoped("inner-auth-state", (sp, _) => (AuthenticationStateProvider)factory(sp));
-                }
+                    scopes.Register(TeamScopes.Read, AccessLevel.Viewer);
+                    scopes.Register(TeamScopes.Manage, AccessLevel.Administrator);
+                    scopes.Register(TeamScopes.MemberInvite, AccessLevel.Administrator);
+                    scopes.Register(TeamScopes.MemberRemove, AccessLevel.Administrator);
+                    scopes.Register(TeamScopes.MemberRole, AccessLevel.Administrator);
+                    scopes.Register(ApiKeyScopes.Manage, AccessLevel.Administrator);
+                });
             }
 
-            services.AddScoped<AuthenticationStateProvider, TeamClaimsAuthenticationStateProvider>();
+            if (!o.SkipAuthStateDecoration)
+            {
+                // Decorate the existing AuthenticationStateProvider with team claims augmentation.
+                // Move the current registration to a keyed service so the wrapper can resolve it.
+                var existing = services.LastOrDefault(d => d.ServiceType == typeof(AuthenticationStateProvider));
+                if (existing != null)
+                {
+                    services.Remove(existing);
+
+                    if (existing.ImplementationType != null)
+                    {
+                        services.AddKeyedScoped(typeof(AuthenticationStateProvider), "inner-auth-state", existing.ImplementationType);
+                    }
+                    else if (existing.ImplementationFactory != null)
+                    {
+                        var factory = existing.ImplementationFactory;
+                        services.AddKeyedScoped("inner-auth-state", (sp, _) => (AuthenticationStateProvider)factory(sp));
+                    }
+                }
+
+                services.AddScoped<AuthenticationStateProvider, TeamClaimsAuthenticationStateProvider>();
+            }
         }
 
         if (o._apiKeyService != null)

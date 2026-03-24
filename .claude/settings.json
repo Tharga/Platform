@@ -1,14 +1,31 @@
 {
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },  
   "permissions": {
     "allow": [
-      "Bash(xargs ls -la)",
-      "Bash(xargs grep -l \"NotificationService\\\\|ActionButton\")",
-      "Bash(dotnet build Tharga.Blazor/Tharga.Blazor.csproj -c Release --no-restore)",
-      "Bash(git restore:*)",
-      "Bash(git checkout:*)",
-      "Bash(dotnet restore:*)",
-      "Bash(dotnet package:*)",
-      "Bash(git branch:*)"
+      "Bash(git:*)",
+      "Bash(cd:*)",
+      "Bash(dotnet:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(rm:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Read(//c/dev/tharga/**)",
+      "Bash(grep -r [Inject] --include=*.razor.cs --include=*.cs .)",
+      "Bash(rm \"c:/dev/tharga/Toolkit/Platform/.claude/feature.md\")",
+      "Bash(rm \"c:/dev/tharga/Toolkit/Platform/.claude/plan.md\")",
+      "Bash(grep -r RegisterApiKeyService /c/dev/tharga/ --include=*.cs -l)",
+      "Bash(rm .claude/feature.md)",
+      "Bash(rm .claude/plan.md)"
+    ],
+    "additionalDirectories": [
+      "c:\\dev\\tharga\\Starter\\.claude",
+      "c:\\dev\\tharga\\Toolkit\\Platform\\.claude"
     ]
   }
 }

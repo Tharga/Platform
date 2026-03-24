@@ -1,4 +1,3 @@
-using Tharga.Team;
 using Tharga.Toolkit.Password;
 
 namespace Tharga.Team.Service.Tests;

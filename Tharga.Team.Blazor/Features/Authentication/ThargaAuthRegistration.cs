@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Builder;
@@ -57,14 +58,17 @@ public static class ThargaAuthRegistration
     {
         var options = app.Services.GetRequiredService<ThargaAuthOptions>();
 
-        app.MapGet(options.LoginPath, (HttpContext context) =>
-            Results.Challenge(
-                new Microsoft.AspNetCore.Authentication.AuthenticationProperties { RedirectUri = "/" },
-                [OpenIdConnectDefaults.AuthenticationScheme]));
+        app.MapGet(options.LoginPath, async (HttpContext context) =>
+        {
+            await context.ChallengeAsync(OpenIdConnectDefaults.AuthenticationScheme,
+                new AuthenticationProperties { RedirectUri = "/" });
+        });
 
-        app.MapGet(options.LogoutPath, (HttpContext context) =>
-            Results.SignOut(
-                new Microsoft.AspNetCore.Authentication.AuthenticationProperties { RedirectUri = "/" },
-                [CookieAuthenticationDefaults.AuthenticationScheme, OpenIdConnectDefaults.AuthenticationScheme]));
+        app.MapGet(options.LogoutPath, async (HttpContext context) =>
+        {
+            await context.SignOutAsync(OpenIdConnectDefaults.AuthenticationScheme);
+            await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            context.Response.Redirect("/");
+        });
     }
 }

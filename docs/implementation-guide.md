@@ -1,7 +1,44 @@
 # Tharga Platform — Implementation Guide
 
 Step-by-step instructions for adding Tharga Platform features to a Blazor application.
-Each step is a self-contained feature that builds on previous steps. Add only what you need.
+
+## Recommended: Single-call setup
+
+For most applications, use `AddThargaPlatform` to register everything in one call:
+
+```csharp
+using Tharga.Team.Blazor.Framework;
+
+builder.AddThargaPlatform(o =>
+{
+    o.Blazor.Title = "My App";
+    o.Blazor.RegisterTeamService<MyTeamService, MyUserService>();
+
+    // Optional: scopes, roles, audit
+    o.ConfigureScopes = scopes => { /* ... */ };
+    o.ConfigureTenantRoles = roles => { /* ... */ };
+    o.Audit = new AuditOptions();
+});
+
+// MongoDB persistence (always separate — requires your entity types)
+builder.Services.AddMongoDB(o => { /* connection config */ });
+builder.Services.AddThargaTeamRepository(o =>
+{
+    o.UseUserEntity<MyUserEntity>();
+    o.UseTeamEntity<MyTeamEntity, MyTeamMember>();
+});
+
+var app = builder.Build();
+app.UseThargaPlatform();
+```
+
+This replaces Steps 1–8 below. Set sub-options to `null` to skip features you don't need (e.g. `o.Controllers = null`, `o.ApiKey = null`).
+
+---
+
+## Advanced: Step-by-step setup
+
+Use the individual `Add*` methods when you need partial or custom registration. Each step is a self-contained feature that builds on previous steps. Add only what you need.
 
 > **Secrets:** Several steps require sensitive configuration values (client IDs, connection strings, API keys).
 > These should never be committed to source control. Use **Manage User Secrets** in Visual Studio
@@ -219,6 +256,10 @@ Create a profile page:
 <UserProfileView />
 ```
 
+### Version notes
+
+- `UseThargaAuth()` requires **>= 2.0.1-pre.1** for correct async login behavior. Version 2.0.0 used `Results.Challenge` (synchronous) which caused DNS errors with some Azure AD configurations.
+
 ### Verification
 
 The login button should appear. Clicking it redirects to Azure AD. After login, the profile menu shows with the user's Gravatar.
@@ -371,6 +412,66 @@ See `Tharga.Team.MongoDB` base classes (`TeamEntityBase<T>`, `TeamMemberBase`, `
 | `Roles.Developer` | Role for developer-only UI sections |
 
 The `TeamClaimsAuthenticationStateProvider` automatically augments the authentication state with team claims (`TeamKey`, `AccessLevel`, scopes) based on the selected team.
+
+> **Note:** Team management works without scopes or tenant roles. The `ShowMemberRoles` and `ShowScopeOverrides` options only take effect when the corresponding registries are registered (Step 6 and Step 7). Without them, the team UI shows access levels only — which is sufficient for many applications.
+
+### SSR Compatibility
+
+> **Warning:** Apps using server-side rendering (`AddInteractiveServerComponents()`) will experience a silent deadlock (white screen, no errors) with the default `TeamClaimsAuthenticationStateProvider`. This is because it uses JS interop (localStorage) which is unavailable during SSR prerendering.
+
+**Fix:** Set `SkipAuthStateDecoration = true`:
+
+```csharp
+builder.Services.AddThargaTeamBlazor(o =>
+{
+    o.SkipAuthStateDecoration = true;      // required for SSR apps
+    o.RegisterTeamService<MyTeamService, MyUserService>();
+});
+```
+
+When `SkipAuthStateDecoration = true`, the `team_id` claim is **no longer added automatically**. You must register an `IClaimsTransformation` that reads the `selected_team_id` cookie and adds the claim server-side:
+
+```csharp
+// Program.cs
+builder.Services.AddTransient<IClaimsTransformation, TeamCookieClaimsTransformation>();
+```
+
+```csharp
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+
+public class TeamCookieClaimsTransformation : IClaimsTransformation
+{
+    private readonly IHttpContextAccessor _httpContextAccessor;
+
+    public TeamCookieClaimsTransformation(IHttpContextAccessor httpContextAccessor)
+    {
+        _httpContextAccessor = httpContextAccessor;
+    }
+
+    public Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
+    {
+        if (principal.Identity is not ClaimsIdentity identity || !identity.IsAuthenticated)
+            return Task.FromResult(principal);
+
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (httpContext == null)
+            return Task.FromResult(principal);
+
+        var teamKey = httpContext.Request.Cookies["selected_team_id"];
+        if (!string.IsNullOrEmpty(teamKey) && !principal.HasClaim("team_id", teamKey))
+        {
+            identity.AddClaim(new Claim("team_id", teamKey));
+        }
+
+        return Task.FromResult(principal);
+    }
+}
+```
+
+> **Without the claims transformation**, `TeamStateService.GetSelectedTeamAsync()` enters an infinite refresh loop — it calls `_navigationManager.Refresh(true)`, finds no `team_id` claim, and repeats.
+
+This option requires **>= 2.0.1-pre.1**.
 
 ### Verification
 
@@ -609,6 +710,7 @@ Perform some actions, then view the audit log via `<AuditLogView />`. Entries sh
 ## Quick reference: Registration order in Program.cs
 
 ```csharp
+using Microsoft.AspNetCore.Authentication;
 using Tharga.Team;
 using Tharga.Team.Blazor.Features.Authentication;
 using Tharga.Team.Blazor.Framework;
@@ -628,11 +730,13 @@ builder.Services.AddThargaControllers();
 builder.Services.AddThargaTeamBlazor(o =>
 {
     o.Title = "My App";
+    o.SkipAuthStateDecoration = true;                           // required for SSR apps
     o.RegisterTeamService<MyTeamService, MyUserService>();
     o.RegisterApiKeyAdministrationService<MyApiKeyService>();  // Step 5
     o.ShowMemberRoles = true;                                   // Step 7
     o.ShowScopeOverrides = true;                                // Step 6
 });
+builder.Services.AddTransient<IClaimsTransformation, TeamCookieClaimsTransformation>();  // SSR
 builder.Services.AddThargaTeamRepository(o =>
 {
     o.RegisterUserRepository<UserEntity>();
