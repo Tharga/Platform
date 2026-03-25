@@ -35,6 +35,7 @@ Domain models, service abstractions, and authorization primitives for multi-tena
 
 | Package | Description |
 |---------|-------------|
-| [Tharga.Blazor](https://www.nuget.org/packages/Tharga.Blazor) | UI components (team selector, API key view, breadcrumbs, etc.) |
+| [Tharga.Team.Blazor](https://www.nuget.org/packages/Tharga.Team.Blazor) | Team management Blazor UI components, authentication |
 | [Tharga.Team.MongoDB](https://www.nuget.org/packages/Tharga.Team.MongoDB) | MongoDB persistence for teams and users |
-| [Tharga.Api](https://www.nuget.org/packages/Tharga.Api) | Server-only API key authentication handler, Swagger setup, audit logging |
+| [Tharga.Team.Service](https://www.nuget.org/packages/Tharga.Team.Service) | Server-side API key auth, Swagger, audit logging |
+| [Tharga.Blazor](https://www.nuget.org/packages/Tharga.Blazor) | Generic Blazor UI components (buttons, breadcrumbs, etc.) |
