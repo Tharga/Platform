@@ -17,15 +17,10 @@
       "Skill(update-config:*)",
       "Read(//c/dev/tharga/**)",
       "Bash(grep -r [Inject] --include=*.razor.cs --include=*.cs .)",
-      "Bash(rm \"c:/dev/tharga/Toolkit/Platform/.claude/feature.md\")",
-      "Bash(rm \"c:/dev/tharga/Toolkit/Platform/.claude/plan.md\")",
-      "Bash(grep -r RegisterApiKeyService /c/dev/tharga/ --include=*.cs -l)",
       "Bash(rm .claude/feature.md)",
       "Bash(rm .claude/plan.md)"
     ],
     "additionalDirectories": [
-      "c:\\dev\\tharga\\Starter\\.claude",
-      "c:\\dev\\tharga\\Toolkit\\Platform\\.claude"
     ]
   }
 }
