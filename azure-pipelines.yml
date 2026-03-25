@@ -52,16 +52,6 @@ stages:
       displayName: 'Clean artifact staging directory'
 
     - task: DotNetCoreCLI@2
-      displayName: 'Pack Tharga.Blazor'
-      inputs:
-        command: 'pack'
-        packagesToPack: '**/Tharga.Blazor.csproj'
-        nobuild: true
-        configuration: 'Release'
-        versioningScheme: 'off'
-        buildProperties: 'PackageVersion=$(Build.BuildNumber)'
-
-    - task: DotNetCoreCLI@2
       displayName: 'Pack Tharga.Team'
       inputs:
         command: 'pack'

@@ -14,6 +14,18 @@ MongoDB persistence layer for [Tharga.Team](https://www.nuget.org/packages/Tharg
 - `TeamEntityBase` - Base record for team entities.
 - `UserServiceRepositoryBase` - User service base class with MongoDB persistence.
 
+## Quick start
+
+```csharp
+builder.Services.AddThargaTeamRepository(o =>
+{
+    o.RegisterUserRepository<UserEntity>();
+    o.RegisterTeamRepository<TeamEntity, TeamMember>();
+});
+```
+
+Requires [Tharga.MongoDB](https://www.nuget.org/packages/Tharga.MongoDB) to be configured with a connection string.
+
 ## Dependencies
 
 - [Tharga.Team](https://www.nuget.org/packages/Tharga.Team) - Domain models and service abstractions.
@@ -23,6 +35,7 @@ MongoDB persistence layer for [Tharga.Team](https://www.nuget.org/packages/Tharg
 
 | Package | Description |
 |---------|-------------|
-| [Tharga.Blazor](https://www.nuget.org/packages/Tharga.Blazor) | UI components for Blazor Server and WebAssembly |
 | [Tharga.Team](https://www.nuget.org/packages/Tharga.Team) | Domain models and authorization primitives |
-| [Tharga.Api](https://www.nuget.org/packages/Tharga.Api) | Server-only API key auth handler, Swagger, audit logging |
+| [Tharga.Team.Blazor](https://www.nuget.org/packages/Tharga.Team.Blazor) | Team management Blazor UI components, authentication |
+| [Tharga.Team.Service](https://www.nuget.org/packages/Tharga.Team.Service) | Server-side API key auth, Swagger, audit logging |
+| [Tharga.Blazor](https://www.nuget.org/packages/Tharga.Blazor) | Generic Blazor UI components |
