@@ -184,6 +184,16 @@ public class AddThargaPlatformTests
     {
         var builder = CreateBuilder();
         builder.AddThargaPlatform();
+
+        // Stub services that are normally provided by the Blazor/MongoDB runtime
+        // so that ValidateOnBuild (enabled by default in .NET 10) does not throw.
+        builder.Services.AddSingleton<Microsoft.AspNetCore.Components.NavigationManager>(
+            new TestNavigationManager());
+        builder.Services.AddSingleton(
+            new Moq.Mock<Microsoft.JSInterop.IJSRuntime>().Object);
+        builder.Services.AddSingleton(
+            new Moq.Mock<Tharga.MongoDB.IMongoDbServiceFactory>().Object);
+
         var app = builder.Build();
 
         app.UseThargaPlatform();
@@ -196,5 +206,10 @@ public class AddThargaPlatformTests
 
         Assert.Contains(endpoints, e => e.RoutePattern.RawText == "/login");
         Assert.Contains(endpoints, e => e.RoutePattern.RawText == "/logout");
+    }
+
+    private class TestNavigationManager : Microsoft.AspNetCore.Components.NavigationManager
+    {
+        public TestNavigationManager() => Initialize("https://localhost/", "https://localhost/");
     }
 }
