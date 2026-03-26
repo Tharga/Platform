@@ -52,6 +52,7 @@ public static class ThargaPlatformRegistration
         {
             o.Title = options.Blazor.Title;
             o.AutoCreateFirstTeam = options.Blazor.AutoCreateFirstTeam;
+            o.AllowTeamCreation = options.Blazor.AllowTeamCreation;
             o.ShowMemberRoles = options.Blazor.ShowMemberRoles;
             o.ShowScopeOverrides = options.Blazor.ShowScopeOverrides;
             o.SkipAuthStateDecoration = options.Blazor.SkipAuthStateDecoration;

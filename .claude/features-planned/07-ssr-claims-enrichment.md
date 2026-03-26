@@ -15,6 +15,14 @@ Provide server-side claims enrichment for SSR Blazor apps that must skip TeamCla
 - Remove `TeamCookieClaimsTransformation` from `Tharga.Platform.Sample` — it will no longer be needed once Platform registers its own `IClaimsTransformation`
 - Consider changing `SkipAuthStateDecoration` default to `true` since SSR is the standard hosting model
 
+## Important: Blocked functionality without this feature
+With `SkipAuthStateDecoration = true` (required for SSR), scope claims are never added to the principal. This means:
+- `_canManage` is always `false` in TeamComponent → delete team button never visible
+- ApiKeyView access checks based on scopes fail
+- AuditLogView scope-based access checks fail
+- Any component relying on `TeamClaimTypes.Scope` claims is broken in SSR mode
+This feature is the critical unblock for all scope-dependent UI in SSR apps.
+
 ## Acceptance Criteria
 - [ ] SSR apps with `SkipAuthStateDecoration = true` get team claims on the server
 - [ ] Re-entrance is handled correctly
