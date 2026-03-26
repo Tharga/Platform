@@ -28,6 +28,14 @@ public record ThargaBlazorOptions : BlazorOptions
     public bool ShowScopeOverrides { get; set; } = false;
 
     /// <summary>
+    /// Allow users to create and delete teams via the UI.
+    /// When false, the "Create team" and "Delete team" buttons are hidden.
+    /// Independent of AutoCreateFirstTeam (system behavior).
+    /// Default is true.
+    /// </summary>
+    public bool AllowTeamCreation { get; set; } = true;
+
+    /// <summary>
     /// When true, skips decorating AuthenticationStateProvider with
     /// TeamClaimsAuthenticationStateProvider. Use this for SSR-based apps
     /// that use IClaimsTransformation instead of JS-based claim augmentation.

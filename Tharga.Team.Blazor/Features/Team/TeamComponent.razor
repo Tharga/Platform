@@ -33,7 +33,7 @@ else
                 <ExpandableCard Text="@team.Name" Selected="@(_selectedTeam.Key == team.Key)">
                     <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right">
                         <RadzenButton icon="edit" Text="Rename" Click="@(async () => { await RenameTeam(team); })" Visible="@(_canManage)"/>
-                        <ActionButton icon="delete" Text="Delete" Click="@(async () => { await DeleteTeam(team); })" Visible="@(_canManage && HasAccessLevel(team, AccessLevel.Owner))"/>
+                        <ActionButton icon="delete" Text="Delete" Click="@(async () => { await DeleteTeam(team); })" Visible="@(_canManage && _allowTeamCreation && HasAccessLevel(team, AccessLevel.Owner))"/>
                         <RadzenButton icon="remove" Text="Leave" Click="@(async () => { await RemoveUserFromTeam(team, _user.Key); })" Visible="@(!HasAccessLevel(team, AccessLevel.Owner))"/>
                     </RadzenStack>
                     <RadzenRow>
@@ -153,10 +153,14 @@ else
                 </ExpandableCard>
             }
         }
-        <RadzenText Visible="@(!_teams.Any())">You are not member of a team. Create your own team and start inviting members.</RadzenText>
-        <RadzenStack Orientation="Orientation.Horizontal">
-            <RadzenButton Icon="add" Text="Create new Team" Click="@(() => CreateTeam())"/>
-        </RadzenStack>
+        <RadzenText Visible="@(!_teams.Any() && _allowTeamCreation)">You are not member of a team. Create your own team and start inviting members.</RadzenText>
+        <RadzenText Visible="@(!_teams.Any() && !_allowTeamCreation)">You are not member of a team.</RadzenText>
+        @if (_allowTeamCreation)
+        {
+            <RadzenStack Orientation="Orientation.Horizontal">
+                <RadzenButton Icon="add" Text="Create new Team" Click="@(() => CreateTeam())"/>
+            </RadzenStack>
+        }
 
     </RadzenStack>
 }
@@ -173,6 +177,7 @@ else
     private bool _canInvite;
     private bool _canRemove;
     private bool _canChangeRole;
+    private bool _allowTeamCreation;
     private string[] _allScopeNames = Array.Empty<string>();
     private IScopeRegistry _scopeRegistry;
     private ITenantRoleRegistry _tenantRoleRegistry;
@@ -191,6 +196,7 @@ else
 
         _showMemberRoles = BlazorOptions.Value.ShowMemberRoles && _tenantRoleRegistry != null;
         _showScopeOverrides = BlazorOptions.Value.ShowScopeOverrides && _scopeRegistry != null;
+        _allowTeamCreation = BlazorOptions.Value.AllowTeamCreation;
         if (_showMemberRoles)
             _availableRoles = _tenantRoleRegistry!.All.Select(r => r.Name).ToArray();
         if (_showMemberRoles || _showScopeOverrides)
