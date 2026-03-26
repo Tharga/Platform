@@ -1,8 +1,6 @@
-using Microsoft.AspNetCore.Authentication;
 using Radzen;
 using Tharga.MongoDB;
 using Tharga.Platform.Sample.Components;
-using Tharga.Platform.Sample.Framework;
 using Tharga.Platform.Sample.Framework.Team;
 using Tharga.Team;
 using Tharga.Team.Blazor.Framework;
@@ -15,25 +13,26 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddRadzenComponents();
 
-builder.Services.AddTransient<IClaimsTransformation, TeamCookieClaimsTransformation>();
-
 builder.AddThargaPlatform(o =>
 {
     o.Blazor.Title = "Tharga Platform Sample";
     o.Blazor.RegisterTeamService<TeamService, UserService, TeamMember>();
     o.Blazor.AutoCreateFirstTeam = false;
-    o.Blazor.SkipAuthStateDecoration = true; // required for SSR apps
+    o.Blazor.AllowTeamCreation = true;
 
-    o.ConfigureScopes = scopes =>
-    {
-        scopes.Register("orders:read", AccessLevel.Viewer);
-        scopes.Register("orders:write", AccessLevel.Administrator);
-    };
+    //o.Blazor.ShowScopeOverrides = true;
+    //o.Blazor.ShowMemberRoles = true;
 
-    o.ConfigureTenantRoles = roles =>
-    {
-        roles.Register("Editor", ["orders:read", "orders:write"]);
-    };
+    //o.ConfigureScopes = scopes =>
+    //{
+    //    scopes.Register("orders:read", AccessLevel.Viewer);
+    //    scopes.Register("orders:write", AccessLevel.Administrator);
+    //};
+
+    //o.ConfigureTenantRoles = roles =>
+    //{
+    //    roles.Register("Editor", ["orders:read", "orders:write"]);
+    //};
 
     o.Audit = new AuditOptions();
 });

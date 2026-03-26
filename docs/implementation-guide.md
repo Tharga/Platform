@@ -415,63 +415,40 @@ The `TeamClaimsAuthenticationStateProvider` automatically augments the authentic
 
 > **Note:** Team management works without scopes or tenant roles. The `ShowMemberRoles` and `ShowScopeOverrides` options only take effect when the corresponding registries are registered (Step 6 and Step 7). Without them, the team UI shows access levels only — which is sufficient for many applications.
 
-### SSR Compatibility
+### Claims Enrichment
 
-> **Warning:** Apps using server-side rendering (`AddInteractiveServerComponents()`) will experience a silent deadlock (white screen, no errors) with the default `TeamClaimsAuthenticationStateProvider`. This is because it uses JS interop (localStorage) which is unavailable during SSR prerendering.
+Team, role, access level, and scope claims are automatically enriched on the `ClaimsPrincipal` when a team is selected. Platform provides two enrichment paths:
 
-**Fix:** Set `SkipAuthStateDecoration = true`:
+| Path | How it works | Hosting models |
+|------|-------------|----------------|
+| **Server-side** (default) | `IClaimsTransformation` reads the `selected_team_id` cookie during the HTTP pipeline | Blazor Server, SSR, Hybrid |
+| **Client-side** | `AuthenticationStateProvider` decorator reads from LocalStorage via JS interop | Standalone WASM only |
 
-```csharp
-builder.Services.AddThargaTeamBlazor(o =>
-{
-    o.SkipAuthStateDecoration = true;      // required for SSR apps
-    o.RegisterTeamService<MyTeamService, MyUserService>();
-});
-```
+The server-side path is **always registered** — no configuration needed. It adds:
+- `team_id` — selected team key
+- `TeamKey` — team key claim
+- `Role: TeamMember` — membership role
+- `Role: Team{AccessLevel}` — access level role (e.g. `TeamOwner`, `TeamAdministrator`)
+- `AccessLevel` — raw access level value
+- Scope claims — all effective scopes for the member's access level, roles, and overrides
 
-When `SkipAuthStateDecoration = true`, the `team_id` claim is **no longer added automatically**. You must register an `IClaimsTransformation` that reads the `selected_team_id` cookie and adds the claim server-side:
+#### `SkipAuthStateDecoration` (default: `true`)
 
-```csharp
-// Program.cs
-builder.Services.AddTransient<IClaimsTransformation, TeamCookieClaimsTransformation>();
-```
+This setting controls whether the client-side enrichment path is also registered:
 
-```csharp
-using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication;
+- **`true` (default)** — Only server-side enrichment. Works for **Blazor Server, SSR, and Hybrid** apps. No JS interop is used. This is the recommended setting for most applications.
+- **`false`** — Additionally registers a client-side `AuthenticationStateProvider` decorator that enriches claims via LocalStorage/JS interop. Only needed for **standalone Blazor WebAssembly** apps that have no server-side HTTP pipeline.
 
-public class TeamCookieClaimsTransformation : IClaimsTransformation
-{
-    private readonly IHttpContextAccessor _httpContextAccessor;
+> **Warning:** Setting `SkipAuthStateDecoration = false` on a Server/SSR app will cause a blank page (silent deadlock from JS interop during prerendering).
 
-    public TeamCookieClaimsTransformation(IHttpContextAccessor httpContextAccessor)
-    {
-        _httpContextAccessor = httpContextAccessor;
-    }
+#### Which setting do I need?
 
-    public Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
-    {
-        if (principal.Identity is not ClaimsIdentity identity || !identity.IsAuthenticated)
-            return Task.FromResult(principal);
-
-        var httpContext = _httpContextAccessor.HttpContext;
-        if (httpContext == null)
-            return Task.FromResult(principal);
-
-        var teamKey = httpContext.Request.Cookies["selected_team_id"];
-        if (!string.IsNullOrEmpty(teamKey) && !principal.HasClaim("team_id", teamKey))
-        {
-            identity.AddClaim(new Claim("team_id", teamKey));
-        }
-
-        return Task.FromResult(principal);
-    }
-}
-```
-
-> **Without the claims transformation**, `TeamStateService.GetSelectedTeamAsync()` enters an infinite refresh loop — it calls `_navigationManager.Refresh(true)`, finds no `team_id` claim, and repeats.
-
-This option requires **>= 2.0.1-pre.1**.
+| App type | Setting |
+|----------|---------|
+| Blazor Server | `true` (default) — no config needed |
+| Blazor Server with SSR | `true` (default) — no config needed |
+| Blazor Hybrid (Server + WASM) | `true` (default) — server enriches claims for all render modes |
+| Standalone Blazor WASM | `false` — needs client-side enrichment |
 
 ### Verification
 
@@ -730,13 +707,11 @@ builder.Services.AddThargaControllers();
 builder.Services.AddThargaTeamBlazor(o =>
 {
     o.Title = "My App";
-    o.SkipAuthStateDecoration = true;                           // required for SSR apps
     o.RegisterTeamService<MyTeamService, MyUserService>();
     o.RegisterApiKeyAdministrationService<MyApiKeyService>();  // Step 5
     o.ShowMemberRoles = true;                                   // Step 7
     o.ShowScopeOverrides = true;                                // Step 6
 });
-builder.Services.AddTransient<IClaimsTransformation, TeamCookieClaimsTransformation>();  // SSR
 builder.Services.AddThargaTeamRepository(o =>
 {
     o.RegisterUserRepository<UserEntity>();

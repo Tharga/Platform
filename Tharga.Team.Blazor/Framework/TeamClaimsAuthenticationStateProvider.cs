@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Tharga.Team;
 
@@ -13,18 +14,21 @@ internal class TeamClaimsAuthenticationStateProvider : AuthenticationStateProvid
     private readonly IUserService _userService;
     private readonly IScopeRegistry _scopeRegistry;
     private readonly ILocalStorageService _localStorage;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public TeamClaimsAuthenticationStateProvider(
         [FromKeyedServices("inner-auth-state")] AuthenticationStateProvider inner,
         ITeamService teamService,
         IUserService userService,
         ILocalStorageService localStorage,
+        IHttpContextAccessor httpContextAccessor,
         IScopeRegistry scopeRegistry = null)
     {
         _inner = inner;
         _teamService = teamService;
         _userService = userService;
         _localStorage = localStorage;
+        _httpContextAccessor = httpContextAccessor;
         _scopeRegistry = scopeRegistry;
 
         _inner.AuthenticationStateChanged += task => NotifyAuthenticationStateChanged(task);
@@ -39,9 +43,16 @@ internal class TeamClaimsAuthenticationStateProvider : AuthenticationStateProvid
         if (identity == null || !identity.IsAuthenticated)
             return authState;
 
+        // Already enriched (by server-side TeamServerClaimsTransformation or a previous call)
         if (identity.HasClaim(c => c.Type == Constants.TeamKeyCookie))
             return authState;
 
+        // If HttpContext is available, we're on the server — TeamServerClaimsTransformation
+        // already ran in the HTTP pipeline. No need for JS interop.
+        if (_httpContextAccessor.HttpContext != null)
+            return authState;
+
+        // No HttpContext = WASM client — use LocalStorage via JS interop
         string teamKey = null;
         try
         {
@@ -49,7 +60,6 @@ internal class TeamClaimsAuthenticationStateProvider : AuthenticationStateProvid
         }
         catch
         {
-            // JS interop not available during prerendering — skip augmentation
             return authState;
         }
 
