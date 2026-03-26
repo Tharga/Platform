@@ -86,6 +86,30 @@
 - **Description:** `TeamServiceRepositoryBase.CreateTeam(string teamKey, string name, IUser user)` provides the user but no way to set the owner member's display name. The `IUser` interface has `Key` and `EMail` but no `Name`. Consumers must leave the owner member's `Name` as null. **Suggested fix:** Either add `Name` to `IUser`, or pass an additional `string displayName` parameter (resolved from `name` claim or similar) to `CreateTeam` so the owner member can have a visible name in the member list.
 - **Status:** Pending
 
+### Improve UsersView with Gravatar, filters, tabs, and team membership
+- **From:** Tharga.Platform (`c:\dev\tharga\Toolkit\Platform`)
+- **Date:** 2026-03-26
+- **Priority:** Medium
+- **Description:** The current `UsersView` is very technical — raw keys, no avatars, no filtering. Redesign it with:
+  1. **Users tab** — Gravatar, display name, email, last seen, filtering and sorting. Clicking a user shows which teams they belong to and their role in each.
+  2. **Teams tab** — team name, icon, member count, creation date. Clicking a team shows its members.
+  3. Cross-reference: ability to see what users are in what teams.
+  4. The commented-out "Members" aggregation code can serve as a starting point.
+- **Status:** Pending
+
+### Team consent for developer/admin viewer access
+- **From:** Tharga.Platform (`c:\dev\tharga\Toolkit\Platform`)
+- **Date:** 2026-03-26
+- **Priority:** Medium
+- **Description:** Teams should be able to grant consent for global-role users (e.g. `Developer`, `SystemAdministrator`) to access the team as viewers. Requirements:
+  1. **Consent toggle** — visible to team administrators, allows granting/revoking viewer access for configured global roles.
+  2. **Configuration options:**
+     - `ConsentRoles: string[]` — which global roles can receive consent (e.g. `["Developer", "SystemAdministrator"]`). The toggle label should state which roles will gain access.
+     - `ShowConsentToggle: bool` (default true) — whether to show the toggle in the UI at all.
+     - `DefaultConsent: bool` (default false) — whether new teams start with consent enabled or disabled.
+  3. **Behavior** — when consent is granted, users with the configured global roles see the team in their team selector with viewer-level access. These are global roles set directly on the user's claims, not team-level roles.
+- **Status:** Pending
+
 ### Copy claims and principal info to clipboard as JSON
 - **From:** Tharga.Platform (`c:\dev\tharga\Toolkit\Platform`)
 - **Date:** 2026-03-26
