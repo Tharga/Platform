@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -53,10 +54,14 @@ public static class ThargaBlazorRegistration
                 });
             }
 
+            // Server-side claims enrichment — always registered, reads selected_team_id cookie
+            services.AddHttpContextAccessor();
+            services.AddTransient<IClaimsTransformation, TeamServerClaimsTransformation>();
+
             if (!o.SkipAuthStateDecoration)
             {
-                // Decorate the existing AuthenticationStateProvider with team claims augmentation.
-                // Move the current registration to a keyed service so the wrapper can resolve it.
+                // Client-side (WASM) claims enrichment via JS interop / LocalStorage.
+                // Only needed for pure WASM apps. Server/SSR apps use the transformation above.
                 var existing = services.LastOrDefault(d => d.ServiceType == typeof(AuthenticationStateProvider));
                 if (existing != null)
                 {
