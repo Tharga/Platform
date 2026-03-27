@@ -11,7 +11,7 @@ public class TeamService : TeamServiceRepositoryBase<TeamEntity, TeamMember>
     {
     }
 
-    protected override Task<TeamEntity> CreateTeam(string teamKey, string name, IUser user)
+    protected override Task<TeamEntity> CreateTeam(string teamKey, string name, IUser user, string displayName)
     {
         return Task.FromResult(new TeamEntity
         {
@@ -22,7 +22,7 @@ public class TeamService : TeamServiceRepositoryBase<TeamEntity, TeamMember>
                 new TeamMember
                 {
                     Key = user.Key,
-                    Name = user.EMail,
+                    Name = displayName,
                     AccessLevel = AccessLevel.Owner,
                     State = MembershipState.Member
                 }
