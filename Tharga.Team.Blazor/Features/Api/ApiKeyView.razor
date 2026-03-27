@@ -49,21 +49,24 @@ else
                     </Template>
                 </RadzenDataGridColumn>
             }
-            <RadzenDataGridColumn Title="Expiry" Width="130px">
-                <Template>
-                    @if (context.ExpiryDate.HasValue)
-                    {
-                        <span style="@(context.IsExpired ? "color: red" : "")">
-                            <DateTimeView Date="@context.ExpiryDate" />
-                        </span>
-                    }
-                    else
-                    {
-                        <RadzenText>No expiry</RadzenText>
-                    }
-                </Template>
-            </RadzenDataGridColumn>
-            @if (_scopeRegistry != null)
+            @if (_options.AdvancedMode)
+            {
+                <RadzenDataGridColumn Title="Expiry" Width="130px">
+                    <Template>
+                        @if (context.ExpiryDate.HasValue)
+                        {
+                            <span style="@(context.IsExpired ? "color: red" : "")">
+                                <DateTimeView Date="@context.ExpiryDate" />
+                            </span>
+                        }
+                        else
+                        {
+                            <RadzenText>No expiry</RadzenText>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+            }
+            @if (_options.AdvancedMode && _scopeRegistry != null)
             {
                 <RadzenDataGridColumn Title="" Width="40px">
                     <Template>
