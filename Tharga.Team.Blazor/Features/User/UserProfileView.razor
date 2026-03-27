@@ -1,4 +1,7 @@
-﻿@using Tharga.Toolkit
+@using System.Text.Json
+@using Microsoft.JSInterop
+@using Tharga.Toolkit
+@inject IJSRuntime JS
 
 <CascadingAuthenticationState>
     <AuthorizeView>
@@ -11,7 +14,11 @@
                 </RadzenCard>
                 <ExpandableCard Icon="work" Text="Claims">
                     <ChildContent>
-                        <ul>
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" class="rz-mb-2">
+                            <RadzenButton Icon="content_copy" Text="Copy as JSON" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                                          Click="@(() => CopyClaimsAsync(context.User))" />
+                        </RadzenStack>
+                        <ul style="word-break: break-all; overflow-wrap: break-word;">
                             @foreach (var claim in context.User.Claims)
                             {
                                 <li><strong>@claim.Type:</strong> @claim.Value</li>
@@ -28,5 +35,15 @@
 </CascadingAuthenticationState>
 
 @code {
-
+    private async Task CopyClaimsAsync(System.Security.Claims.ClaimsPrincipal principal)
+    {
+        var data = new
+        {
+            IdentityName = principal.Identity?.Name,
+            AuthenticationType = principal.Identity?.AuthenticationType,
+            Claims = principal.Claims.Select(c => new { c.Type, c.Value }).ToArray()
+        };
+        var json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", json);
+    }
 }
