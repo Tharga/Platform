@@ -19,7 +19,7 @@ public abstract class TeamServiceRepositoryBase<TTeamEntity, TMember> : TeamServ
         _mongoDbServiceFactory = mongoDbServiceFactory;
     }
 
-    protected abstract Task<TTeamEntity> CreateTeam(string teamKey, string name, IUser user);
+    protected abstract Task<TTeamEntity> CreateTeam(string teamKey, string name, IUser user, string displayName);
     protected abstract Task<TMember> CreateTeamMember(InviteUserModel model);
 
     protected override async Task<ITeam> GetTeamAsync(string teamKey)
@@ -27,9 +27,9 @@ public abstract class TeamServiceRepositoryBase<TTeamEntity, TMember> : TeamServ
         return await _teamRepository.GetAsync(teamKey);
     }
 
-    protected override async Task<ITeam> CreateTeamAsync(string teamKey, string name, IUser user)
+    protected override async Task<ITeam> CreateTeamAsync(string teamKey, string name, IUser user, string displayName)
     {
-        var team = await CreateTeam(teamKey, name, user);
+        var team = await CreateTeam(teamKey, name, user, displayName);
 
         await _teamRepository.AddAsync(team);
 

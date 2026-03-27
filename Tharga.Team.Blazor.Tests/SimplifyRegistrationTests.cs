@@ -102,7 +102,7 @@ internal class StubTeamService : TeamServiceBase
     public StubTeamService() : base(null) { }
     protected override IAsyncEnumerable<ITeam> GetTeamsAsync(IUser user) => throw new NotImplementedException();
     protected override Task<ITeam> GetTeamAsync(string teamKey) => throw new NotImplementedException();
-    protected override Task<ITeam> CreateTeamAsync(string teamKey, string name, IUser user) => throw new NotImplementedException();
+    protected override Task<ITeam> CreateTeamAsync(string teamKey, string name, IUser user, string displayName) => throw new NotImplementedException();
     protected override Task SetTeamNameAsync(string teamKey, string name) => throw new NotImplementedException();
     protected override Task DeleteTeamAsync(string teamKey) => throw new NotImplementedException();
     protected override Task AddTeamMemberAsync(string teamKey, InviteUserModel model) => throw new NotImplementedException();

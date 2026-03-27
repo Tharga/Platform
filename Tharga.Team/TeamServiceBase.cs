@@ -18,7 +18,7 @@ public abstract class TeamServiceBase : ITeamService
 
     protected abstract IAsyncEnumerable<ITeam> GetTeamsAsync(IUser user);
     protected abstract Task<ITeam> GetTeamAsync(string teamKey);
-    protected abstract Task<ITeam> CreateTeamAsync(string teamKey, string name, IUser user);
+    protected abstract Task<ITeam> CreateTeamAsync(string teamKey, string name, IUser user, string displayName = null);
     protected abstract Task SetTeamNameAsync(string teamKey, string name);
     protected abstract Task DeleteTeamAsync(string teamKey);
     protected abstract Task AddTeamMemberAsync(string teamKey, InviteUserModel model);
@@ -60,23 +60,12 @@ public abstract class TeamServiceBase : ITeamService
     {
         var user = await GetCurrentUserAsync();
 
-        var nameBuilder = new Lazy<string>(() =>
-        {
-            var email = user.EMail;
-            var username = "Unknown";
-            if (!string.IsNullOrEmpty(email))
-            {
-                var atIndex = email.IndexOf('@');
-                username = atIndex >= 0 ? email.Substring(0, atIndex) : email;
-            }
-
-            return $"{username.Replace(".", " ")}'s team";
-        });
-        name ??= nameBuilder.Value;
+        var displayName = ResolveDisplayName(user);
+        name ??= $"{displayName}'s team";
 
         var teamKey = await GetRandomUnsusedTeamKey();
 
-        var team = await CreateTeamAsync(teamKey, name, user);
+        var team = await CreateTeamAsync(teamKey, name, user, displayName);
 
         TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
         SelectTeamEvent?.Invoke(this, new SelectTeamEventArgs(team));
@@ -193,5 +182,23 @@ public abstract class TeamServiceBase : ITeamService
     {
         var user = await _userService.GetCurrentUserAsync();
         return user;
+    }
+
+    public static string ResolveDisplayName(IUser user)
+    {
+        if (user == null) return "Unknown";
+
+        if (!string.IsNullOrEmpty(user.Name))
+            return user.Name;
+
+        var email = user.EMail;
+        if (string.IsNullOrEmpty(email))
+            return "Unknown";
+
+        var atIndex = email.IndexOf('@');
+        var username = atIndex >= 0 ? email[..atIndex] : email;
+        var words = username.Split('.');
+        return string.Join(" ", words.Select(w =>
+            w.Length > 0 ? char.ToUpper(w[0]) + w[1..] : w));
     }
 }

@@ -16,11 +16,13 @@ public class UserService : UserServiceRepositoryBase<UserEntity>
         var email = principal.FindFirst(ClaimTypes.Email)?.Value
                     ?? principal.FindFirst("preferred_username")?.Value
                     ?? "unknown";
+        var name = principal.FindFirst("name")?.Value;
         return Task.FromResult(new UserEntity
         {
             Key = Guid.NewGuid().ToString("N")[..10].ToUpperInvariant(),
             Identity = identity,
-            EMail = email
+            EMail = email,
+            Name = name
         });
     }
 }
