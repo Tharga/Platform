@@ -55,6 +55,26 @@ public abstract class TeamServiceRepositoryBase<TTeamEntity, TMember> : TeamServ
     {
         var memberModel = await CreateTeamMember(model);
 
+        // Auto-generate Invitation if not set by the consumer
+        if (memberModel.Invitation == null && !string.IsNullOrEmpty(model.Email))
+        {
+            memberModel = memberModel with
+            {
+                Invitation = new Invitation
+                {
+                    EMail = model.Email,
+                    InviteKey = Guid.NewGuid().ToString(),
+                    InviteTime = DateTime.UtcNow
+                }
+            };
+        }
+
+        // Default state to Invited if not set
+        if (memberModel.State == null)
+        {
+            memberModel = memberModel with { State = MembershipState.Invited };
+        }
+
         await _teamRepository.AddMemberAsync(teamKey, memberModel);
     }
 
