@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 
 namespace Tharga.Team.Blazor.Framework;
 
@@ -15,16 +16,19 @@ internal class TeamServerClaimsTransformation : IClaimsTransformation
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IScopeRegistry _scopeRegistry;
+    private readonly ThargaBlazorOptions _options;
 
     public TeamServerClaimsTransformation(
         IHttpContextAccessor httpContextAccessor,
         ITeamService teamService,
         IUserService userService,
+        IOptions<ThargaBlazorOptions> options,
         IScopeRegistry scopeRegistry = null)
     {
         _httpContextAccessor = httpContextAccessor;
         _teamService = teamService;
         _userService = userService;
+        _options = options.Value;
         _scopeRegistry = scopeRegistry;
     }
 
@@ -62,6 +66,38 @@ internal class TeamServerClaimsTransformation : IClaimsTransformation
                 foreach (var scope in _scopeRegistry.GetEffectiveScopes(member.AccessLevel, member.TenantRoles, member.ScopeOverrides))
                 {
                     identity.AddClaim(new Claim(TeamClaimTypes.Scope, scope));
+                }
+            }
+        }
+        else
+        {
+            // Check consent-based access: user is not a member but may have a global role
+            // that has been granted viewer access by this team
+            var userRoles = principal.Claims
+                .Where(c => c.Type == ClaimTypes.Role)
+                .Select(c => c.Value)
+                .ToArray();
+
+            if (userRoles.Length > 0)
+            {
+                var consentedTeam = await _teamService.GetConsentedTeamsAsync(userRoles)
+                    .FirstOrDefaultAsync(t => t.Key == teamKey);
+
+                if (consentedTeam != null)
+                {
+                    var consentLevel = _options.ConsentAccessLevel;
+                    identity.AddClaim(new Claim(TeamClaimTypes.TeamKey, teamKey));
+                    identity.AddClaim(new Claim(ClaimTypes.Role, Roles.TeamMember));
+                    identity.AddClaim(new Claim(ClaimTypes.Role, $"Team{consentLevel}"));
+                    identity.AddClaim(new Claim(TeamClaimTypes.AccessLevel, consentLevel.ToString()));
+
+                    if (_scopeRegistry != null)
+                    {
+                        foreach (var scope in _scopeRegistry.GetEffectiveScopes(consentLevel, [], []))
+                        {
+                            identity.AddClaim(new Claim(TeamClaimTypes.Scope, scope));
+                        }
+                    }
                 }
             }
         }

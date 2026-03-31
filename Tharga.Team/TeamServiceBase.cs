@@ -29,6 +29,8 @@ public abstract class TeamServiceBase : ITeamService
     protected abstract Task SetTeamMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel);
     protected abstract Task SetTeamMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles);
     protected abstract Task SetTeamMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides);
+    protected abstract Task SetTeamConsentInternalAsync(string teamKey, string[] consentedRoles);
+    protected abstract IAsyncEnumerable<ITeam> GetConsentedTeamsInternalAsync(string[] userRoles);
 
     public async IAsyncEnumerable<ITeam> GetTeamsAsync()
     {
@@ -154,6 +156,16 @@ public abstract class TeamServiceBase : ITeamService
         var user = await GetCurrentUserAsync();
         await SetTeamMemberLastSeenAsync(teamKey, user.Key);
         _teamMemberCache.TryRemove($"{teamKey}.{user.Key}", out _);
+    }
+
+    public Task SetTeamConsentAsync(string teamKey, string[] consentedRoles)
+    {
+        return SetTeamConsentInternalAsync(teamKey, consentedRoles);
+    }
+
+    public IAsyncEnumerable<ITeam> GetConsentedTeamsAsync(string[] userRoles)
+    {
+        return GetConsentedTeamsInternalAsync(userRoles);
     }
 
     private async Task<string> GetRandomUnsusedTeamKey()

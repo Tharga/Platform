@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 using Moq;
 using Tharga.Team;
 using Tharga.Team.Blazor.Framework;
@@ -12,9 +13,15 @@ public class TeamServerClaimsTransformationTests
     private readonly Mock<ITeamService> _teamService = new();
     private readonly Mock<IUserService> _userService = new();
     private readonly Mock<IScopeRegistry> _scopeRegistry = new();
+    private readonly Mock<IOptions<ThargaBlazorOptions>> _options = new();
+
+    public TeamServerClaimsTransformationTests()
+    {
+        _options.Setup(o => o.Value).Returns(new ThargaBlazorOptions());
+    }
 
     private TeamServerClaimsTransformation CreateSut() =>
-        new(_httpContextAccessor.Object, _teamService.Object, _userService.Object, _scopeRegistry.Object);
+        new(_httpContextAccessor.Object, _teamService.Object, _userService.Object, _options.Object, _scopeRegistry.Object);
 
     private void SetupCookie(string teamKey)
     {
@@ -159,7 +166,7 @@ public class TeamServerClaimsTransformationTests
                 m.ScopeOverrides == Array.Empty<string>()));
 
         var sut = new TeamServerClaimsTransformation(
-            _httpContextAccessor.Object, _teamService.Object, _userService.Object, scopeRegistry: null);
+            _httpContextAccessor.Object, _teamService.Object, _userService.Object, _options.Object, scopeRegistry: null);
         var result = await sut.TransformAsync(principal);
 
         Assert.Contains(result.Claims, c => c.Type == TeamClaimTypes.TeamKey);

@@ -36,6 +36,31 @@ public record ThargaBlazorOptions : BlazorOptions
     public bool AllowTeamCreation { get; set; } = true;
 
     /// <summary>
+    /// Global roles that can be granted viewer access to teams via consent.
+    /// The consent toggle in TeamComponent shows these roles.
+    /// Default is ["Developer"].
+    /// </summary>
+    public string[] ConsentRoles { get; set; } = ["Developer"];
+
+    /// <summary>
+    /// Show the consent toggle in TeamComponent for team administrators.
+    /// Default is false.
+    /// </summary>
+    public bool ShowConsentToggle { get; set; } = false;
+
+    /// <summary>
+    /// Whether new teams start with consent enabled.
+    /// Default is true.
+    /// </summary>
+    public bool DefaultConsent { get; set; } = true;
+
+    /// <summary>
+    /// Access level granted to users via team consent.
+    /// Default is Viewer.
+    /// </summary>
+    public AccessLevel ConsentAccessLevel { get; set; } = AccessLevel.Viewer;
+
+    /// <summary>
     /// Controls how team/scope claims are enriched on the principal.
     /// <para>
     /// <b>true (default)</b> — Claims are enriched server-side via <c>IClaimsTransformation</c>,
