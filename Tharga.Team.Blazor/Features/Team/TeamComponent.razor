@@ -31,7 +31,15 @@ else
             @foreach (var team in _teams)
             {
                 <ExpandableCard Text="@team.Name" Selected="@(_selectedTeam.Key == team.Key)">
-                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right">
+                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" AlignItems="AlignItems.Center">
+                        @if (_showConsentToggle && HasAccessLevel(team, AccessLevel.Administrator))
+                        {
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
+                                <RadzenLabel Text="@($"Allow {string.Join(", ", _consentRoles)} viewer access")" Style="font-size: 0.85em;" />
+                                <RadzenSwitch Value="@(team.ConsentedRoles != null && team.ConsentedRoles.Length > 0)"
+                                              Change="@(async (bool v) => await ToggleConsent(team, v))" />
+                            </RadzenStack>
+                        }
                         <RadzenButton icon="edit" Text="Rename" Click="@(async () => { await RenameTeam(team); })" Visible="@(_canManage)"/>
                         <ActionButton icon="delete" Text="Delete" Click="@(async () => { await DeleteTeam(team); })" Visible="@(_canManage && _allowTeamCreation && HasAccessLevel(team, AccessLevel.Owner))"/>
                         <RadzenButton icon="remove" Text="Leave" Click="@(async () => { await RemoveUserFromTeam(team, _user.Key); })" Visible="@(!HasAccessLevel(team, AccessLevel.Owner))"/>
@@ -178,6 +186,8 @@ else
     private bool _canRemove;
     private bool _canChangeRole;
     private bool _allowTeamCreation;
+    private bool _showConsentToggle;
+    private string[] _consentRoles;
     private string[] _allScopeNames = Array.Empty<string>();
     private IScopeRegistry _scopeRegistry;
     private ITenantRoleRegistry _tenantRoleRegistry;
@@ -197,6 +207,8 @@ else
         _showMemberRoles = BlazorOptions.Value.ShowMemberRoles && _tenantRoleRegistry != null;
         _showScopeOverrides = BlazorOptions.Value.ShowScopeOverrides && _scopeRegistry != null;
         _allowTeamCreation = BlazorOptions.Value.AllowTeamCreation;
+        _showConsentToggle = BlazorOptions.Value.ShowConsentToggle;
+        _consentRoles = BlazorOptions.Value.ConsentRoles ?? [];
         if (_showMemberRoles)
             _availableRoles = _tenantRoleRegistry!.All.Select(r => r.Name).ToArray();
         if (_showMemberRoles || _showScopeOverrides)
@@ -337,6 +349,13 @@ else
 
         await TeamManagementService.DeleteTeamAsync(team.Key);
 
+        await ReloadTeams();
+    }
+
+    private async Task ToggleConsent(ITeam<TMember> team, bool enabled)
+    {
+        var roles = enabled ? _consentRoles : [];
+        await TeamService.SetTeamConsentAsync(team.Key, roles);
         await ReloadTeams();
     }
 

@@ -113,6 +113,8 @@ internal class StubTeamService : TeamServiceBase
     protected override Task SetTeamMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel) => throw new NotImplementedException();
     protected override Task SetTeamMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles) => throw new NotImplementedException();
     protected override Task SetTeamMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides) => throw new NotImplementedException();
+    protected override Task SetTeamConsentInternalAsync(string teamKey, string[] consentedRoles) => throw new NotImplementedException();
+    protected override IAsyncEnumerable<ITeam> GetConsentedTeamsInternalAsync(string[] userRoles) => throw new NotImplementedException();
 }
 
 internal class StubUserService : UserServiceBase
