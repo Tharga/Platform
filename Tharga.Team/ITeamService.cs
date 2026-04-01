@@ -19,6 +19,7 @@ public interface ITeamService
     Task SetMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides);
     Task SetInvitationResponseAsync(string teamKey, string userKey, string inviteCode, bool accept);
     Task SetMemberLastSeenAsync(string teamKey);
+    Task TransferOwnershipAsync<TMember>(string teamKey, string newOwnerUserKey) where TMember : ITeamMember;
     Task SetTeamConsentAsync(string teamKey, string[] consentedRoles);
     IAsyncEnumerable<ITeam> GetConsentedTeamsAsync(string[] userRoles);
 }

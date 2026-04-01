@@ -42,6 +42,7 @@ else
                         }
                         <RadzenButton icon="edit" Text="Rename" Click="@(async () => { await RenameTeam(team); })" Visible="@(_canManage)"/>
                         <ActionButton icon="delete" Text="Delete" Click="@(async () => { await DeleteTeam(team); })" Visible="@(_canManage && _allowTeamCreation && HasAccessLevel(team, AccessLevel.Owner))"/>
+                        <RadzenButton icon="swap_horiz" Text="Transfer Ownership" Click="@(async () => { await TransferOwnership(team); })" Visible="@(HasAccessLevel(team, AccessLevel.Owner) && team.Members.Length > 1)"/>
                         <RadzenButton icon="remove" Text="Leave" Click="@(async () => { await RemoveUserFromTeam(team, _user.Key); })" Visible="@(!HasAccessLevel(team, AccessLevel.Owner))"/>
                     </RadzenStack>
                     <RadzenRow>
@@ -340,6 +341,48 @@ else
 
         await TeamManagementService.SetMemberRoleAsync(team.Key, member.Key, accessLevel);
         await ReloadTeams();
+    }
+
+    private async Task TransferOwnership(ITeam<TMember> team)
+    {
+        var eligibleMembers = team.Members
+            .Where(x => x.Key != _user.Key && x.State == MembershipState.Member)
+            .ToArray();
+
+        if (eligibleMembers.Length == 0)
+        {
+            NotificationService.Notify(NotificationSeverity.Warning, "No eligible members", "There are no other active members to transfer ownership to.");
+            return;
+        }
+
+        var memberOptions = eligibleMembers.Select(m =>
+        {
+            var user = _users.FirstOrDefault(u => u.Key == m.Key);
+            var display = user?.EMail ?? m.Name ?? m.Key;
+            return new { m.Key, Display = display };
+        }).ToArray();
+
+        string selectedKey = memberOptions.First().Key;
+
+        var result = await DialogService.OpenAsync("Transfer Ownership", ds =>
+            @<RadzenStack Gap="1rem">
+                <RadzenText>Select the new owner of team '@team.Name':</RadzenText>
+                <RadzenDropDown TValue="string" @bind-Value="selectedKey"
+                                Data="@memberOptions"
+                                TextProperty="Display"
+                                ValueProperty="Key" />
+                <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" Gap="0.5rem">
+                    <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(_ => ds.Close(false))" />
+                    <RadzenButton Text="Transfer" ButtonStyle="ButtonStyle.Warning" Click="@(_ => ds.Close(true))" />
+                </RadzenStack>
+            </RadzenStack>,
+            new DialogOptions { Width = "400px" });
+
+        if (result is not true) return;
+
+        await TeamManagementService.TransferOwnershipAsync(team.Key, selectedKey);
+        await ReloadTeams();
+        NotificationService.Notify(NotificationSeverity.Success, "Ownership transferred");
     }
 
     private async Task DeleteTeam(ITeam<TMember> team)

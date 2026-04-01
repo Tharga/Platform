@@ -108,10 +108,34 @@ public abstract class TeamServiceBase : ITeamService
     public async Task AddMemberAsync(string teamKey, InviteUserModel model)
     {
         await AddTeamMemberAsync(teamKey, model);
+        TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
     }
 
     public async Task RemoveMemberAsync(string teamKey, string userKey)
     {
+        var team = await GetTeamAsync(teamKey);
+        var members = GetMembersFromTeam(team);
+        if (members != null)
+        {
+            var member = members.SingleOrDefault(x => x.Key == userKey);
+            if (member != null)
+            {
+                if (member.AccessLevel == AccessLevel.Owner)
+                    throw new InvalidOperationException("The owner cannot leave the team. Transfer ownership first.");
+
+                var user = await GetCurrentUserAsync();
+                if (member.Key == user.Key && member.AccessLevel == AccessLevel.Administrator)
+                {
+                    var otherAdminsOrOwners = members.Count(x =>
+                        x.Key != userKey &&
+                        x.State == MembershipState.Member &&
+                        x.AccessLevel <= AccessLevel.Administrator);
+                    if (otherAdminsOrOwners == 0)
+                        throw new InvalidOperationException("Cannot leave the team as the last administrator.");
+                }
+            }
+        }
+
         await RemoveTeamMemberAsync(teamKey, userKey);
         _teamMemberCache.TryRemove($"{teamKey}.{userKey}", out _);
         TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
@@ -121,18 +145,21 @@ public abstract class TeamServiceBase : ITeamService
     {
         await SetTeamMemberRoleAsync(teamKey, userKey, accessLevel);
         _teamMemberCache.TryRemove($"{teamKey}.{userKey}", out _);
+        TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
     }
 
     public async Task SetMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles)
     {
         await SetTeamMemberTenantRolesAsync(teamKey, userKey, tenantRoles);
         _teamMemberCache.TryRemove($"{teamKey}.{userKey}", out _);
+        TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
     }
 
     public async Task SetMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides)
     {
         await SetTeamMemberScopeOverridesAsync(teamKey, userKey, scopeOverrides);
         _teamMemberCache.TryRemove($"{teamKey}.{userKey}", out _);
+        TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
     }
 
     public async Task SetInvitationResponseAsync(string teamKey, string userKey, string inviteKey, bool accept)
@@ -146,6 +173,7 @@ public abstract class TeamServiceBase : ITeamService
         else
         {
             await SetTeamMemberInvitationResponseAsync(teamKey, userKey, inviteKey, false);
+            TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
         }
 
         _teamMemberCache.TryRemove($"{teamKey}.{userKey}", out _);
@@ -158,9 +186,31 @@ public abstract class TeamServiceBase : ITeamService
         _teamMemberCache.TryRemove($"{teamKey}.{user.Key}", out _);
     }
 
-    public Task SetTeamConsentAsync(string teamKey, string[] consentedRoles)
+    public async Task TransferOwnershipAsync<TMember>(string teamKey, string newOwnerUserKey) where TMember : ITeamMember
     {
-        return SetTeamConsentInternalAsync(teamKey, consentedRoles);
+        var user = await GetCurrentUserAsync();
+        var team = await GetTeamAsync<TMember>(teamKey);
+        var currentOwner = team.Members.SingleOrDefault(x => x.Key == user.Key);
+        if (currentOwner == null || currentOwner.AccessLevel != AccessLevel.Owner)
+            throw new InvalidOperationException("Only the current owner can transfer ownership.");
+
+        var newOwner = team.Members.SingleOrDefault(x => x.Key == newOwnerUserKey);
+        if (newOwner == null)
+            throw new InvalidOperationException($"User '{newOwnerUserKey}' is not a member of this team.");
+        if (newOwner.Key == user.Key)
+            throw new InvalidOperationException("Cannot transfer ownership to yourself.");
+
+        await SetTeamMemberRoleAsync(teamKey, newOwnerUserKey, AccessLevel.Owner);
+        await SetTeamMemberRoleAsync(teamKey, user.Key, AccessLevel.Administrator);
+        _teamMemberCache.TryRemove($"{teamKey}.{newOwnerUserKey}", out _);
+        _teamMemberCache.TryRemove($"{teamKey}.{user.Key}", out _);
+        TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
+    }
+
+    public async Task SetTeamConsentAsync(string teamKey, string[] consentedRoles)
+    {
+        await SetTeamConsentInternalAsync(teamKey, consentedRoles);
+        TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
     }
 
     public IAsyncEnumerable<ITeam> GetConsentedTeamsAsync(string[] userRoles)
@@ -212,5 +262,11 @@ public abstract class TeamServiceBase : ITeamService
         var words = username.Split('.');
         return string.Join(" ", words.Select(w =>
             w.Length > 0 ? char.ToUpper(w[0]) + w[1..] : w));
+    }
+
+    private static ITeamMember[] GetMembersFromTeam(ITeam team)
+    {
+        var membersProperty = team?.GetType().GetProperty("Members");
+        return membersProperty?.GetValue(team) as ITeamMember[];
     }
 }
