@@ -28,12 +28,53 @@ public record ThargaBlazorOptions : BlazorOptions
     public bool ShowScopeOverrides { get; set; } = false;
 
     /// <summary>
-    /// When true, skips decorating AuthenticationStateProvider with
-    /// TeamClaimsAuthenticationStateProvider. Use this for SSR-based apps
-    /// that use IClaimsTransformation instead of JS-based claim augmentation.
+    /// Allow users to create and delete teams via the UI.
+    /// When false, the "Create team" and "Delete team" buttons are hidden.
+    /// Independent of AutoCreateFirstTeam (system behavior).
+    /// Default is true.
+    /// </summary>
+    public bool AllowTeamCreation { get; set; } = true;
+
+    /// <summary>
+    /// Global roles that can be granted viewer access to teams via consent.
+    /// The consent toggle in TeamComponent shows these roles.
+    /// Default is ["Developer"].
+    /// </summary>
+    public string[] ConsentRoles { get; set; } = ["Developer"];
+
+    /// <summary>
+    /// Show the consent toggle in TeamComponent for team administrators.
     /// Default is false.
     /// </summary>
-    public bool SkipAuthStateDecoration { get; set; } = false;
+    public bool ShowConsentToggle { get; set; } = false;
+
+    /// <summary>
+    /// Whether new teams start with consent enabled.
+    /// Default is true.
+    /// </summary>
+    public bool DefaultConsent { get; set; } = true;
+
+    /// <summary>
+    /// Access level granted to users via team consent.
+    /// Default is Viewer.
+    /// </summary>
+    public AccessLevel ConsentAccessLevel { get; set; } = AccessLevel.Viewer;
+
+    /// <summary>
+    /// Controls how team/scope claims are enriched on the principal.
+    /// <para>
+    /// <b>true (default)</b> — Claims are enriched server-side via <c>IClaimsTransformation</c>,
+    /// which reads the <c>selected_team_id</c> cookie. Works for Blazor Server, SSR, and Hybrid apps.
+    /// No JS interop is used. This is the recommended setting for most applications.
+    /// </para>
+    /// <para>
+    /// <b>false</b> — Additionally registers a client-side <c>AuthenticationStateProvider</c> decorator
+    /// that enriches claims via LocalStorage/JS interop. Only needed for standalone Blazor WebAssembly
+    /// apps with no server-side HTTP pipeline. Setting this to false on a Server/SSR app will cause
+    /// a blank page (silent deadlock from JS interop during prerendering).
+    /// </para>
+    /// </summary>
+    public bool SkipAuthStateDecoration { get; set; } = true;
 
     /// <summary>
     /// Add types for team and user services.

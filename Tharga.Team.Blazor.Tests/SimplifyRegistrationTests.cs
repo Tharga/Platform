@@ -102,7 +102,7 @@ internal class StubTeamService : TeamServiceBase
     public StubTeamService() : base(null) { }
     protected override IAsyncEnumerable<ITeam> GetTeamsAsync(IUser user) => throw new NotImplementedException();
     protected override Task<ITeam> GetTeamAsync(string teamKey) => throw new NotImplementedException();
-    protected override Task<ITeam> CreateTeamAsync(string teamKey, string name, IUser user) => throw new NotImplementedException();
+    protected override Task<ITeam> CreateTeamAsync(string teamKey, string name, IUser user, string displayName) => throw new NotImplementedException();
     protected override Task SetTeamNameAsync(string teamKey, string name) => throw new NotImplementedException();
     protected override Task DeleteTeamAsync(string teamKey) => throw new NotImplementedException();
     protected override Task AddTeamMemberAsync(string teamKey, InviteUserModel model) => throw new NotImplementedException();
@@ -113,6 +113,8 @@ internal class StubTeamService : TeamServiceBase
     protected override Task SetTeamMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel) => throw new NotImplementedException();
     protected override Task SetTeamMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles) => throw new NotImplementedException();
     protected override Task SetTeamMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides) => throw new NotImplementedException();
+    protected override Task SetTeamConsentInternalAsync(string teamKey, string[] consentedRoles) => throw new NotImplementedException();
+    protected override IAsyncEnumerable<ITeam> GetConsentedTeamsInternalAsync(string[] userRoles) => throw new NotImplementedException();
 }
 
 internal class StubUserService : UserServiceBase

@@ -49,21 +49,24 @@ else
                     </Template>
                 </RadzenDataGridColumn>
             }
-            <RadzenDataGridColumn Title="Expiry" Width="130px">
-                <Template>
-                    @if (context.ExpiryDate.HasValue)
-                    {
-                        <span style="@(context.IsExpired ? "color: red" : "")">
-                            <DateTimeView Date="@context.ExpiryDate" />
-                        </span>
-                    }
-                    else
-                    {
-                        <RadzenText>No expiry</RadzenText>
-                    }
-                </Template>
-            </RadzenDataGridColumn>
-            @if (_scopeRegistry != null)
+            @if (_options.AdvancedMode)
+            {
+                <RadzenDataGridColumn Title="Expiry" Width="130px">
+                    <Template>
+                        @if (context.ExpiryDate.HasValue)
+                        {
+                            <span style="@(context.IsExpired ? "color: red" : "")">
+                                <DateTimeView Date="@context.ExpiryDate" />
+                            </span>
+                        }
+                        else
+                        {
+                            <RadzenText>No expiry</RadzenText>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+            }
+            @if (_options.AdvancedMode && _scopeRegistry != null)
             {
                 <RadzenDataGridColumn Title="" Width="40px">
                     <Template>
@@ -113,6 +116,9 @@ else
 }
 
 @code {
+    [Parameter] public string[] CrossTeamRoles { get; set; } = ["Developer"];
+    [Parameter] public string[] RequiredScopes { get; set; } = [];
+
     private bool _apiKeyServiceMissing;
     private IApiKeyManagementService _apiKeyManagementService;
     private bool _hasAccess;
@@ -138,7 +144,9 @@ else
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
-        _hasAccess = user.HasClaim(TeamClaimTypes.Scope, ApiKeyScopes.Manage);
+        var hasCrossTeamRole = CrossTeamRoles.Any(role => user.IsInRole(role));
+        var hasRequiredScopes = RequiredScopes.Length == 0 || RequiredScopes.All(scope => user.HasClaim(TeamClaimTypes.Scope, scope));
+        _hasAccess = hasCrossTeamRole || (hasRequiredScopes && user.HasClaim(TeamClaimTypes.Scope, ApiKeyScopes.Manage));
         if (!_hasAccess) { await base.OnInitializedAsync(); return; }
 
         _scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();

@@ -57,6 +57,7 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
         var count = 0;
         await foreach (var item in _repository.GetAsync())
         {
+            if (item.TeamKey != teamKey) continue;
             count++;
             yield return item;
         }

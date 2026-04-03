@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 using Radzen;
@@ -13,12 +14,16 @@ public partial class AuditLogView : ComponentBase
     [Inject] private ITeamService TeamService { get; init; }
     [Inject] private NotificationService NotificationService { get; init; }
     [Inject] private IJSRuntime JS { get; init; }
+    [Inject] private AuthenticationStateProvider AuthStateProvider { get; init; }
 
     [Parameter] public string TeamKey { get; set; }
     [Parameter] public AuditCallerType? RestrictCallerType { get; set; }
+    [Parameter] public string[] CrossTeamRoles { get; set; } = ["Developer"];
+    [Parameter] public string[] RequiredScopes { get; set; } = [];
 
     private const int ChartQueryLimit = 5000;
 
+    private bool _hasAccess;
     private CompositeAuditLogger _auditLogger;
     private bool _auditLoggerMissing;
     private bool? _mongoAvailable;
@@ -52,6 +57,14 @@ public partial class AuditLogView : ComponentBase
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var hasCrossTeamRole = CrossTeamRoles.Any(role => user.IsInRole(role));
+        var hasTeam = !string.IsNullOrEmpty(TeamKey) || user.HasClaim(c => c.Type == "team_id");
+        var hasRequiredScopes = RequiredScopes.Length == 0 || RequiredScopes.All(scope => user.HasClaim(TeamClaimTypes.Scope, scope));
+        _hasAccess = hasCrossTeamRole || (hasTeam && hasRequiredScopes);
+        if (!_hasAccess) return;
+
         _auditLogger = ServiceProvider.GetService<CompositeAuditLogger>();
         if (_auditLogger == null)
         {

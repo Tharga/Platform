@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Http;
 using Moq;
 using Tharga.Team;
 using Tharga.Team.Blazor.Framework;
@@ -14,9 +15,10 @@ public class TeamClaimsAuthenticationStateProviderTests
     private readonly Mock<IUserService> _userService = new();
     private readonly Mock<IScopeRegistry> _scopeRegistry = new();
     private readonly Mock<ILocalStorageService> _localStorage = new();
+    private readonly Mock<IHttpContextAccessor> _httpContextAccessor = new();
 
     private TeamClaimsAuthenticationStateProvider CreateSut() =>
-        new(_inner.Object, _teamService.Object, _userService.Object, _localStorage.Object, _scopeRegistry.Object);
+        new(_inner.Object, _teamService.Object, _userService.Object, _localStorage.Object, _httpContextAccessor.Object, _scopeRegistry.Object);
 
     private void SetupInnerAuthState(ClaimsPrincipal principal)
     {
@@ -68,7 +70,7 @@ public class TeamClaimsAuthenticationStateProviderTests
     {
         var principal = CreateAuthenticatedPrincipal();
         SetupInnerAuthState(principal);
-        _localStorage.Setup(s => s.GetItemAsStringAsync("SelectedTeam", default))
+        _localStorage.Setup(s => s.GetItemAsStringAsync("SelectedTeam", It.IsAny<CancellationToken>()))
             .ReturnsAsync((string)null);
         var sut = CreateSut();
 
@@ -82,7 +84,7 @@ public class TeamClaimsAuthenticationStateProviderTests
     {
         var principal = CreateAuthenticatedPrincipal();
         SetupInnerAuthState(principal);
-        _localStorage.Setup(s => s.GetItemAsStringAsync("SelectedTeam", default))
+        _localStorage.Setup(s => s.GetItemAsStringAsync("SelectedTeam", It.IsAny<CancellationToken>()))
             .ReturnsAsync("team-1");
 
         var user = new Mock<IUser>();
@@ -111,7 +113,7 @@ public class TeamClaimsAuthenticationStateProviderTests
     {
         var principal = CreateAuthenticatedPrincipal();
         SetupInnerAuthState(principal);
-        _localStorage.Setup(s => s.GetItemAsStringAsync("SelectedTeam", default))
+        _localStorage.Setup(s => s.GetItemAsStringAsync("SelectedTeam", It.IsAny<CancellationToken>()))
             .ReturnsAsync("team-1");
 
         var user = new Mock<IUser>();
@@ -139,7 +141,7 @@ public class TeamClaimsAuthenticationStateProviderTests
     {
         var principal = CreateAuthenticatedPrincipal();
         SetupInnerAuthState(principal);
-        _localStorage.Setup(s => s.GetItemAsStringAsync("SelectedTeam", default))
+        _localStorage.Setup(s => s.GetItemAsStringAsync("SelectedTeam", It.IsAny<CancellationToken>()))
             .ReturnsAsync("team-1");
 
         var user = new Mock<IUser>();
@@ -160,7 +162,7 @@ public class TeamClaimsAuthenticationStateProviderTests
     {
         var principal = CreateAuthenticatedPrincipal();
         SetupInnerAuthState(principal);
-        _localStorage.Setup(s => s.GetItemAsStringAsync("SelectedTeam", default))
+        _localStorage.Setup(s => s.GetItemAsStringAsync("SelectedTeam", It.IsAny<CancellationToken>()))
             .ReturnsAsync("team-1");
 
         var user = new Mock<IUser>();
@@ -174,7 +176,7 @@ public class TeamClaimsAuthenticationStateProviderTests
         _teamService.Setup(s => s.GetTeamMemberAsync("team-1", "user-1")).ReturnsAsync(member.Object);
 
         var sut = new TeamClaimsAuthenticationStateProvider(
-            _inner.Object, _teamService.Object, _userService.Object, _localStorage.Object, null);
+            _inner.Object, _teamService.Object, _userService.Object, _localStorage.Object, _httpContextAccessor.Object, null);
         var result = await sut.GetAuthenticationStateAsync();
 
         Assert.Contains(result.User.Claims, c => c.Type == TeamClaimTypes.TeamKey);
@@ -186,7 +188,7 @@ public class TeamClaimsAuthenticationStateProviderTests
     {
         var principal = CreateAuthenticatedPrincipal();
         SetupInnerAuthState(principal);
-        _localStorage.Setup(s => s.GetItemAsStringAsync("SelectedTeam", default))
+        _localStorage.Setup(s => s.GetItemAsStringAsync("SelectedTeam", It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("JS interop not available"));
 
         var sut = CreateSut();

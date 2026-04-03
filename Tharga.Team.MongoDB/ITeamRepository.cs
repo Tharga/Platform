@@ -18,4 +18,6 @@ public interface ITeamRepository<TTeamEntity, TMember> : IRepository
     Task SetMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles);
     Task SetMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides);
     Task<ITeam> SetInvitationResponseAsync(string teamKey, string userKey, string inviteKey, bool accept);
+    Task SetConsentAsync(string teamKey, string[] consentedRoles);
+    IAsyncEnumerable<TTeamEntity> GetTeamsByConsentAsync(string[] roles);
 }

@@ -14,11 +14,7 @@
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Skill(update-config)",
-      "Skill(update-config:*)",
-      "Read(//c/dev/tharga/**)",
-      "Bash(grep -r [Inject] --include=*.razor.cs --include=*.cs .)",
-      "Bash(rm .claude/feature.md)",
-      "Bash(rm .claude/plan.md)"
+      "Skill(update-config:*)"
     ],
     "additionalDirectories": [
     ]

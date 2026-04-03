@@ -13,4 +13,7 @@ public abstract record TeamEntityBase<TTeamMemberModel> : EntityBase, ITeam<TTea
 
     public required string Name { get; init; }
     public TTeamMemberModel[] Members { get; init; }
+
+    [BsonIgnoreIfNull]
+    public string[] ConsentedRoles { get; init; }
 }
