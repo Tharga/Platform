@@ -31,9 +31,18 @@ else
             @foreach (var team in _teams)
             {
                 <ExpandableCard Text="@team.Name" Selected="@(_selectedTeam.Key == team.Key)">
-                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right">
+                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" AlignItems="AlignItems.Center">
+                        @if (_showConsentToggle && HasAccessLevel(team, AccessLevel.Administrator))
+                        {
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
+                                <RadzenLabel Text="@($"Allow {string.Join(", ", _consentRoles)} viewer access")" Style="font-size: 0.85em;" />
+                                <RadzenSwitch Value="@(team.ConsentedRoles != null && team.ConsentedRoles.Length > 0)"
+                                              Change="@(async (bool v) => await ToggleConsent(team, v))" />
+                            </RadzenStack>
+                        }
                         <RadzenButton icon="edit" Text="Rename" Click="@(async () => { await RenameTeam(team); })" Visible="@(_canManage)"/>
-                        <ActionButton icon="delete" Text="Delete" Click="@(async () => { await DeleteTeam(team); })" Visible="@(_canManage && HasAccessLevel(team, AccessLevel.Owner))"/>
+                        <ActionButton icon="delete" Text="Delete" Click="@(async () => { await DeleteTeam(team); })" Visible="@(_canManage && _allowTeamCreation && HasAccessLevel(team, AccessLevel.Owner))"/>
+                        <RadzenButton icon="swap_horiz" Text="Transfer Ownership" Click="@(async () => { await TransferOwnership(team); })" Visible="@(HasAccessLevel(team, AccessLevel.Owner) && team.Members.Length > 1)"/>
                         <RadzenButton icon="remove" Text="Leave" Click="@(async () => { await RemoveUserFromTeam(team, _user.Key); })" Visible="@(!HasAccessLevel(team, AccessLevel.Owner))"/>
                     </RadzenStack>
                     <RadzenRow>
@@ -153,10 +162,14 @@ else
                 </ExpandableCard>
             }
         }
-        <RadzenText Visible="@(!_teams.Any())">You are not member of a team. Create your own team and start inviting members.</RadzenText>
-        <RadzenStack Orientation="Orientation.Horizontal">
-            <RadzenButton Icon="add" Text="Create new Team" Click="@(() => CreateTeam())"/>
-        </RadzenStack>
+        <RadzenText Visible="@(!_teams.Any() && _allowTeamCreation)">You are not member of a team. Create your own team and start inviting members.</RadzenText>
+        <RadzenText Visible="@(!_teams.Any() && !_allowTeamCreation)">You are not member of a team.</RadzenText>
+        @if (_allowTeamCreation)
+        {
+            <RadzenStack Orientation="Orientation.Horizontal">
+                <RadzenButton Icon="add" Text="Create new Team" Click="@(() => CreateTeam())"/>
+            </RadzenStack>
+        }
 
     </RadzenStack>
 }
@@ -173,6 +186,9 @@ else
     private bool _canInvite;
     private bool _canRemove;
     private bool _canChangeRole;
+    private bool _allowTeamCreation;
+    private bool _showConsentToggle;
+    private string[] _consentRoles;
     private string[] _allScopeNames = Array.Empty<string>();
     private IScopeRegistry _scopeRegistry;
     private ITenantRoleRegistry _tenantRoleRegistry;
@@ -191,6 +207,9 @@ else
 
         _showMemberRoles = BlazorOptions.Value.ShowMemberRoles && _tenantRoleRegistry != null;
         _showScopeOverrides = BlazorOptions.Value.ShowScopeOverrides && _scopeRegistry != null;
+        _allowTeamCreation = BlazorOptions.Value.AllowTeamCreation;
+        _showConsentToggle = BlazorOptions.Value.ShowConsentToggle;
+        _consentRoles = BlazorOptions.Value.ConsentRoles ?? [];
         if (_showMemberRoles)
             _availableRoles = _tenantRoleRegistry!.All.Select(r => r.Name).ToArray();
         if (_showMemberRoles || _showScopeOverrides)
@@ -324,6 +343,48 @@ else
         await ReloadTeams();
     }
 
+    private async Task TransferOwnership(ITeam<TMember> team)
+    {
+        var eligibleMembers = team.Members
+            .Where(x => x.Key != _user.Key && x.State == MembershipState.Member)
+            .ToArray();
+
+        if (eligibleMembers.Length == 0)
+        {
+            NotificationService.Notify(NotificationSeverity.Warning, "No eligible members", "There are no other active members to transfer ownership to.");
+            return;
+        }
+
+        var memberOptions = eligibleMembers.Select(m =>
+        {
+            var user = _users.FirstOrDefault(u => u.Key == m.Key);
+            var display = user?.EMail ?? m.Name ?? m.Key;
+            return new { m.Key, Display = display };
+        }).ToArray();
+
+        string selectedKey = memberOptions.First().Key;
+
+        var result = await DialogService.OpenAsync("Transfer Ownership", ds =>
+            @<RadzenStack Gap="1rem">
+                <RadzenText>Select the new owner of team '@team.Name':</RadzenText>
+                <RadzenDropDown TValue="string" @bind-Value="selectedKey"
+                                Data="@memberOptions"
+                                TextProperty="Display"
+                                ValueProperty="Key" />
+                <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" Gap="0.5rem">
+                    <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(_ => ds.Close(false))" />
+                    <RadzenButton Text="Transfer" ButtonStyle="ButtonStyle.Warning" Click="@(_ => ds.Close(true))" />
+                </RadzenStack>
+            </RadzenStack>,
+            new DialogOptions { Width = "400px" });
+
+        if (result is not true) return;
+
+        await TeamManagementService.TransferOwnershipAsync(team.Key, selectedKey);
+        await ReloadTeams();
+        NotificationService.Notify(NotificationSeverity.Success, "Ownership transferred");
+    }
+
     private async Task DeleteTeam(ITeam<TMember> team)
     {
         var response = await DialogService.Confirm($"Team '{team.Name}' will be deleted.");
@@ -331,6 +392,13 @@ else
 
         await TeamManagementService.DeleteTeamAsync(team.Key);
 
+        await ReloadTeams();
+    }
+
+    private async Task ToggleConsent(ITeam<TMember> team, bool enabled)
+    {
+        var roles = enabled ? _consentRoles : [];
+        await TeamService.SetTeamConsentAsync(team.Key, roles);
         await ReloadTeams();
     }
 

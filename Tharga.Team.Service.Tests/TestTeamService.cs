@@ -1,0 +1,86 @@
+namespace Tharga.Team.Service.Tests;
+
+/// <summary>
+/// Concrete TeamServiceBase for testing. Supports configurable team/member data.
+/// </summary>
+internal class TestTeamService : TeamServiceBase
+{
+    private readonly Dictionary<string, TestTeam> _teams = new();
+
+    public TestTeamService(IUserService userService) : base(userService) { }
+
+    public void AddTeam(string teamKey, string name, params TestMember[] members)
+    {
+        _teams[teamKey] = new TestTeam
+        {
+            Key = teamKey,
+            Name = name,
+            Members = members
+        };
+    }
+
+    protected override IAsyncEnumerable<ITeam> GetTeamsAsync(IUser user) => _teams.Values.ToAsyncEnumerable<ITeam>();
+
+    protected override Task<ITeam> GetTeamAsync(string teamKey)
+    {
+        _teams.TryGetValue(teamKey, out var team);
+        return Task.FromResult<ITeam>(team);
+    }
+
+    protected override Task<ITeam> CreateTeamAsync(string teamKey, string name, IUser user, string displayName = null)
+    {
+        var team = new TestTeam { Key = teamKey, Name = name, Members = [new TestMember { Key = user.Key, Name = displayName, AccessLevel = AccessLevel.Owner, State = MembershipState.Member }] };
+        _teams[teamKey] = team;
+        return Task.FromResult<ITeam>(team);
+    }
+
+    protected override Task SetTeamNameAsync(string teamKey, string name) => Task.CompletedTask;
+    protected override Task DeleteTeamAsync(string teamKey) { _teams.Remove(teamKey); return Task.CompletedTask; }
+    protected override Task AddTeamMemberAsync(string teamKey, InviteUserModel model) => Task.CompletedTask;
+    protected override Task RemoveTeamMemberAsync(string teamKey, string userKey) => Task.CompletedTask;
+
+    protected override Task<ITeam> SetTeamMemberInvitationResponseAsync(string teamKey, string userKey, string inviteKey, bool accept)
+    {
+        _teams.TryGetValue(teamKey, out var team);
+        return Task.FromResult<ITeam>(team);
+    }
+
+    protected override Task SetTeamMemberLastSeenAsync(string teamKey, string userKey) => Task.CompletedTask;
+
+    protected override Task<ITeamMember> GetTeamMembersAsync(string teamKey, string userKey)
+    {
+        if (_teams.TryGetValue(teamKey, out var team))
+        {
+            var member = team.Members.FirstOrDefault(m => m.Key == userKey);
+            return Task.FromResult<ITeamMember>(member);
+        }
+        return Task.FromResult<ITeamMember>(null);
+    }
+
+    protected override Task SetTeamMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel) => Task.CompletedTask;
+    protected override Task SetTeamMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles) => Task.CompletedTask;
+    protected override Task SetTeamMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides) => Task.CompletedTask;
+    protected override Task SetTeamConsentInternalAsync(string teamKey, string[] consentedRoles) => Task.CompletedTask;
+    protected override IAsyncEnumerable<ITeam> GetConsentedTeamsInternalAsync(string[] userRoles) => AsyncEnumerable.Empty<ITeam>();
+}
+
+internal record TestTeam : ITeam<TestMember>
+{
+    public string Key { get; init; }
+    public string Name { get; init; }
+    public string Icon { get; init; }
+    public string[] ConsentedRoles { get; init; }
+    public TestMember[] Members { get; init; } = [];
+}
+
+internal record TestMember : ITeamMember
+{
+    public string Key { get; init; }
+    public string Name { get; init; }
+    public Invitation Invitation { get; init; }
+    public DateTime? LastSeen { get; init; }
+    public MembershipState? State { get; init; }
+    public AccessLevel AccessLevel { get; init; }
+    public string[] TenantRoles { get; init; } = [];
+    public string[] ScopeOverrides { get; init; } = [];
+}

@@ -1,6 +1,10 @@
 @using Tharga.Team.Service.Audit
 
-@if (_auditLoggerMissing)
+@if (!_hasAccess)
+{
+    <RadzenText>No team selected.</RadzenText>
+}
+else if (_auditLoggerMissing)
 {
     <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat">
         Audit logging is not configured. Call <code>AddThargaAuditLogging()</code> in Program.cs to enable this view.

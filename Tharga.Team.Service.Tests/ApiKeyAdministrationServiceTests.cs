@@ -51,6 +51,20 @@ public class ApiKeyAdministrationServiceTests
     }
 
     [Fact]
+    public async Task GetKeysAsync_Filters_By_TeamKey()
+    {
+        var entity1 = CreateEntity("key-1", "hash-1", "team-1");
+        var entity2 = CreateEntity("key-2", "hash-2", "team-2");
+        var entity3 = CreateEntity("key-3", "hash-3", "team-1");
+        _repository.GetAsync().Returns(ToAsyncEnumerable(entity1, entity2, entity3));
+
+        var keys = await _sut.GetKeysAsync("team-1").ToArrayAsync();
+
+        Assert.Equal(2, keys.Length);
+        Assert.All(keys, k => Assert.Equal("team-1", k.TeamKey));
+    }
+
+    [Fact]
     public async Task GetKeysAsync_AutoCreates_When_Fewer_Than_Two()
     {
         _repository.GetAsync().Returns(ToAsyncEnumerable<ApiKeyEntity>());

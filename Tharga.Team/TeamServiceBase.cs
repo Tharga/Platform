@@ -18,7 +18,7 @@ public abstract class TeamServiceBase : ITeamService
 
     protected abstract IAsyncEnumerable<ITeam> GetTeamsAsync(IUser user);
     protected abstract Task<ITeam> GetTeamAsync(string teamKey);
-    protected abstract Task<ITeam> CreateTeamAsync(string teamKey, string name, IUser user);
+    protected abstract Task<ITeam> CreateTeamAsync(string teamKey, string name, IUser user, string displayName = null);
     protected abstract Task SetTeamNameAsync(string teamKey, string name);
     protected abstract Task DeleteTeamAsync(string teamKey);
     protected abstract Task AddTeamMemberAsync(string teamKey, InviteUserModel model);
@@ -29,6 +29,8 @@ public abstract class TeamServiceBase : ITeamService
     protected abstract Task SetTeamMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel);
     protected abstract Task SetTeamMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles);
     protected abstract Task SetTeamMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides);
+    protected abstract Task SetTeamConsentInternalAsync(string teamKey, string[] consentedRoles);
+    protected abstract IAsyncEnumerable<ITeam> GetConsentedTeamsInternalAsync(string[] userRoles);
 
     public async IAsyncEnumerable<ITeam> GetTeamsAsync()
     {
@@ -60,23 +62,12 @@ public abstract class TeamServiceBase : ITeamService
     {
         var user = await GetCurrentUserAsync();
 
-        var nameBuilder = new Lazy<string>(() =>
-        {
-            var email = user.EMail;
-            var username = "Unknown";
-            if (!string.IsNullOrEmpty(email))
-            {
-                var atIndex = email.IndexOf('@');
-                username = atIndex >= 0 ? email.Substring(0, atIndex) : email;
-            }
-
-            return $"{username.Replace(".", " ")}'s team";
-        });
-        name ??= nameBuilder.Value;
+        var displayName = ResolveDisplayName(user);
+        name ??= $"{displayName}'s team";
 
         var teamKey = await GetRandomUnsusedTeamKey();
 
-        var team = await CreateTeamAsync(teamKey, name, user);
+        var team = await CreateTeamAsync(teamKey, name, user, displayName);
 
         TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
         SelectTeamEvent?.Invoke(this, new SelectTeamEventArgs(team));
@@ -117,10 +108,34 @@ public abstract class TeamServiceBase : ITeamService
     public async Task AddMemberAsync(string teamKey, InviteUserModel model)
     {
         await AddTeamMemberAsync(teamKey, model);
+        TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
     }
 
     public async Task RemoveMemberAsync(string teamKey, string userKey)
     {
+        var team = await GetTeamAsync(teamKey);
+        var members = GetMembersFromTeam(team);
+        if (members != null)
+        {
+            var member = members.SingleOrDefault(x => x.Key == userKey);
+            if (member != null)
+            {
+                if (member.AccessLevel == AccessLevel.Owner)
+                    throw new InvalidOperationException("The owner cannot leave the team. Transfer ownership first.");
+
+                var user = await GetCurrentUserAsync();
+                if (member.Key == user.Key && member.AccessLevel == AccessLevel.Administrator)
+                {
+                    var otherAdminsOrOwners = members.Count(x =>
+                        x.Key != userKey &&
+                        x.State == MembershipState.Member &&
+                        x.AccessLevel <= AccessLevel.Administrator);
+                    if (otherAdminsOrOwners == 0)
+                        throw new InvalidOperationException("Cannot leave the team as the last administrator.");
+                }
+            }
+        }
+
         await RemoveTeamMemberAsync(teamKey, userKey);
         _teamMemberCache.TryRemove($"{teamKey}.{userKey}", out _);
         TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
@@ -130,18 +145,21 @@ public abstract class TeamServiceBase : ITeamService
     {
         await SetTeamMemberRoleAsync(teamKey, userKey, accessLevel);
         _teamMemberCache.TryRemove($"{teamKey}.{userKey}", out _);
+        TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
     }
 
     public async Task SetMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles)
     {
         await SetTeamMemberTenantRolesAsync(teamKey, userKey, tenantRoles);
         _teamMemberCache.TryRemove($"{teamKey}.{userKey}", out _);
+        TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
     }
 
     public async Task SetMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides)
     {
         await SetTeamMemberScopeOverridesAsync(teamKey, userKey, scopeOverrides);
         _teamMemberCache.TryRemove($"{teamKey}.{userKey}", out _);
+        TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
     }
 
     public async Task SetInvitationResponseAsync(string teamKey, string userKey, string inviteKey, bool accept)
@@ -155,6 +173,7 @@ public abstract class TeamServiceBase : ITeamService
         else
         {
             await SetTeamMemberInvitationResponseAsync(teamKey, userKey, inviteKey, false);
+            TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
         }
 
         _teamMemberCache.TryRemove($"{teamKey}.{userKey}", out _);
@@ -165,6 +184,38 @@ public abstract class TeamServiceBase : ITeamService
         var user = await GetCurrentUserAsync();
         await SetTeamMemberLastSeenAsync(teamKey, user.Key);
         _teamMemberCache.TryRemove($"{teamKey}.{user.Key}", out _);
+    }
+
+    public async Task TransferOwnershipAsync<TMember>(string teamKey, string newOwnerUserKey) where TMember : ITeamMember
+    {
+        var user = await GetCurrentUserAsync();
+        var team = await GetTeamAsync<TMember>(teamKey);
+        var currentOwner = team.Members.SingleOrDefault(x => x.Key == user.Key);
+        if (currentOwner == null || currentOwner.AccessLevel != AccessLevel.Owner)
+            throw new InvalidOperationException("Only the current owner can transfer ownership.");
+
+        var newOwner = team.Members.SingleOrDefault(x => x.Key == newOwnerUserKey);
+        if (newOwner == null)
+            throw new InvalidOperationException($"User '{newOwnerUserKey}' is not a member of this team.");
+        if (newOwner.Key == user.Key)
+            throw new InvalidOperationException("Cannot transfer ownership to yourself.");
+
+        await SetTeamMemberRoleAsync(teamKey, newOwnerUserKey, AccessLevel.Owner);
+        await SetTeamMemberRoleAsync(teamKey, user.Key, AccessLevel.Administrator);
+        _teamMemberCache.TryRemove($"{teamKey}.{newOwnerUserKey}", out _);
+        _teamMemberCache.TryRemove($"{teamKey}.{user.Key}", out _);
+        TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
+    }
+
+    public async Task SetTeamConsentAsync(string teamKey, string[] consentedRoles)
+    {
+        await SetTeamConsentInternalAsync(teamKey, consentedRoles);
+        TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
+    }
+
+    public IAsyncEnumerable<ITeam> GetConsentedTeamsAsync(string[] userRoles)
+    {
+        return GetConsentedTeamsInternalAsync(userRoles);
     }
 
     private async Task<string> GetRandomUnsusedTeamKey()
@@ -193,5 +244,29 @@ public abstract class TeamServiceBase : ITeamService
     {
         var user = await _userService.GetCurrentUserAsync();
         return user;
+    }
+
+    public static string ResolveDisplayName(IUser user)
+    {
+        if (user == null) return "Unknown";
+
+        if (!string.IsNullOrEmpty(user.Name))
+            return user.Name;
+
+        var email = user.EMail;
+        if (string.IsNullOrEmpty(email))
+            return "Unknown";
+
+        var atIndex = email.IndexOf('@');
+        var username = atIndex >= 0 ? email[..atIndex] : email;
+        var words = username.Split('.');
+        return string.Join(" ", words.Select(w =>
+            w.Length > 0 ? char.ToUpper(w[0]) + w[1..] : w));
+    }
+
+    private static ITeamMember[] GetMembersFromTeam(ITeam team)
+    {
+        var membersProperty = team?.GetType().GetProperty("Members");
+        return membersProperty?.GetValue(team) as ITeamMember[];
     }
 }
