@@ -105,7 +105,13 @@ Cross-project requests are handled via `mission.md` — see the "Incoming reques
 - On startup, check `mission.md` for the requests location and show pending requests to the user
 - Writing feature requests is **exempt from the cross-project guard**
 - Never mark a request as done without user confirmation
-- When a request is completed: update its status to Done in the central file, add completion date and summary
+- When a request is completed:
+  1. Update its status to Done in the central requests file, add completion date and summary
+  2. Add a follow-up entry under `## Uppföljning` at the top of the central requests file so the consuming project knows to update:
+     ```
+     - [ ] <Consuming project> ska uppdatera <package> till <version> — <kort beskrivning av vad som är nytt>
+     ```
+  3. The follow-up is checked off when the consuming project has updated and verified the new version
 
 ## Backlog Hygiene
 - When a task from the backlog (in `mission.md` or linked external files) is completed, mark it as done or remove it

@@ -35,8 +35,8 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.6" />
-    <PackageReference Include="Tharga.MongoDB" Version="2.9.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
+    <PackageReference Include="Tharga.MongoDB" Version="2.10.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Tharga.Team\Tharga.Team.csproj" />
