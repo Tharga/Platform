@@ -5,19 +5,12 @@
   },  
   "permissions": {
     "allow": [
-      "Bash(git:*)",
-      "Bash(cd * && git:*)",
-      "Bash(cd:*)",
-      "Bash(dotnet:*)",
-      "Bash(mkdir:*)",
-      "Bash(cp:*)",
-      "Bash(rm:*)",
-      "Bash(ls:*)",
-      "Bash(cat:*)",
-      "Skill(update-config)",
-      "Skill(update-config:*)",
+      "Bash",
       "Edit",
-      "Write"
+      "Write",
+      "Read",
+      "Glob",
+      "Grep"
     ],
     "additionalDirectories": [
     ]

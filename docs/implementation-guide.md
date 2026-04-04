@@ -373,6 +373,17 @@ builder.Services.AddThargaTeamRepository(o =>
 });
 ```
 
+> **Custom collection names:** If you need to change the MongoDB collection names (e.g. when sharing a database with a legacy app), set `TeamCollectionName` and `UserCollectionName`:
+> ```csharp
+> builder.Services.AddThargaTeamRepository(o =>
+> {
+>     o.TeamCollectionName = "MyTeams";     // default: "Team"
+>     o.UserCollectionName = "MyUsers";     // default: "User"
+>     o.RegisterUserRepository<UserEntity>();
+>     o.RegisterTeamRepository<TeamEntity, TeamMember>();
+> });
+> ```
+
 > **Note:** `AddThargaTeamBlazor()` internally calls `AddThargaBlazor()`, so `BreadCrumbService` and `BlazoredLocalStorage` are registered automatically.
 
 ### Implementing the required types
