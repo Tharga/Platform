@@ -2,7 +2,7 @@
   "attribution": {
     "commit": "",
     "pr": ""
-  },  
+  },
   "permissions": {
     "allow": [
       "Bash",
@@ -12,7 +12,9 @@
       "Glob",
       "Grep"
     ],
-    "additionalDirectories": [
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(sudo *)"
     ]
   }
 }
