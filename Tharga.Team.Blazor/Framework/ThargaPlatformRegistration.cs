@@ -64,6 +64,7 @@ public static class ThargaPlatformRegistration
             o._userService = options.Blazor._userService;
             o._memberType = options.Blazor._memberType;
             o._apiKeyService = options.Blazor._apiKeyService;
+            o._claimsEnricher = options.Blazor._claimsEnricher;
         }, builder.Configuration);
 
         // Controllers + Swagger

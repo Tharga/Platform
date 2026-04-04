@@ -373,6 +373,17 @@ builder.Services.AddThargaTeamRepository(o =>
 });
 ```
 
+> **Custom collection names:** If you need to change the MongoDB collection names (e.g. when sharing a database with a legacy app), set `TeamCollectionName` and `UserCollectionName`:
+> ```csharp
+> builder.Services.AddThargaTeamRepository(o =>
+> {
+>     o.TeamCollectionName = "MyTeams";     // default: "Team"
+>     o.UserCollectionName = "MyUsers";     // default: "User"
+>     o.RegisterUserRepository<UserEntity>();
+>     o.RegisterTeamRepository<TeamEntity, TeamMember>();
+> });
+> ```
+
 > **Note:** `AddThargaTeamBlazor()` internally calls `AddThargaBlazor()`, so `BreadCrumbService` and `BlazoredLocalStorage` are registered automatically.
 
 ### Implementing the required types
@@ -522,6 +533,55 @@ This setting controls whether the client-side enrichment path is also registered
 | Blazor Server with SSR | `true` (default) — no config needed |
 | Blazor Hybrid (Server + WASM) | `true` (default) — server enriches claims for all render modes |
 | Standalone Blazor WASM | `false` — needs client-side enrichment |
+
+#### Custom Claims Enricher
+
+If you need to inject custom claims (e.g. global roles from a database) before team member lookup and consent evaluation, implement `ITeamClaimsEnricher` and register it:
+
+```csharp
+public class MyClaimsEnricher : ITeamClaimsEnricher
+{
+    private readonly IMyUserDatabase _db;
+
+    public MyClaimsEnricher(IMyUserDatabase db) => _db = db;
+
+    public async Task EnrichAsync(ClaimsIdentity identity)
+    {
+        var roles = await _db.GetGlobalRolesAsync(identity.Name);
+        foreach (var role in roles)
+        {
+            if (!identity.HasClaim(c => c.Type == ClaimTypes.Role && c.Value == role))
+                identity.AddClaim(new Claim(ClaimTypes.Role, role));
+        }
+    }
+}
+```
+
+Register via options:
+
+```csharp
+builder.Services.AddThargaTeamBlazor(o =>
+{
+    o.AddClaimsEnricher<MyClaimsEnricher>();
+    // ...
+});
+```
+
+Or via `AddThargaPlatform`:
+
+```csharp
+builder.AddThargaPlatform(o =>
+{
+    o.Blazor.AddClaimsEnricher<MyClaimsEnricher>();
+});
+```
+
+The enricher runs **once per request** inside `TeamServerClaimsTransformation`, before member lookup and consent evaluation. It supports full dependency injection (constructor injection). Duplicate claims are automatically prevented.
+
+**Use cases:**
+- Assign global roles (e.g. `Developer`, `SystemAdministrator`) based on user identity
+- Add custom claims from external systems before team consent is evaluated
+- Enrich the principal with application-specific metadata
 
 ### Verification
 

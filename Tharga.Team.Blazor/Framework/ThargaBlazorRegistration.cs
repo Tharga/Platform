@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Tharga.Blazor.Framework;
+using Tharga.Team;
 using Tharga.Team.Blazor.Features.Team;
 using Tharga.Team.Service;
 
@@ -57,6 +58,12 @@ public static class ThargaBlazorRegistration
             // Server-side claims enrichment — always registered, reads selected_team_id cookie
             services.AddHttpContextAccessor();
             services.AddTransient<IClaimsTransformation, TeamServerClaimsTransformation>();
+
+            // Custom claims enricher — runs before member lookup and consent evaluation
+            if (o._claimsEnricher != null)
+            {
+                services.AddScoped(typeof(ITeamClaimsEnricher), o._claimsEnricher);
+            }
 
             if (!o.SkipAuthStateDecoration)
             {

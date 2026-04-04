@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Tharga.Team.MongoDB;
 
@@ -8,6 +9,8 @@ public static class ThargaTeamRegistration
     {
         var o = new ThargaTeamOptions();
         options?.Invoke(o);
+
+        services.AddSingleton(Options.Create(o));
 
         if (o._userEntity != null)
         {
