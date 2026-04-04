@@ -172,4 +172,58 @@ public class TeamServerClaimsTransformationTests
         Assert.Contains(result.Claims, c => c.Type == TeamClaimTypes.TeamKey);
         Assert.DoesNotContain(result.Claims, c => c.Type == TeamClaimTypes.Scope);
     }
+
+    [Fact]
+    public async Task ClaimsEnricher_RunsBeforeMemberLookup()
+    {
+        SetupCookie("team-1");
+        var principal = CreateAuthenticatedPrincipal();
+        var user = Mock.Of<IUser>(u => u.Key == "user-1");
+        _userService.Setup(u => u.GetCurrentUserAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(user);
+        _teamService.Setup(t => t.GetTeamMemberAsync("team-1", "user-1"))
+            .ReturnsAsync((ITeamMember)null);
+        _teamService.Setup(t => t.GetConsentedTeamsAsync(It.IsAny<string[]>()))
+            .Returns(AsyncEnumerable.Empty<ITeam>());
+
+        var enricher = new Mock<ITeamClaimsEnricher>();
+        enricher.Setup(e => e.EnrichAsync(It.IsAny<ClaimsIdentity>()))
+            .Callback<ClaimsIdentity>(id => id.AddClaim(new System.Security.Claims.Claim(ClaimTypes.Role, "Developer")));
+
+        var sut = new TeamServerClaimsTransformation(
+            _httpContextAccessor.Object, _teamService.Object, _userService.Object, _options.Object,
+            _scopeRegistry.Object, enricher.Object);
+
+        var result = await sut.TransformAsync(principal);
+
+        enricher.Verify(e => e.EnrichAsync(It.IsAny<ClaimsIdentity>()), Times.Once);
+        Assert.Contains(result.Claims, c => c.Type == ClaimTypes.Role && c.Value == "Developer");
+    }
+
+    [Fact]
+    public async Task DuplicateClaims_NotAdded()
+    {
+        SetupCookie("team-1");
+        var principal = CreateAuthenticatedPrincipal();
+        var user = Mock.Of<IUser>(u => u.Key == "user-1");
+        _userService.Setup(u => u.GetCurrentUserAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(user);
+        _teamService.Setup(t => t.GetTeamMemberAsync("team-1", "user-1"))
+            .ReturnsAsync(Mock.Of<ITeamMember>(m =>
+                m.AccessLevel == AccessLevel.Administrator &&
+                m.TenantRoles == Array.Empty<string>() &&
+                m.ScopeOverrides == Array.Empty<string>()));
+        _scopeRegistry.Setup(s => s.GetEffectiveScopes(
+                AccessLevel.Administrator, It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()))
+            .Returns(new[] { "team:read" });
+
+        var sut = CreateSut();
+
+        // Transform twice — re-entrance guard should prevent duplicates
+        var result = await sut.TransformAsync(principal);
+        result = await sut.TransformAsync(result);
+
+        var teamKeyClaims = result.Claims.Where(c => c.Type == TeamClaimTypes.TeamKey).ToArray();
+        Assert.Single(teamKeyClaims);
+    }
 }

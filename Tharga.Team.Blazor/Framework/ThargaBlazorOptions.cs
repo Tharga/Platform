@@ -1,4 +1,5 @@
 ﻿using Tharga.Blazor.Framework;
+using Tharga.Team;
 
 namespace Tharga.Team.Blazor.Framework;
 
@@ -8,6 +9,7 @@ public record ThargaBlazorOptions : BlazorOptions
     internal Type _userService;
     internal Type _memberType;
     internal Type _apiKeyService;
+    internal Type _claimsEnricher;
 
     /// <summary>
     /// Automatically create the first team for users.
@@ -103,5 +105,15 @@ public record ThargaBlazorOptions : BlazorOptions
         where TApiKeyService : IApiKeyAdministrationService
     {
         _apiKeyService = typeof(TApiKeyService);
+    }
+
+    /// <summary>
+    /// Register a custom claims enricher that runs before team member lookup and consent evaluation.
+    /// Use this to inject global roles or other claims from external sources (e.g. database).
+    /// </summary>
+    public void AddClaimsEnricher<TEnricher>()
+        where TEnricher : class, ITeamClaimsEnricher
+    {
+        _claimsEnricher = typeof(TEnricher);
     }
 }

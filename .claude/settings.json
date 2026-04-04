@@ -6,6 +6,7 @@
   "permissions": {
     "allow": [
       "Bash(git:*)",
+      "Bash(cd * && git:*)",
       "Bash(cd:*)",
       "Bash(dotnet:*)",
       "Bash(mkdir:*)",
@@ -14,7 +15,9 @@
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Skill(update-config)",
-      "Skill(update-config:*)"
+      "Skill(update-config:*)",
+      "Edit",
+      "Write"
     ],
     "additionalDirectories": [
     ]
