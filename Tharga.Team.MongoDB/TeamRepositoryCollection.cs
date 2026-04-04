@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Tharga.MongoDB;
@@ -10,12 +11,15 @@ internal class TeamRepositoryCollection<TTeamEntity, TMember> : DiskRepositoryCo
     where TTeamEntity : TeamEntityBase<TMember>
     where TMember : TeamMemberBase
 {
-    public TeamRepositoryCollection(IMongoDbServiceFactory mongoDbServiceFactory, ILogger<RepositoryCollectionBase<TTeamEntity, ObjectId>> logger)
+    private readonly string _collectionName;
+
+    public TeamRepositoryCollection(IMongoDbServiceFactory mongoDbServiceFactory, ILogger<RepositoryCollectionBase<TTeamEntity, ObjectId>> logger, IOptions<ThargaTeamOptions> options = null)
         : base(mongoDbServiceFactory, logger)
     {
+        _collectionName = options?.Value.TeamCollectionName ?? "Team";
     }
 
-    public override string CollectionName => "Team";
+    public override string CollectionName => _collectionName;
 
     public override IEnumerable<CreateIndexModel<TTeamEntity>> Indices =>
     [
