@@ -17,7 +17,7 @@ permissions:
 jobs:
   prerelease:
     runs-on: ubuntu-latest
-    if: github.event.inputs.confirm == 'yes'
+    if: github.ref != 'refs/heads/master' && github.event.inputs.confirm == 'yes'
 
     steps:
       - uses: actions/checkout@v4
@@ -34,7 +34,6 @@ jobs:
       - name: Compute pre-release version
         id: version
         run: |
-          # Find the latest release tag to determine next patch
           LATEST_RELEASE=$(git tag -l "${MAJOR_MINOR}.*" --sort=-v:refname \
             | grep -E "^${MAJOR_MINOR}\.[0-9]+$" \
             | head -1)
@@ -48,13 +47,12 @@ jobs:
 
           PRE_BASE="${MAJOR_MINOR}.${PATCH}-pre"
 
-          # Find the latest pre-release counter for this patch
           LATEST_PRE=$(git tag -l "${PRE_BASE}.*" --sort=-v:refname | head -1)
 
           if [ -z "$LATEST_PRE" ]; then
             COUNTER=1
           else
-            COUNTER=$(echo "$LATEST_PRE" | sed "s/${PRE_BASE}\.\([0-9]*\)/\1/")
+            COUNTER=$(echo "$LATEST_PRE" | sed "s/.*-pre\.\([0-9]*\)/\1/")
             COUNTER=$((COUNTER + 1))
           fi
 
@@ -82,20 +80,11 @@ jobs:
         run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
 
       - name: Create GitHub Pre-release
-        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.version.outputs.version }}
-          release_name: v${{ steps.version.outputs.version }} (pre-release)
-          body: |
-            Pre-release from `${{ github.ref_name }}` branch.
-
-            | Package | Version |
-            |---------|---------|
-            | Tharga.Team | ${{ steps.version.outputs.version }} |
-            | Tharga.Team.Blazor | ${{ steps.version.outputs.version }} |
-            | Tharga.Team.MongoDB | ${{ steps.version.outputs.version }} |
-            | Tharga.Team.Service | ${{ steps.version.outputs.version }} |
-          draft: false
-          prerelease: true
+        run: |
+          gh release create "${{ steps.version.outputs.version }}" \
+            --title "v${{ steps.version.outputs.version }} (pre-release)" \
+            --notes "Pre-release from \`${{ github.ref_name }}\` branch." \
+            --prerelease \
+            ./artifacts/*.nupkg

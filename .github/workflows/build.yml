@@ -2,9 +2,9 @@ name: Build & Test
 
 on:
   push:
-    branches: [develop, master]
+    branches: [master]
   pull_request:
-    branches: [develop, master]
+    branches: [master]
 
 jobs:
   build:
@@ -28,3 +28,29 @@ jobs:
 
       - name: Test
         run: dotnet test -c Release --no-build --verbosity normal
+
+  security:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+
+      - name: Build for CodeQL
+        run: dotnet build -c Release
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3

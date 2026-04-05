@@ -1,8 +1,12 @@
 name: Release
 
 on:
-  push:
-    branches: [master]
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "yes" to confirm release'
+        required: true
+        default: 'no'
 
 env:
   MAJOR_MINOR: '2.0'
@@ -13,6 +17,7 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' && github.event.inputs.confirm == 'yes'
 
     steps:
       - uses: actions/checkout@v4
@@ -29,8 +34,6 @@ jobs:
       - name: Compute version
         id: version
         run: |
-          # Find the latest release tag matching majorMinor.patch
-          PATTERN="^${MAJOR_MINOR}\."
           LATEST_TAG=$(git tag -l "${MAJOR_MINOR}.*" --sort=-v:refname \
             | grep -E "^${MAJOR_MINOR}\.[0-9]+$" \
             | head -1)
@@ -44,7 +47,8 @@ jobs:
 
           VERSION="${MAJOR_MINOR}.${PATCH}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Computed version: $VERSION"
+          echo "previous_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
+          echo "Computed version: $VERSION (previous: $LATEST_TAG)"
 
       - name: Restore
         run: dotnet restore
@@ -69,8 +73,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          NOTES_FLAG=""
+          if [ -n "${{ steps.version.outputs.previous_tag }}" ]; then
+            NOTES_FLAG="--notes-start-tag ${{ steps.version.outputs.previous_tag }}"
+          fi
           gh release create "${{ steps.version.outputs.version }}" \
             --title "v${{ steps.version.outputs.version }}" \
             --generate-notes \
-            --notes-start-tag "$(git tag -l "${MAJOR_MINOR}.*" --sort=-v:refname | grep -E "^${MAJOR_MINOR}\.[0-9]+$" | sed -n '2p')" \
+            $NOTES_FLAG \
             ./artifacts/*.nupkg
