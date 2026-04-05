@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -7,6 +8,7 @@ using Tharga.Blazor.Framework;
 using Tharga.Team;
 using Tharga.Team.Blazor.Features.Team;
 using Tharga.Team.Service;
+using Tharga.Team.Service.Audit;
 
 namespace Tharga.Team.Blazor.Framework;
 
@@ -95,6 +97,49 @@ public static class ThargaBlazorRegistration
             services.AddScoped(typeof(IApiKeyAdministrationService), sp => sp.GetRequiredService(o._apiKeyService));
         }
 
+        // Audit decorators — wrap ITeamService and IApiKeyAdministrationService when audit logging is configured.
+        // Uses deferred resolution so AddThargaAuditLogging() can be called after AddThargaTeamBlazor().
+        if (o._teamService != null)
+        {
+            DecorateWithAudit<ITeamService>(services,
+                (inner, logger, http) => new AuditingTeamServiceDecorator(inner, logger, http));
+        }
+
+        if (o._apiKeyService != null)
+        {
+            DecorateWithAudit<IApiKeyAdministrationService>(services,
+                (inner, logger, http) => new AuditingApiKeyServiceDecorator(inner, logger, http));
+        }
+
         services.AddSingleton(Options.Create(o));
+    }
+
+    private static void DecorateWithAudit<TService>(
+        IServiceCollection services,
+        Func<TService, CompositeAuditLogger, IHttpContextAccessor, TService> factory)
+        where TService : class
+    {
+        var existing = services.LastOrDefault(d => d.ServiceType == typeof(TService));
+        if (existing == null) return;
+
+        services.Remove(existing);
+
+        services.AddScoped(sp =>
+        {
+            // Resolve the inner service from the original registration
+            TService inner;
+            if (existing.ImplementationFactory != null)
+                inner = (TService)existing.ImplementationFactory(sp);
+            else if (existing.ImplementationType != null)
+                inner = (TService)ActivatorUtilities.CreateInstance(sp, existing.ImplementationType);
+            else
+                throw new InvalidOperationException($"Cannot resolve inner {typeof(TService).Name} — no factory or type.");
+
+            var auditLogger = sp.GetService<CompositeAuditLogger>();
+            if (auditLogger == null) return inner;
+
+            var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+            return factory(inner, auditLogger, httpContextAccessor);
+        });
     }
 }
