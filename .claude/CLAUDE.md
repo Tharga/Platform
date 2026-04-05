@@ -62,25 +62,25 @@ dotnet test -c Release
 - Commit at logical milestones (e.g. a component is complete and tested)
 - Never commit failing tests
 - Use conventional commits: `feat:`, `fix:`, `test:`, `docs:`
-- Never merge to master/main — all changes go via Pull Requests
-- Default branch strategy: `master` is production. Feature branches branch from `origin/master`.
-- When a feature is complete, push the branch and create a PR to `master` using `gh pr create`
+- Never merge to master/main — leave that for me to review and merge
+- Default branch strategy: `master` is production, `develop` is integration. Feature branches branch from and merge to `develop`.
+- When merging a completed feature back to the originating branch, use `--no-ff` (no fast-forward) to preserve the feature branch history as a merge commit
 
 ## Feature Workflow
 
 Active feature tracking lives in `plan/` in the project root (committed with the feature branch).
-Planned and completed features are stored in Obsidian (see `.claude/mission.md` for the "Plan directory" path).
+Planned and completed features are stored externally in the **Plan directory** defined in `.claude/mission.md`.
 
 ### Planning features
-- Future features are stored in the Obsidian plan directory under `planned/`
+- Future features are stored in the Plan directory under `planned/`
 - Each file represents one feature, executed in order (e.g. `01-feature-name.md`, `02-feature-name.md`)
 - When starting a new feature, check the Obsidian `planned/` directory first
 
 ### Starting a feature
 When told to start a new feature:
 1. Ask for the feature name and goal if not provided
-2. Fetch latest: `git fetch origin`
-3. Create a new branch from master: `git checkout -b feature/<feature-name> origin/master`
+2. Note the current branch as the originating branch for the feature
+3. Create a new branch: `git checkout -b feature/<feature-name>`
 4. Create `plan/feature.md` with goal, scope, acceptance criteria, and done condition
 5. Create `plan/plan.md` with the steps to implement the feature
 6. Confirm the plan before starting any code changes
@@ -101,11 +101,10 @@ When all planned steps are done:
 - All acceptance criteria in `plan/feature.md` are met
 - All tests pass
 - README.md has been updated to reflect the new feature
-- Archive `plan/feature.md` to the Obsidian plan directory `done/<feature-name>.md`
+- Archive `plan/feature.md` to the Plan directory `done/<feature-name>.md`
 - Delete the `plan/` directory from the project
 - A final commit is made with message: `feat: <feature-name> complete`
-- Push the branch and create a PR to `master` using `gh pr create`
-- The user reviews and merges the PR on GitHub
+- Merge to originating branch with `--no-ff` and delete feature branch only when the user explicitly asks
 
 ## Feature Requests (cross-project)
 
