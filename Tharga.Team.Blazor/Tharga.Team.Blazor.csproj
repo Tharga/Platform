@@ -16,6 +16,7 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSource>true</IncludeSource>
     <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <InternalsVisibleTo>Tharga.Team.Blazor.Tests</InternalsVisibleTo>
   </PropertyGroup>
   <PropertyGroup>
