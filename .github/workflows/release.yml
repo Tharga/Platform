@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    branches: [master]
+
+env:
+  MAJOR_MINOR: '2.0'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+
+      - name: Compute version
+        id: version
+        run: |
+          # Find the latest release tag matching majorMinor.patch
+          PATTERN="^${MAJOR_MINOR}\."
+          LATEST_TAG=$(git tag -l "${MAJOR_MINOR}.*" --sort=-v:refname \
+            | grep -E "^${MAJOR_MINOR}\.[0-9]+$" \
+            | head -1)
+
+          if [ -z "$LATEST_TAG" ]; then
+            PATCH=0
+          else
+            PATCH=$(echo "$LATEST_TAG" | sed "s/${MAJOR_MINOR}\.\([0-9]*\)/\1/")
+            PATCH=$((PATCH + 1))
+          fi
+
+          VERSION="${MAJOR_MINOR}.${PATCH}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Computed version: $VERSION"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build -c Release --no-restore /p:Version=${{ steps.version.outputs.version }}
+
+      - name: Test
+        run: dotnet test -c Release --no-build --verbosity normal
+
+      - name: Pack
+        run: |
+          dotnet pack Tharga.Team/Tharga.Team.csproj -c Release --no-build -o ./artifacts /p:PackageVersion=${{ steps.version.outputs.version }}
+          dotnet pack Tharga.Team.Blazor/Tharga.Team.Blazor.csproj -c Release --no-build -o ./artifacts /p:PackageVersion=${{ steps.version.outputs.version }}
+          dotnet pack Tharga.Team.MongoDB/Tharga.Team.MongoDB.csproj -c Release --no-build -o ./artifacts /p:PackageVersion=${{ steps.version.outputs.version }}
+          dotnet pack Tharga.Team.Service/Tharga.Team.Service.csproj -c Release --no-build -o ./artifacts /p:PackageVersion=${{ steps.version.outputs.version }}
+
+      - name: Push to NuGet
+        run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.version.outputs.version }}" \
+            --title "v${{ steps.version.outputs.version }}" \
+            --generate-notes \
+            --notes-start-tag "$(git tag -l "${MAJOR_MINOR}.*" --sort=-v:refname | grep -E "^${MAJOR_MINOR}\.[0-9]+$" | sed -n '2p')" \
+            ./artifacts/*.nupkg
