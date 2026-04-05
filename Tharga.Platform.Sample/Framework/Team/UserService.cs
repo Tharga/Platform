@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
 using Tharga.Team.MongoDB;
+using Tharga.Toolkit;
 
 namespace Tharga.Platform.Sample.Framework.Team;
 
@@ -13,10 +14,8 @@ public class UserService : UserServiceRepositoryBase<UserEntity>
 
     protected override Task<UserEntity> CreateUserEntityAsync(ClaimsPrincipal principal, string identity)
     {
-        var email = principal.FindFirst(ClaimTypes.Email)?.Value
-                    ?? principal.FindFirst("preferred_username")?.Value
-                    ?? "unknown";
-        var name = principal.FindFirst("name")?.Value;
+        var email = principal.GetEmail() ?? "unknown";
+        var name = principal.GetDisplayName();
         return Task.FromResult(new UserEntity
         {
             Key = Guid.NewGuid().ToString("N")[..10].ToUpperInvariant(),
