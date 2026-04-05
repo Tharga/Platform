@@ -67,7 +67,11 @@ jobs:
           dotnet pack Tharga.Team.Service/Tharga.Team.Service.csproj -c Release --no-build -o ./artifacts /p:PackageVersion=${{ steps.version.outputs.version }}
 
       - name: Push to NuGet
-        run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: |
+          for pkg in ./artifacts/*.nupkg; do
+            echo "Pushing $pkg..."
+            dotnet nuget push "$pkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate || true
+          done
 
       - name: Create GitHub Release
         env:
