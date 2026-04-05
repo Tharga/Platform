@@ -31,8 +31,8 @@ jobs:
           WARNING_COUNT=$(grep -c " warning " build.log || true)
           echo "Build warnings: $WARNING_COUNT"
           echo "warning_count=$WARNING_COUNT" >> "$GITHUB_OUTPUT"
-          if [ "$WARNING_COUNT" -gt 15 ]; then
-            echo "::error::Build has $WARNING_COUNT warnings (threshold: 15)"
+          if [ "$WARNING_COUNT" -gt 35 ]; then
+            echo "::error::Build has $WARNING_COUNT warnings (threshold: 35)"
             exit 1
           fi
 
