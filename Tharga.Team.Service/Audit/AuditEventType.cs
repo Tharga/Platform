@@ -6,6 +6,7 @@ public enum AuditEventType
     AuthSuccess,
     AuthFailure,
     ScopeDenial,
+    AccessLevelDenial,
     DataChange,
     RateLimit
 }
