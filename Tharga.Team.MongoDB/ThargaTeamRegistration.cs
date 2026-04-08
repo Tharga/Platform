@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Tharga.MongoDB;
 
 namespace Tharga.Team.MongoDB;
 
@@ -24,6 +25,7 @@ public static class ThargaTeamRegistration
 
             services.AddTransient(userRepositoryInterfaceType, userRepositoryImplementationType);
             services.AddTransient(userRepositoryCollectionInterfaceType, userRepositoryCollectionImplementationType);
+            services.TrackMongoCollection(userRepositoryCollectionInterfaceType, userRepositoryCollectionImplementationType);
         }
 
         if (o._teamEntity != null && o._teamMemberModel != null)
@@ -39,6 +41,7 @@ public static class ThargaTeamRegistration
 
             services.AddTransient(teamRepositoryInterfaceType, teamRepositoryImplementationType);
             services.AddTransient(teamRepositoryCollectionInterfaceType, teamRepositoryCollectionImplementationType);
+            services.TrackMongoCollection(teamRepositoryCollectionInterfaceType, teamRepositoryCollectionImplementationType);
         }
     }
 }
