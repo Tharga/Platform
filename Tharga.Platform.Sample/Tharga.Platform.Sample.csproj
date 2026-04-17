@@ -9,10 +9,6 @@
     <RootNamespace>Tharga.Platform.Sample</RootNamespace>
     <UserSecretsId>1a7983d6-af1a-451e-8272-0986f7ae5272</UserSecretsId>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Tharga.Toolkit.Standard" Version="1.15.20" />
-  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Tharga.Team.Blazor\Tharga.Team.Blazor.csproj" />
     <ProjectReference Include="..\Tharga.Team.Service\Tharga.Team.Service.csproj" />
