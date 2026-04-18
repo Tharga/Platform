@@ -11,6 +11,7 @@ A suite of NuGet packages for building multi-tenant Blazor applications with tea
 | [Tharga.Team.Blazor](https://www.nuget.org/packages/Tharga.Team.Blazor) | Team management Blazor components | Yes |
 | [Tharga.Team.MongoDB](https://www.nuget.org/packages/Tharga.Team.MongoDB) | MongoDB persistence for teams and users | No |
 | [Tharga.Team.Service](https://www.nuget.org/packages/Tharga.Team.Service) | Server-side API key auth, Swagger, audit logging | No |
+| [Tharga.Platform.Mcp](https://www.nuget.org/packages/Tharga.Platform.Mcp) | MCP (Model Context Protocol) bridge — auth, scopes, audit for MCP tools | No |
 
 ## Dependency graph
 
