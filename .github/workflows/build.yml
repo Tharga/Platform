@@ -93,13 +93,23 @@ jobs:
           echo "version=$PRE_VERSION" >> "$GITHUB_OUTPUT"
           echo "Computed pre-release version: $PRE_VERSION"
 
-      - name: Pack
+      - name: Pack (stable — push to master)
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         run: |
-          dotnet pack Tharga.Team/Tharga.Team.csproj -c Release --no-build -o ./artifacts /p:PackageVersion=${{ steps.version.outputs.version }}
-          dotnet pack Tharga.Team.Blazor/Tharga.Team.Blazor.csproj -c Release --no-build -o ./artifacts /p:PackageVersion=${{ steps.version.outputs.version }}
-          dotnet pack Tharga.Team.MongoDB/Tharga.Team.MongoDB.csproj -c Release --no-build -o ./artifacts /p:PackageVersion=${{ steps.version.outputs.version }}
-          dotnet pack Tharga.Team.Service/Tharga.Team.Service.csproj -c Release --no-build -o ./artifacts /p:PackageVersion=${{ steps.version.outputs.version }}
-          dotnet pack Tharga.Platform.Mcp/Tharga.Platform.Mcp.csproj -c Release --no-build -o ./artifacts /p:PackageVersion=${{ steps.version.outputs.version }}
+          dotnet pack Tharga.Team/Tharga.Team.csproj -c Release --no-build -o ./artifacts -p:PackageVersion=${{ steps.version.outputs.version }}
+          dotnet pack Tharga.Team.Blazor/Tharga.Team.Blazor.csproj -c Release --no-build -o ./artifacts -p:PackageVersion=${{ steps.version.outputs.version }}
+          dotnet pack Tharga.Team.MongoDB/Tharga.Team.MongoDB.csproj -c Release --no-build -o ./artifacts -p:PackageVersion=${{ steps.version.outputs.version }}
+          dotnet pack Tharga.Team.Service/Tharga.Team.Service.csproj -c Release --no-build -o ./artifacts -p:PackageVersion=${{ steps.version.outputs.version }}
+          dotnet pack Tharga.Platform.Mcp/Tharga.Platform.Mcp.csproj -c Release --no-build -o ./artifacts -p:PackageVersion=${{ steps.version.outputs.version }}
+
+      - name: Pack (pre-release — pull request)
+        if: github.event_name == 'pull_request'
+        run: |
+          dotnet pack Tharga.Team/Tharga.Team.csproj -c Release --no-build -o ./artifacts -p:PackageVersion=${{ steps.preversion.outputs.version }}
+          dotnet pack Tharga.Team.Blazor/Tharga.Team.Blazor.csproj -c Release --no-build -o ./artifacts -p:PackageVersion=${{ steps.preversion.outputs.version }}
+          dotnet pack Tharga.Team.MongoDB/Tharga.Team.MongoDB.csproj -c Release --no-build -o ./artifacts -p:PackageVersion=${{ steps.preversion.outputs.version }}
+          dotnet pack Tharga.Team.Service/Tharga.Team.Service.csproj -c Release --no-build -o ./artifacts -p:PackageVersion=${{ steps.preversion.outputs.version }}
+          dotnet pack Tharga.Platform.Mcp/Tharga.Platform.Mcp.csproj -c Release --no-build -o ./artifacts -p:PackageVersion=${{ steps.preversion.outputs.version }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
