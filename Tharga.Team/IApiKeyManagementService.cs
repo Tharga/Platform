@@ -19,4 +19,19 @@ public interface IApiKeyManagementService
 
     [RequireScope(ApiKeyScopes.Manage)]
     Task DeleteKeyAsync(string teamKey, string key);
+
+    [RequireScope(ApiKeyScopes.SystemManage)]
+    IAsyncEnumerable<IApiKey> GetSystemKeysAsync();
+
+    [RequireScope(ApiKeyScopes.SystemManage)]
+    Task<IApiKey> CreateSystemKeyAsync(string name, string[] scopes, DateTime? expiryDate = null);
+
+    [RequireScope(ApiKeyScopes.SystemManage)]
+    Task<IApiKey> RefreshSystemKeyAsync(string key);
+
+    [RequireScope(ApiKeyScopes.SystemManage)]
+    Task LockSystemKeyAsync(string key);
+
+    [RequireScope(ApiKeyScopes.SystemManage)]
+    Task DeleteSystemKeyAsync(string key);
 }

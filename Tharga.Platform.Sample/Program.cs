@@ -1,6 +1,7 @@
 using Radzen;
 using Tharga.MongoDB;
 using Tharga.Platform.Sample.Components;
+using Tharga.Platform.Sample.Framework;
 using Tharga.Platform.Sample.Framework.Team;
 using Tharga.Team;
 using Tharga.Team.Blazor.Framework;
@@ -19,6 +20,7 @@ builder.AddThargaPlatform(o =>
     o.Blazor.RegisterTeamService<TeamService, UserService, TeamMember>();
     o.Blazor.AutoCreateFirstTeam = false;
     o.Blazor.AllowTeamCreation = true;
+    o.Blazor.AddClaimsEnricher<DeveloperRoleEnricher>();
 
     //o.Blazor.ShowScopeOverrides = true;
     //o.Blazor.ShowMemberRoles = true;

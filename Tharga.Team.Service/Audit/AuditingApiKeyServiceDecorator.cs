@@ -100,9 +100,93 @@ public class AuditingApiKeyServiceDecorator : IApiKeyAdministrationService
         }
     }
 
+    // System key operations
+
+    public IAsyncEnumerable<IApiKey> GetSystemKeysAsync() => _inner.GetSystemKeysAsync();
+
+    public async Task<IApiKey> CreateSystemKeyAsync(string name, string[] scopes, DateTime? expiryDate = null, string createdBy = null)
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var result = await _inner.CreateSystemKeyAsync(name, scopes, expiryDate, createdBy);
+            sw.Stop();
+            LogSystem("create", nameof(CreateSystemKeyAsync), sw.ElapsedMilliseconds, true);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            LogSystem("create", nameof(CreateSystemKeyAsync), sw.ElapsedMilliseconds, false, ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<IApiKey> RefreshSystemKeyAsync(string key)
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var result = await _inner.RefreshSystemKeyAsync(key);
+            sw.Stop();
+            LogSystem("refresh", nameof(RefreshSystemKeyAsync), sw.ElapsedMilliseconds, true);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            LogSystem("refresh", nameof(RefreshSystemKeyAsync), sw.ElapsedMilliseconds, false, ex.Message);
+            throw;
+        }
+    }
+
+    public async Task LockSystemKeyAsync(string key)
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            await _inner.LockSystemKeyAsync(key);
+            sw.Stop();
+            LogSystem("lock", nameof(LockSystemKeyAsync), sw.ElapsedMilliseconds, true);
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            LogSystem("lock", nameof(LockSystemKeyAsync), sw.ElapsedMilliseconds, false, ex.Message);
+            throw;
+        }
+    }
+
+    public async Task DeleteSystemKeyAsync(string key)
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            await _inner.DeleteSystemKeyAsync(key);
+            sw.Stop();
+            LogSystem("delete", nameof(DeleteSystemKeyAsync), sw.ElapsedMilliseconds, true);
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            LogSystem("delete", nameof(DeleteSystemKeyAsync), sw.ElapsedMilliseconds, false, ex.Message);
+            throw;
+        }
+    }
+
     private void Log(string action, string methodName, long durationMs, bool success, string errorMessage = null, string teamKey = null)
     {
         var entry = AuditHelper.BuildEntry(_httpContextAccessor, Feature, action, methodName, durationMs, success, errorMessage, teamKey);
+        _auditLogger.Log(entry);
+    }
+
+    private void LogSystem(string action, string methodName, long durationMs, bool success, string errorMessage = null)
+    {
+        var entry = AuditHelper.BuildEntry(_httpContextAccessor, Feature, action, methodName, durationMs, success, errorMessage, teamKey: null);
+        entry = entry with
+        {
+            Metadata = new Dictionary<string, string> { { "ApiKeyType", "System" } }
+        };
         _auditLogger.Log(entry);
     }
 }

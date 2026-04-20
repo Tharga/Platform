@@ -132,10 +132,81 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
         await _repository.DeleteAsync(key);
     }
 
+    /// <inheritdoc />
+    public async IAsyncEnumerable<IApiKey> GetSystemKeysAsync()
+    {
+        await _repository.PurgeExpiredAsync();
+
+        await foreach (var item in _repository.GetAsync())
+        {
+            if (item.TeamKey != null) continue;
+            yield return item;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<IApiKey> CreateSystemKeyAsync(string name, string[] scopes, DateTime? expiryDate = null, string createdBy = null)
+    {
+        expiryDate ??= GetDefaultExpiryDate();
+
+        if (_options.MaxExpiryDays.HasValue && expiryDate.HasValue)
+        {
+            var maxDate = DateTime.UtcNow.AddDays(_options.MaxExpiryDays.Value);
+            if (expiryDate > maxDate)
+                throw new InvalidOperationException($"Expiry date cannot exceed {_options.MaxExpiryDays} days from now.");
+        }
+
+        var entity = BuildSystemKey(name, scopes ?? Array.Empty<string>(), expiryDate, createdBy);
+        var created = await _repository.AddAsync(entity);
+
+        if (_options.AutoLockKeys)
+            await _repository.LockKeyAsync(created.Key);
+
+        return created;
+    }
+
+    /// <inheritdoc />
+    public async Task<IApiKey> RefreshSystemKeyAsync(string key)
+    {
+        var item = await _repository.GetAsync(key);
+        VerifySystemKey(item);
+        var refreshed = BuildSystemKey(item.Name, item.SystemScopes ?? Array.Empty<string>(), item.ExpiryDate, item.CreatedBy);
+        await _repository.UpdateAsync(key, refreshed);
+
+        if (_options.AutoLockKeys)
+            await _repository.LockKeyAsync(key);
+
+        return refreshed;
+    }
+
+    /// <inheritdoc />
+    public async Task LockSystemKeyAsync(string key)
+    {
+        var item = await _repository.GetAsync(key);
+        VerifySystemKey(item);
+        await _repository.LockKeyAsync(key);
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteSystemKeyAsync(string key)
+    {
+        var item = await _repository.GetAsync(key);
+        VerifySystemKey(item);
+        await _repository.DeleteAsync(key);
+    }
+
     private static void VerifyTeamOwnership(ApiKeyEntity item, string teamKey)
     {
+        if (item.TeamKey == null)
+            throw new UnauthorizedAccessException("This is a system key; use the system-key methods.");
         if (item.TeamKey != teamKey)
             throw new UnauthorizedAccessException($"API key does not belong to team '{teamKey}'.");
+    }
+
+    private static void VerifySystemKey(ApiKeyEntity item)
+    {
+        if (item.TeamKey != null)
+            throw new UnauthorizedAccessException("This is a team key; use the team-scoped methods.");
     }
 
     private DateTime? GetDefaultExpiryDate()
@@ -163,6 +234,27 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
             Roles = roles,
             ExpiryDate = expiryDate,
             CreatedAt = DateTime.UtcNow,
+        };
+    }
+
+    private ApiKeyEntity BuildSystemKey(string name, string[] scopes, DateTime? expiryDate, string createdBy)
+    {
+        var apiKey = _apiKeyService.BuildApiKey("system", () => StringExtension.GetRandomString(24, 32));
+        var encryptedApiKey = _apiKeyService.Encrypt(apiKey);
+        return new ApiKeyEntity
+        {
+            Id = ObjectId.GenerateNewId(),
+            Key = Guid.NewGuid().ToString(),
+            Name = name,
+            ApiKey = apiKey,
+            ApiKeyPrefix = GetPrefix(apiKey),
+            TeamKey = null,
+            Tags = new Dictionary<string, string>(),
+            ApiKeyHash = encryptedApiKey,
+            SystemScopes = scopes,
+            ExpiryDate = expiryDate,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = createdBy,
         };
     }
 

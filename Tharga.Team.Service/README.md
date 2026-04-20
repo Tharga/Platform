@@ -34,6 +34,24 @@ app.UseAuthorization();
 app.Run();
 ```
 
+## System API keys
+
+For infrastructure-level credentials that aren't tied to a team (MCP gatekeepers, CI/CD callers, cross-team admin tooling), use **system keys** — API keys with no `TeamKey`.
+
+Create and manage them via the `<SystemApiKeyView />` component in `Tharga.Team.Blazor` (gated by the `Developer` role), or programmatically via `IApiKeyAdministrationService.CreateSystemKeyAsync(name, scopes, expiryDate, createdBy)`.
+
+System keys authenticate through the same `X-API-KEY` header. The principal they produce carries the `IsSystemKey=true` claim and the explicit scopes granted at creation time — no `TeamKey` claim.
+
+Protect system-only endpoints with the system policy:
+
+```csharp
+app.MapMcp().RequireAuthorization(ApiKeyConstants.SystemPolicyName);
+```
+
+The two policies are mutually exclusive: `ApiKeyPolicy` rejects system keys, `SystemApiKeyPolicy` rejects team keys.
+
+## Team API keys
+
 Protect endpoints with the built-in policy:
 
 ```csharp

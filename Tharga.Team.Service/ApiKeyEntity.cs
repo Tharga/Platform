@@ -23,6 +23,14 @@ public record ApiKeyEntity : EntityBase, IApiKey
     public string TeamKey { get; init; }
 
     /// <inheritdoc />
+    [BsonIgnoreIfNull]
+    public string[] SystemScopes { get; init; }
+
+    /// <inheritdoc />
+    [BsonIgnoreIfNull]
+    public string CreatedBy { get; init; }
+
+    /// <inheritdoc />
     [BsonIgnoreIfDefault]
     public Dictionary<string, string> Tags { get; init; } = new();
 

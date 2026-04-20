@@ -26,6 +26,16 @@
             </NavLink>
         </div>
 
+        <AuthorizeView Roles="@Tharga.Team.Blazor.Framework.Roles.Developer">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="system-api-keys">
+                        <span class="bi bi-key-fill-nav-menu" aria-hidden="true"></span> System API Keys
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="audit">
                 <span class="bi bi-journal-text-nav-menu" aria-hidden="true"></span> Audit

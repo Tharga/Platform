@@ -26,4 +26,7 @@ public static class ApiKeyConstants
 
     /// <summary>OpenAPI security scheme identifier.</summary>
     public const string OpenApiSchemeId = "ApiKey";
+
+    /// <summary>Authorization policy name for system-level API keys (keys not bound to a team).</summary>
+    public const string SystemPolicyName = "SystemApiKeyPolicy";
 }
