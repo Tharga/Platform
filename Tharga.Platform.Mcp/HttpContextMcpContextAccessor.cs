@@ -6,7 +6,7 @@ namespace Tharga.Platform.Mcp;
 
 /// <summary>
 /// <see cref="IMcpContextAccessor"/> implementation that builds an <see cref="IMcpContext"/> from the current
-/// <see cref="HttpContext"/> on demand. Replaces the default AsyncLocal-backed accessor when <c>AddMcpPlatform</c>
+/// <see cref="HttpContext"/> on demand. Replaces the default AsyncLocal-backed accessor when <c>AddPlatform</c>
 /// is registered.
 /// </summary>
 /// <remarks>

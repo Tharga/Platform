@@ -19,7 +19,7 @@ public static class McpPlatformBuilderExtensions
     /// Registers the Platform bridge: populates <see cref="IMcpContext"/> from the current <see cref="HttpContext"/>,
     /// enables <see cref="IMcpScopeChecker"/>, and registers built-in <c>mcp:*</c> scopes.
     /// </summary>
-    public static IThargaMcpBuilder AddMcpPlatform(this IThargaMcpBuilder builder, Action<McpPlatformOptions> configure = null)
+    public static IThargaMcpBuilder AddPlatform(this IThargaMcpBuilder builder, Action<McpPlatformOptions> configure = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
@@ -69,4 +69,9 @@ public static class McpPlatformBuilderExtensions
 
         return mapped;
     }
+
+    /// <summary>Obsolete alias for <see cref="AddPlatform"/>.</summary>
+    [Obsolete("Use AddPlatform() instead. Will be removed in a future release.")]
+    public static IThargaMcpBuilder AddMcpPlatform(this IThargaMcpBuilder builder, Action<McpPlatformOptions> configure = null)
+        => builder.AddPlatform(configure);
 }
