@@ -42,6 +42,12 @@ public static class McpPlatformBuilderExtensions
             scopes.Register(McpScopes.Discover, AccessLevel.Viewer);
         });
 
+        // Opt-in system-scope resource providers (diagnostic data for Developers).
+        if (options.ExposeSystemResources)
+        {
+            builder.AddResourceProvider<PlatformSystemResourceProvider>();
+        }
+
         return builder;
     }
 
