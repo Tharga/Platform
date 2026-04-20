@@ -18,7 +18,7 @@ Platform bridge for [Tharga.Mcp](https://www.nuget.org/packages/Tharga.Mcp). Con
 ```csharp
 builder.Services.AddThargaMcp(mcp =>
 {
-    mcp.AddMcpPlatform();        // bridge to Platform auth/scopes/audit
+    mcp.AddPlatform();        // bridge to Platform auth/scopes/audit
     // ... other provider packages (e.g. mcp.AddMongoDB())
 });
 
@@ -32,7 +32,7 @@ Expose read-only diagnostic data under `platform://system/*` for callers with th
 ```csharp
 builder.Services.AddThargaMcp(mcp =>
 {
-    mcp.AddMcpPlatform(o =>
+    mcp.AddPlatform(o =>
     {
         o.ExposeSystemResources = true;
     });

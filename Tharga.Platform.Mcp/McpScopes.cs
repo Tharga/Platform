@@ -1,7 +1,7 @@
 namespace Tharga.Platform.Mcp;
 
 /// <summary>
-/// Built-in MCP scope constants registered by <c>AddMcpPlatform</c>.
+/// Built-in MCP scope constants registered by <c>AddPlatform</c>.
 /// Provider packages (e.g. <c>Tharga.MongoDB.Mcp</c>) register their own scopes in the same <c>mcp:*</c> namespace.
 /// </summary>
 public static class McpScopes

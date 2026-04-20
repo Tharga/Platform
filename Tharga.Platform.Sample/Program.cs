@@ -42,7 +42,7 @@ builder.AddThargaPlatform(o =>
 });
 builder.Services.AddThargaMcp(mcp =>
 {
-    mcp.AddMcpPlatform();
+    mcp.AddPlatform();
 });
 
 builder.AddMongoDB();

@@ -5,7 +5,7 @@ using Tharga.Team;
 
 namespace Tharga.Platform.Mcp.Tests;
 
-public class AddMcpPlatformTests
+public class AddPlatformTests
 {
     [Fact]
     public void ReplacesDefaultContextAccessorWithHttpContextBacked()
@@ -14,7 +14,7 @@ public class AddMcpPlatformTests
 
         services.AddThargaMcp(mcp =>
         {
-            mcp.AddMcpPlatform();
+            mcp.AddPlatform();
         });
 
         var provider = services.BuildServiceProvider();
@@ -30,7 +30,7 @@ public class AddMcpPlatformTests
 
         services.AddThargaMcp(mcp =>
         {
-            mcp.AddMcpPlatform(o => o.ExposeSystemResources = false);
+            mcp.AddPlatform(o => o.ExposeSystemResources = false);
         });
 
         Assert.DoesNotContain(services, d => d.ServiceType == typeof(PlatformSystemResourceProvider));
@@ -43,7 +43,7 @@ public class AddMcpPlatformTests
 
         services.AddThargaMcp(mcp =>
         {
-            mcp.AddMcpPlatform(o => o.ExposeSystemResources = true);
+            mcp.AddPlatform(o => o.ExposeSystemResources = true);
         });
 
         Assert.Contains(services, d => d.ServiceType == typeof(PlatformSystemResourceProvider));
@@ -59,7 +59,7 @@ public class AddMcpPlatformTests
 
         services.AddThargaMcp(mcp =>
         {
-            mcp.AddMcpPlatform();
+            mcp.AddPlatform();
         });
 
         var provider = services.BuildServiceProvider();
@@ -75,7 +75,7 @@ public class AddMcpPlatformTests
 
         services.AddThargaMcp(mcp =>
         {
-            mcp.AddMcpPlatform();
+            mcp.AddPlatform();
         });
 
         var provider = services.BuildServiceProvider();
@@ -91,7 +91,7 @@ public class AddMcpPlatformTests
 
         services.AddThargaMcp(mcp =>
         {
-            mcp.AddMcpPlatform(o => o.DeveloperRole = "SuperAdmin");
+            mcp.AddPlatform(o => o.DeveloperRole = "SuperAdmin");
         });
 
         var provider = services.BuildServiceProvider();
@@ -99,4 +99,20 @@ public class AddMcpPlatformTests
 
         Assert.Equal("SuperAdmin", options.Value.DeveloperRole);
     }
+
+    [Fact]
+#pragma warning disable CS0618 // Type or member is obsolete
+    public void ObsoleteAddMcpPlatform_ForwardsToAddPlatform()
+    {
+        var services = new ServiceCollection();
+
+        services.AddThargaMcp(mcp =>
+        {
+            mcp.AddMcpPlatform();
+        });
+
+        var provider = services.BuildServiceProvider();
+        Assert.IsType<HttpContextMcpContextAccessor>(provider.GetRequiredService<IMcpContextAccessor>());
+    }
+#pragma warning restore CS0618
 }

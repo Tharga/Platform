@@ -8,7 +8,7 @@ namespace Tharga.Platform.Mcp;
 /// <summary>
 /// Read-only MCP resource provider that surfaces system-scope Platform data for diagnostic use.
 /// Only available to callers with the Developer role (see <see cref="IMcpContext.IsDeveloper"/>).
-/// Registered by <c>AddMcpPlatform</c> when <see cref="McpPlatformOptions.ExposeSystemResources"/> is true.
+/// Registered by <c>AddPlatform</c> when <see cref="McpPlatformOptions.ExposeSystemResources"/> is true.
 /// </summary>
 public sealed class PlatformSystemResourceProvider : IMcpResourceProvider
 {
