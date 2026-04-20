@@ -22,8 +22,32 @@ builder.Services.AddThargaMcp(mcp =>
     // ... other provider packages (e.g. mcp.AddMongoDB())
 });
 
-app.MapMcp();
+app.UseThargaMcp();
 ```
+
+## System-scope diagnostic resources (opt-in)
+
+Expose read-only diagnostic data under `platform://system/*` for callers with the Developer role. Non-developers see no resources and get `UnauthorizedAccessException` on read.
+
+```csharp
+builder.Services.AddThargaMcp(mcp =>
+{
+    mcp.AddMcpPlatform(o =>
+    {
+        o.ExposeSystemResources = true;
+    });
+});
+```
+
+Available resources (listed only when the matching dependency is registered):
+
+| URI | Contents |
+|-----|----------|
+| `platform://system/apikeys` | System API keys (not bound to a team). Raw key values are redacted. |
+| `platform://system/roles` | Tenant roles registered via `AddThargaTenantRoles` |
+| `platform://system/audit` | Most recent ~100 audit entries from the last 7 days |
+
+Cross-tenant team listings and per-team API-key listings are deferred — they require a new `ITeamService` method and are tracked separately.
 
 ## Related packages
 

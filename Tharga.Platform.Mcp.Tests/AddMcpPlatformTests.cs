@@ -24,6 +24,35 @@ public class AddMcpPlatformTests
     }
 
     [Fact]
+    public void ExposeSystemResources_False_DoesNotRegisterSystemProvider()
+    {
+        var services = new ServiceCollection();
+
+        services.AddThargaMcp(mcp =>
+        {
+            mcp.AddMcpPlatform(o => o.ExposeSystemResources = false);
+        });
+
+        Assert.DoesNotContain(services, d => d.ServiceType == typeof(PlatformSystemResourceProvider));
+    }
+
+    [Fact]
+    public void ExposeSystemResources_True_RegistersSystemProvider()
+    {
+        var services = new ServiceCollection();
+
+        services.AddThargaMcp(mcp =>
+        {
+            mcp.AddMcpPlatform(o => o.ExposeSystemResources = true);
+        });
+
+        Assert.Contains(services, d => d.ServiceType == typeof(PlatformSystemResourceProvider));
+        Assert.Contains(services, d =>
+            d.ServiceType == typeof(IMcpResourceProvider) &&
+            d.Lifetime == ServiceLifetime.Transient);
+    }
+
+    [Fact]
     public void RegistersScopeChecker()
     {
         var services = new ServiceCollection();
