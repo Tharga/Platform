@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Tharga.Mcp;
+using Tharga.Team;
 
 namespace Tharga.Platform.Mcp;
 
@@ -30,10 +31,23 @@ public sealed class HttpContextMcpContextAccessor : IMcpContextAccessor
             var ctx = _httpContextAccessor.HttpContext;
             if (ctx == null) return null;
 
-            // The Phase 0 single-endpoint design doesn't carry per-call scope through the transport.
-            // Callers can still read user/team/developer claims. Scope is User by default and providers
-            // should enforce their own declared scope via context.IsDeveloper / context.TeamId.
-            return new PlatformMcpContext(ctx.User, McpScope.User, _options.DeveloperRole);
+            var user = ctx.User;
+            // Derive scope from claims so the Tharga.Mcp dispatcher's hierarchy filter
+            // (p.Scope <= current.Scope, since Tharga.Mcp 0.1.2) can see providers at the
+            // caller's level and below.
+            //
+            // - Developer role (or system API key) → System scope sees everything
+            // - TeamKey claim → Team scope sees Team + User providers
+            // - Otherwise → User scope
+            var scope =
+                (user?.IsInRole(_options.DeveloperRole) ?? false)
+                    || (user?.HasClaim(TeamClaimTypes.IsSystemKey, "true") ?? false)
+                    ? McpScope.System
+                : !string.IsNullOrEmpty(user?.FindFirst(TeamClaimTypes.TeamKey)?.Value)
+                    ? McpScope.Team
+                : McpScope.User;
+
+            return new PlatformMcpContext(user, scope, _options.DeveloperRole);
         }
         set
         {
