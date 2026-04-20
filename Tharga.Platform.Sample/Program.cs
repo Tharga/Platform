@@ -1,5 +1,7 @@
 using Radzen;
+using Tharga.Mcp;
 using Tharga.MongoDB;
+using Tharga.Platform.Mcp;
 using Tharga.Platform.Sample.Components;
 using Tharga.Platform.Sample.Framework;
 using Tharga.Platform.Sample.Framework.Team;
@@ -38,6 +40,10 @@ builder.AddThargaPlatform(o =>
 
     o.Audit = new AuditOptions();
 });
+builder.Services.AddThargaMcp(mcp =>
+{
+    mcp.AddMcpPlatform();
+});
 
 builder.AddMongoDB();
 
@@ -59,6 +65,7 @@ app.UseHttpsRedirection();
 app.UseAntiforgery();
 
 app.UseThargaPlatform();
+app.UseThargaMcp();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()

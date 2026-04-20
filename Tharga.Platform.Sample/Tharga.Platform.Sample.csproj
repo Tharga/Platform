@@ -9,6 +9,7 @@
     <UserSecretsId>1a7983d6-af1a-451e-8272-0986f7ae5272</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Tharga.Platform.Mcp\Tharga.Platform.Mcp.csproj" />
     <ProjectReference Include="..\Tharga.Team.Blazor\Tharga.Team.Blazor.csproj" />
     <ProjectReference Include="..\Tharga.Team.Service\Tharga.Team.Service.csproj" />
     <ProjectReference Include="..\Tharga.Team.MongoDB\Tharga.Team.MongoDB.csproj" />

@@ -22,7 +22,7 @@ builder.Services.AddThargaMcp(mcp =>
     // ... other provider packages (e.g. mcp.AddMongoDB())
 });
 
-app.MapMcp();
+app.UseThargaMcp();
 ```
 
 ## System-scope diagnostic resources (opt-in)
