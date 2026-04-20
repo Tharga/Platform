@@ -7,7 +7,7 @@
     <Company>Thargelion AB</Company>
     <Product>Tharga Platform Mcp</Product>
     <Description>Platform bridge for Tharga.Mcp. Provides Platform-backed IMcpContext, scope enforcement, audit logging, and authentication for MCP tool and resource invocations.</Description>
-    <PackageIconUrl>https://thargelion.se/wp-content/uploads/2025/11/Thargelion-White-Icon-150.png</PackageIconUrl>
+    <PackageIconUrl>https://thargelion.se/wp-content/uploads/2026/04/Thargelion-Mcp-Icon-150.png</PackageIconUrl>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <DebugType>portable</DebugType>

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Tharga.Blazor.Framework;
 using Tharga.Team;
@@ -14,6 +15,16 @@ namespace Tharga.Team.Blazor.Framework;
 
 public static class ThargaBlazorRegistration
 {
+    /// <summary>
+    /// Registers Tharga Team Blazor components on a host application builder, threading
+    /// <see cref="IHostApplicationBuilder.Configuration"/> through automatically.
+    /// </summary>
+    public static void AddThargaTeamBlazor(this IHostApplicationBuilder builder, Action<ThargaBlazorOptions> options = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        builder.Services.AddThargaTeamBlazor(options, builder.Configuration);
+    }
+
     public static void AddThargaTeamBlazor(this IServiceCollection services, Action<ThargaBlazorOptions> options = null, IConfiguration configuration = null)
     {
         var o = new ThargaBlazorOptions();

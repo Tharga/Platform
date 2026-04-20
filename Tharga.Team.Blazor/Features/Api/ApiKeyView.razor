@@ -22,6 +22,10 @@ else if (!_hasAccess)
 {
     <RadzenText>Access denied. You need the API key management permission to view this page.</RadzenText>
 }
+else if (!_teamLoaded)
+{
+    <Loading />
+}
 else if (_selectedTeam == null)
 {
     <RadzenText>No team selected.</RadzenText>
@@ -122,6 +126,7 @@ else
     private bool _apiKeyServiceMissing;
     private IApiKeyManagementService _apiKeyManagementService;
     private bool _hasAccess;
+    private bool _teamLoaded;
     private ITeam _selectedTeam;
     private ApiKeyModel[] _keys;
     private ApiKeyOptions _options;
@@ -155,6 +160,7 @@ else
             ? DateTime.UtcNow.AddDays(_options.MaxExpiryDays.Value).Date
             : null;
         _selectedTeam = await TeamStateService.GetSelectedTeamAsync();
+        _teamLoaded = true;
         await ReloadData();
         await base.OnInitializedAsync();
     }
