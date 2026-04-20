@@ -37,6 +37,16 @@ public static class ApiKeyRegistration
             {
                 policy.AddAuthenticationSchemes(ApiKeyConstants.SchemeName);
                 policy.RequireAuthenticatedUser();
+                // Team policy rejects system keys — a team key has no IsSystemKey claim set to "true"
+                policy.RequireAssertion(ctx =>
+                    !ctx.User.HasClaim(TeamClaimTypes.IsSystemKey, "true"));
+            });
+
+            options.AddPolicy(ApiKeyConstants.SystemPolicyName, policy =>
+            {
+                policy.AddAuthenticationSchemes(ApiKeyConstants.SchemeName);
+                policy.RequireAuthenticatedUser();
+                policy.RequireClaim(TeamClaimTypes.IsSystemKey, "true");
             });
         });
 

@@ -1,0 +1,213 @@
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.JSInterop
+@using Tharga.Team
+@using Tharga.Team.Blazor.Framework
+@inject IServiceProvider ServiceProvider
+@inject IJSRuntime Js
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<AuthorizeView Roles="@Roles.Developer" Context="authState">
+    <Authorized>
+        @if (_apiKeyServiceMissing)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat">
+                API key management is not configured. Register <code>IApiKeyManagementService</code> in Program.cs to enable this view.
+            </RadzenAlert>
+        }
+        else if (_keys == null)
+        {
+            <Loading />
+        }
+        else
+        {
+            <RadzenDataGrid Data="@_keys" TItem="SystemApiKeyModel">
+                <Columns>
+                    <RadzenDataGridColumn Title="Name" Property="@nameof(SystemApiKeyModel.Name)" Width="180px" />
+                    <RadzenDataGridColumn Title="Key" Property="@nameof(SystemApiKeyModel.VisibleKey)" />
+                    <RadzenDataGridColumn Title="Scopes" Width="220px">
+                        <Template>
+                            @string.Join(", ", context.SystemScopes ?? Array.Empty<string>())
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Title="Expiry" Width="130px">
+                        <Template>
+                            @if (context.ExpiryDate.HasValue)
+                            {
+                                <span style="@(context.IsExpired ? "color: red" : "")">
+                                    <DateTimeView Date="@context.ExpiryDate" />
+                                </span>
+                            }
+                            else
+                            {
+                                <RadzenText>No expiry</RadzenText>
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Title="Created" Width="150px">
+                        <Template>
+                            <DateTimeView Date="@context.CreatedAt" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Title="Created By" Property="@nameof(SystemApiKeyModel.CreatedBy)" Width="150px" />
+                    <RadzenDataGridColumn Width="220px">
+                        <Template>
+                            <RadzenButton Icon="visibility" Click="@(_ => context.VisibleKey = context.ApiKey)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey == _apiKeyMask)" />
+                            <RadzenButton Icon="visibility_off" Click="@(_ => context.VisibleKey = _apiKeyMask)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey != _apiKeyMask)" />
+                            <RadzenButton Icon="content_copy" Click="@(_ => CopyToClipboard(context))" Visible="@(!string.IsNullOrEmpty(context.ApiKey))" />
+                            <RadzenButton Icon="lock" Click="@(_ => LockKeyAsync(context))" Visible="@(!string.IsNullOrEmpty(context.ApiKey))" />
+                            <RadzenButton Icon="refresh" Click="@(_ => RefreshAsync(context))" />
+                            <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Click="@(_ => DeleteAsync(context))" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+
+            <RadzenCard class="rz-mt-4">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="1rem" Wrap="FlexWrap.Wrap">
+                    <RadzenStack Gap="0.25rem">
+                        <RadzenLabel Text="Name" />
+                        <RadzenTextBox Value="@_newName" @oninput="@(e => _newName = e.Value?.ToString() ?? "")" Placeholder="Key name" />
+                    </RadzenStack>
+                    <RadzenStack Gap="0.25rem" Style="min-width: 260px">
+                        <RadzenLabel Text="Scopes" />
+                        <RadzenDropDown TValue="IEnumerable<string>"
+                                        @bind-Value="_newScopes"
+                                        Data="@_allScopes"
+                                        Multiple="true"
+                                        AllowClear="true"
+                                        Placeholder="Select scopes..." />
+                    </RadzenStack>
+                    <RadzenStack Gap="0.25rem">
+                        <RadzenLabel Text="Expiry Date" />
+                        <RadzenDatePicker @bind-Value="_newExpiryDate" DateFormat="yyyy-MM-dd"
+                                          AllowClear="true"
+                                          Min="@DateTime.UtcNow.Date" />
+                    </RadzenStack>
+                    <RadzenButton Text="Create" Icon="add" Click="@CreateAsync"
+                                  Disabled="@string.IsNullOrWhiteSpace(_newName)" />
+                </RadzenStack>
+            </RadzenCard>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <RadzenText>Access denied. The Developer role is required to manage system API keys.</RadzenText>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private bool _apiKeyServiceMissing;
+    private IApiKeyManagementService _apiKeyManagementService;
+    private IScopeRegistry _scopeRegistry;
+    private SystemApiKeyModel[] _keys;
+    private string[] _allScopes = [];
+    private readonly string _apiKeyMask = "**********";
+
+    private string _newName = "";
+    private IEnumerable<string> _newScopes = Array.Empty<string>();
+    private DateTime? _newExpiryDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _apiKeyManagementService = ServiceProvider.GetService<IApiKeyManagementService>();
+        _apiKeyServiceMissing = _apiKeyManagementService == null;
+        if (_apiKeyServiceMissing) { await base.OnInitializedAsync(); return; }
+
+        _scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
+        _allScopes = _scopeRegistry?.All.Select(s => s.Name).ToArray() ?? [];
+
+        await ReloadData();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task ReloadData()
+    {
+        var keys = await _apiKeyManagementService.GetSystemKeysAsync().ToArrayAsync();
+        _keys = keys
+            .Select(x => new SystemApiKeyModel
+            {
+                Key = x.Key,
+                Name = x.Name,
+                ApiKey = x.ApiKey,
+                VisibleKey = _apiKeyMask,
+                SystemScopes = x.SystemScopes ?? [],
+                ExpiryDate = x.ExpiryDate,
+                CreatedAt = x.CreatedAt,
+                CreatedBy = x.CreatedBy,
+            }).ToArray();
+
+        StateHasChanged();
+    }
+
+    private async Task CreateAsync()
+    {
+        try
+        {
+            var created = await _apiKeyManagementService.CreateSystemKeyAsync(_newName, _newScopes?.ToArray() ?? [], _newExpiryDate);
+            _newName = "";
+            _newScopes = Array.Empty<string>();
+            _newExpiryDate = null;
+            await ReloadData();
+            ShowKeyOnce(created);
+            NotificationService.Notify(NotificationSeverity.Success, "System API key created");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Failed to create key", ex.Message);
+        }
+    }
+
+    private async Task RefreshAsync(SystemApiKeyModel context)
+    {
+        var result = await DialogService.Confirm($"The {context.Name} key will be regenerated.", "Confirm regenerate API key");
+        if (result != true) return;
+
+        var refreshed = await _apiKeyManagementService.RefreshSystemKeyAsync(context.Key);
+        await ReloadData();
+        ShowKeyOnce(refreshed);
+    }
+
+    private void ShowKeyOnce(IApiKey key)
+    {
+        if (key == null || string.IsNullOrEmpty(key.ApiKey)) return;
+        var model = _keys?.FirstOrDefault(k => k.Key == key.Key);
+        if (model != null) model.VisibleKey = key.ApiKey;
+        StateHasChanged();
+    }
+
+    private async Task CopyToClipboard(SystemApiKeyModel context)
+    {
+        var keyToCopy = context.VisibleKey != _apiKeyMask ? context.VisibleKey : context.ApiKey;
+        await Js.InvokeVoidAsync("clipboard.copyText", keyToCopy);
+        NotificationService.Notify(new NotificationMessage
+        {
+            Summary = $"The {context.Name} key has been copied to the clipboard."
+        });
+    }
+
+    private async Task LockKeyAsync(SystemApiKeyModel context)
+    {
+        var result = await DialogService.Confirm($"The {context.Name} key will be locked. After that, it cannot be retrieved.", "Confirm lock API key");
+        if (result != true) return;
+
+        await _apiKeyManagementService.LockSystemKeyAsync(context.Key);
+        await ReloadData();
+    }
+
+    private async Task DeleteAsync(SystemApiKeyModel context)
+    {
+        var result = await DialogService.Confirm($"Delete system API key '{context.Name}'? This cannot be undone.", "Confirm delete");
+        if (result != true) return;
+
+        try
+        {
+            await _apiKeyManagementService.DeleteSystemKeyAsync(context.Key);
+            await ReloadData();
+            NotificationService.Notify(NotificationSeverity.Success, "System API key deleted");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Failed to delete key", ex.Message);
+        }
+    }
+}

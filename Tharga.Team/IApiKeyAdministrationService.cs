@@ -22,4 +22,23 @@ public interface IApiKeyAdministrationService
 
     /// <summary>Deletes an API key. Verifies team ownership.</summary>
     Task DeleteKeyAsync(string teamKey, string key);
+
+    /// <summary>Returns all system-level API keys (not bound to a team).</summary>
+    IAsyncEnumerable<IApiKey> GetSystemKeysAsync();
+
+    /// <summary>Creates a new system-level API key with the specified explicit scope set.</summary>
+    /// <param name="name">Human-readable name for the key.</param>
+    /// <param name="scopes">Explicit scopes granted to this key. Not resolved through AccessLevel/roles.</param>
+    /// <param name="expiryDate">Optional expiry date.</param>
+    /// <param name="createdBy">Identity of the user creating the key (for audit).</param>
+    Task<IApiKey> CreateSystemKeyAsync(string name, string[] scopes, DateTime? expiryDate = null, string createdBy = null);
+
+    /// <summary>Regenerates a system key's raw value. Returns the entity with the raw key visible once.</summary>
+    Task<IApiKey> RefreshSystemKeyAsync(string key);
+
+    /// <summary>Locks a system API key so it can no longer authenticate.</summary>
+    Task LockSystemKeyAsync(string key);
+
+    /// <summary>Deletes a system API key.</summary>
+    Task DeleteSystemKeyAsync(string key);
 }

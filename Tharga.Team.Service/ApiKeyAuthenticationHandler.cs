@@ -50,20 +50,33 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
             return AuthenticateResult.Fail("Invalid API key.");
         }
 
-        var (accessLevel, roleNames, scopeOverrides) = ResolveKeyDetails(key);
-
         var claims = new List<Claim>
         {
-            new(TeamClaimTypes.TeamKey, key.TeamKey),
-            new(ClaimTypes.Name, key.Name ?? key.TeamKey),
-            new(TeamClaimTypes.AccessLevel, accessLevel.ToString()),
+            new(ClaimTypes.Name, key.Name ?? key.TeamKey ?? "system"),
         };
 
-        if (_scopeRegistry != null)
+        if (key.TeamKey == null)
         {
-            foreach (var scope in _scopeRegistry.GetEffectiveScopes(accessLevel, roleNames, scopeOverrides))
+            // System key: explicit scopes, no team claim
+            claims.Add(new Claim(TeamClaimTypes.IsSystemKey, "true"));
+            foreach (var scope in key.SystemScopes ?? Array.Empty<string>())
             {
                 claims.Add(new Claim(TeamClaimTypes.Scope, scope));
+            }
+        }
+        else
+        {
+            // Team key: resolve scopes through registry
+            var (accessLevel, roleNames, scopeOverrides) = ResolveKeyDetails(key);
+            claims.Add(new Claim(TeamClaimTypes.TeamKey, key.TeamKey));
+            claims.Add(new Claim(TeamClaimTypes.AccessLevel, accessLevel.ToString()));
+
+            if (_scopeRegistry != null)
+            {
+                foreach (var scope in _scopeRegistry.GetEffectiveScopes(accessLevel, roleNames, scopeOverrides))
+                {
+                    claims.Add(new Claim(TeamClaimTypes.Scope, scope));
+                }
             }
         }
 
@@ -71,7 +84,7 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
         var principal = new ClaimsPrincipal(identity);
         var ticket = new AuthenticationTicket(principal, Scheme.Name);
 
-        LogAuthEvent(key.Name ?? key.TeamKey, key.TeamKey, true);
+        LogAuthEvent(key.Name ?? key.TeamKey ?? "system", key.TeamKey, true);
 
         return AuthenticateResult.Success(ticket);
     }

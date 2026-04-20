@@ -14,8 +14,14 @@ public interface IApiKey
     /// <summary>The raw API key value (only populated on creation; otherwise empty).</summary>
     string ApiKey { get; }
 
-    /// <summary>Team that owns this API key.</summary>
+    /// <summary>Team that owns this API key. Null for system keys (not bound to a team).</summary>
     string TeamKey { get; }
+
+    /// <summary>Explicit scopes granted to a system key at creation time. Null/empty for team keys.</summary>
+    string[] SystemScopes { get; }
+
+    /// <summary>User who created this key (identity/display name). Null if not recorded.</summary>
+    string CreatedBy { get; }
 
     /// <summary>Arbitrary key-value metadata associated with this API key.</summary>
     Dictionary<string, string> Tags { get; }
