@@ -54,7 +54,7 @@ public static class McpPlatformBuilderExtensions
         ArgumentNullException.ThrowIfNull(endpoints);
 
         var mcpOptions = endpoints.ServiceProvider.GetRequiredService<ThargaMcpOptions>();
-        var mapped = endpoints.MapMcp();
+        var mapped = endpoints.UseThargaMcp();
 
         if (mcpOptions.RequireAuth)
         {
