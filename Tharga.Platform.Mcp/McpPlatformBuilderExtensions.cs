@@ -53,21 +53,17 @@ public static class McpPlatformBuilderExtensions
 
     /// <summary>
     /// Maps the MCP endpoint and applies Platform authentication policy.
-    /// When <see cref="ThargaMcpOptions.RequireAuth"/> is true (the default), the endpoint requires an authenticated caller.
     /// </summary>
+    /// <remarks>
+    /// Obsolete since Tharga.Mcp 0.1.2 — <c>UseThargaMcp()</c> now reads
+    /// <see cref="ThargaMcpOptions.RequireAuth"/> and applies <c>RequireAuthorization()</c> itself.
+    /// Consumers should call <c>app.UseThargaMcp()</c> directly.
+    /// </remarks>
+    [Obsolete("Use app.UseThargaMcp() directly — it honors ThargaMcpOptions.RequireAuth since Tharga.Mcp 0.1.2. Will be removed in a future release.")]
     public static IEndpointConventionBuilder MapMcpPlatform(this IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
-
-        var mcpOptions = endpoints.ServiceProvider.GetRequiredService<ThargaMcpOptions>();
-        var mapped = endpoints.UseThargaMcp();
-
-        if (mcpOptions.RequireAuth)
-        {
-            mapped.RequireAuthorization();
-        }
-
-        return mapped;
+        return endpoints.UseThargaMcp();
     }
 
     /// <summary>Obsolete alias for <see cref="AddPlatform"/>.</summary>
