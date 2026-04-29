@@ -5,6 +5,7 @@ namespace Tharga.Team.Blazor.Features.User;
 /// </summary>
 public record UserTeamInfo
 {
+    public string TeamKey { get; init; }
     public string TeamName { get; init; }
     public AccessLevel AccessLevel { get; init; }
     public MembershipState? State { get; init; }

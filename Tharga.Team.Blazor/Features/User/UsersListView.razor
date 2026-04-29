@@ -95,6 +95,8 @@ else
         var teamLookup = _teams
             .Where(t => t.Members != null)
             .SelectMany(t => t.Members.Select(m => new { Team = t, Member = m }))
+            .GroupBy(x => new { TeamKey = x.Team.Key, MemberKey = x.Member.Key })
+            .Select(g => g.First())
             .ToLookup(x => x.Member.Key);
 
         _allUsers = _users.Select(u => new UserViewModel
@@ -105,6 +107,7 @@ else
             TeamCount = teamLookup[u.Key].Count(),
             Teams = teamLookup[u.Key].Select(x => new UserTeamInfo
             {
+                TeamKey = x.Team.Key,
                 TeamName = x.Team.Name,
                 AccessLevel = x.Member.AccessLevel,
                 State = x.Member.State
