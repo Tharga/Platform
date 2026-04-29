@@ -50,7 +50,7 @@
                         </Template>
                     </RadzenDataGridColumn>
                     <RadzenDataGridColumn Title="Created By" Property="@nameof(SystemApiKeyModel.CreatedBy)" Width="150px" />
-                    <RadzenDataGridColumn Width="220px">
+                    <RadzenDataGridColumn Width="@(ShowAuditLogButton ? "260px" : "220px")">
                         <Template>
                             <RadzenButton Icon="visibility" Click="@(_ => context.VisibleKey = context.ApiKey)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey == _apiKeyMask)" />
                             <RadzenButton Icon="visibility_off" Click="@(_ => context.VisibleKey = _apiKeyMask)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey != _apiKeyMask)" />
@@ -228,6 +228,6 @@
 
         await DialogService.OpenAsync($"Audit log — {context.Name}", _ =>
             @<Tharga.Team.Blazor.Features.Audit.AuditLogView PinnedFilter="@pinned" />,
-            new DialogOptions { Width = "min(1100px, 95vw)", Height = "min(80vh, 720px)", Resizable = true });
+            new DialogOptions { Width = "90vw", Height = "85vh", Resizable = true, Draggable = true });
     }
 }

@@ -80,7 +80,7 @@ else
                     </Template>
                 </RadzenDataGridColumn>
             }
-            <RadzenDataGridColumn Width="@(_options.AdvancedMode ? "220px" : "180px")">
+            <RadzenDataGridColumn Width="@GetActionsColumnWidth()">
                 <Template>
                     <RadzenButton Icon="visibility" Click="@(_ => context.VisibleKey = context.ApiKey)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey == _apiKeyMask)" />
                     <RadzenButton Icon="visibility_off" Click="@(_ => context.VisibleKey = _apiKeyMask)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey != _apiKeyMask)" />
@@ -308,6 +308,16 @@ else
 
         await DialogService.OpenAsync($"Audit log — {context.Name}", _ =>
             @<Tharga.Team.Blazor.Features.Audit.AuditLogView PinnedFilter="@pinned" />,
-            new DialogOptions { Width = "min(1100px, 95vw)", Height = "min(80vh, 720px)", Resizable = true });
+            new DialogOptions { Width = "90vw", Height = "85vh", Resizable = true, Draggable = true });
+    }
+
+    private string GetActionsColumnWidth()
+    {
+        // Base 180px (matches the original simple-mode width), +40 for delete in advanced mode,
+        // +40 when the audit log button is shown.
+        var width = 180;
+        if (_options?.AdvancedMode == true) width += 40;
+        if (ShowAuditLogButton) width += 40;
+        return $"{width}px";
     }
 }
