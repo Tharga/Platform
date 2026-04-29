@@ -183,6 +183,23 @@ public class AuditingTeamServiceDecorator : ITeamService
         }
     }
 
+    public async Task SetMemberNameAsync(string teamKey, string userKey, string name)
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            await _inner.SetMemberNameAsync(teamKey, userKey, name);
+            sw.Stop();
+            Log("set-member-name", nameof(SetMemberNameAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            Log("set-member-name", nameof(SetMemberNameAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey);
+            throw;
+        }
+    }
+
     public async Task SetInvitationResponseAsync(string teamKey, string userKey, string inviteCode, bool accept)
     {
         var action = accept ? "accept-invite" : "reject-invite";

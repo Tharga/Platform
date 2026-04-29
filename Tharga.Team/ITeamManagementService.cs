@@ -31,6 +31,9 @@ public interface ITeamManagementService
     Task SetMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides);
 
     [RequireScope(TeamScopes.Manage)]
+    Task SetMemberNameAsync(string teamKey, string userKey, string name);
+
+    [RequireScope(TeamScopes.Manage)]
     Task TransferOwnershipAsync(string teamKey, string newOwnerUserKey);
 
     [RequireScope(TeamScopes.Read)]

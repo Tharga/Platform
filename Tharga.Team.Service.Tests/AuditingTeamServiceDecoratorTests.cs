@@ -108,6 +108,18 @@ public class AuditingTeamServiceDecoratorTests
     }
 
     [Fact]
+    public async Task SetMemberNameAsync_LogsAuditEntry()
+    {
+        await _sut.SetMemberNameAsync("team-1", "user-2", "New Name");
+
+        var entry = Assert.Single(_backend.Entries);
+        Assert.Equal("team", entry.Feature);
+        Assert.Equal("set-member-name", entry.Action);
+        Assert.Equal("team-1", entry.TeamKey);
+        Assert.True(entry.Success);
+    }
+
+    [Fact]
     public async Task SetInvitationResponseAsync_Accept_LogsAuditEntry()
     {
         await _sut.SetInvitationResponseAsync("team-1", "user-2", "invite-key", true);

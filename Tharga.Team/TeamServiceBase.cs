@@ -29,6 +29,7 @@ public abstract class TeamServiceBase : ITeamService
     protected abstract Task SetTeamMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel);
     protected abstract Task SetTeamMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles);
     protected abstract Task SetTeamMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides);
+    protected abstract Task SetTeamMemberNameAsync(string teamKey, string userKey, string name);
     protected abstract Task SetTeamConsentInternalAsync(string teamKey, string[] consentedRoles);
     protected abstract IAsyncEnumerable<ITeam> GetConsentedTeamsInternalAsync(string[] userRoles);
 
@@ -158,6 +159,13 @@ public abstract class TeamServiceBase : ITeamService
     public async Task SetMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides)
     {
         await SetTeamMemberScopeOverridesAsync(teamKey, userKey, scopeOverrides);
+        _teamMemberCache.TryRemove($"{teamKey}.{userKey}", out _);
+        TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
+    }
+
+    public async Task SetMemberNameAsync(string teamKey, string userKey, string name)
+    {
+        await SetTeamMemberNameAsync(teamKey, userKey, name);
         _teamMemberCache.TryRemove($"{teamKey}.{userKey}", out _);
         TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
     }

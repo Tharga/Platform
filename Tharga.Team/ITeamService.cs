@@ -17,6 +17,7 @@ public interface ITeamService
     Task SetMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel);
     Task SetMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles);
     Task SetMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides);
+    Task SetMemberNameAsync(string teamKey, string userKey, string name);
     Task SetInvitationResponseAsync(string teamKey, string userKey, string inviteCode, bool accept);
     Task SetMemberLastSeenAsync(string teamKey);
     Task TransferOwnershipAsync<TMember>(string teamKey, string newOwnerUserKey) where TMember : ITeamMember;
