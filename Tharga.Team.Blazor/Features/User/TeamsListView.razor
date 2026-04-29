@@ -1,0 +1,119 @@
+@using Tharga.Team
+@typeparam TMember where TMember : class, Tharga.Team.ITeamMember
+@inject ITeamService TeamService
+@inject IUserService UserService
+
+@if (_loaded)
+{
+    <RadzenDataGrid Data="@_teamViewModels" TItem="TeamViewModel" AllowSorting="true" AllowPaging="true" PageSize="10"
+                    RowSelect="@OnTeamSelected" Style="cursor: pointer;">
+        <Columns>
+            <RadzenDataGridColumn Title="Name" Property="Name" />
+            <RadzenDataGridColumn Title="Members" Property="MemberCount" Width="100px" />
+            @if (TeamActionsTemplate != null)
+            {
+                <RadzenDataGridColumn Title="" Sortable="false" Filterable="false">
+                    <Template>
+                        @TeamActionsTemplate(context)
+                    </Template>
+                </RadzenDataGridColumn>
+            }
+        </Columns>
+    </RadzenDataGrid>
+
+    @if (_selectedTeam != null)
+    {
+        <RadzenCard class="rz-mt-3">
+            <RadzenText TextStyle="TextStyle.Subtitle1"><strong>@_selectedTeam.Name</strong></RadzenText>
+            <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-mb-1">Members</RadzenText>
+            <RadzenDataGrid Data="@_selectedTeam.Members" TItem="TeamMemberInfo" AllowSorting="true">
+                <Columns>
+                    <RadzenDataGridColumn Title="" Width="50px" Sortable="false">
+                        <Template>
+                            <RadzenGravatar Email="@context.EMail" Style="width: 32px; height: 32px;" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Title="Name" Property="Name" />
+                    <RadzenDataGridColumn Title="Email" Property="EMail" />
+                    <RadzenDataGridColumn Title="Role" Property="AccessLevel" Width="120px" />
+                    <RadzenDataGridColumn Title="State" Property="State" Width="100px" />
+                    <RadzenDataGridColumn Title="Last seen" Sortable="true" Width="150px">
+                        <Template>
+                            <DateTimeView Date="@context.LastSeen" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                    @if (MemberActionsTemplate != null)
+                    {
+                        <RadzenDataGridColumn Title="" Sortable="false" Filterable="false">
+                            <Template>
+                                @MemberActionsTemplate(context)
+                            </Template>
+                        </RadzenDataGridColumn>
+                    }
+                </Columns>
+            </RadzenDataGrid>
+        </RadzenCard>
+    }
+}
+else
+{
+    <Loading />
+}
+
+@code {
+    /// <summary>
+    /// Optional template rendered as an extra column at the right of each team row.
+    /// </summary>
+    [Parameter] public RenderFragment<TeamViewModel> TeamActionsTemplate { get; set; }
+
+    /// <summary>
+    /// Optional template rendered as an extra column at the right of each member row in the drill-down grid.
+    /// </summary>
+    [Parameter] public RenderFragment<TeamMemberInfo> MemberActionsTemplate { get; set; }
+
+    private bool _loaded;
+    private IUser[] _users;
+    private ITeam<TMember>[] _teams;
+
+    private List<TeamViewModel> _teamViewModels = new();
+    private TeamViewModel _selectedTeam;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _users = await UserService.GetAsync().ToArrayAsync();
+        _teams = await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
+
+        BuildViewModels();
+        _loaded = true;
+
+        await base.OnInitializedAsync();
+    }
+
+    private void BuildViewModels()
+    {
+        _teamViewModels = _teams.Select(t => new TeamViewModel
+        {
+            Key = t.Key,
+            Name = t.Name,
+            MemberCount = t.Members?.Length ?? 0,
+            Members = (t.Members ?? []).Select(m =>
+            {
+                var user = _users.FirstOrDefault(u => u.Key == m.Key);
+                return new TeamMemberInfo
+                {
+                    Key = m.Key,
+                    Name = m.Name ?? user?.Name ?? TeamServiceBase.ResolveDisplayName(user),
+                    EMail = user?.EMail ?? m.Invitation?.EMail,
+                    AccessLevel = m.AccessLevel,
+                    State = m.State,
+                    LastSeen = m.LastSeen
+                };
+            }).ToArray()
+        }).OrderBy(t => t.Name).ToList();
+    }
+
+    private void OnTeamSelected(TeamViewModel team)
+    {
+        _selectedTeam = _selectedTeam?.Key == team.Key ? null : team;
+    }
+}
