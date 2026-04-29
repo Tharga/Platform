@@ -21,6 +21,13 @@ public record AuditEntry
     // Identity
     public AuditCallerType CallerType { get; init; }
     public string CallerIdentity { get; init; }
+
+    /// <summary>
+    /// Stable identifier of the API key that authenticated this caller (the <c>IApiKey.Key</c> Guid string).
+    /// Null when the caller did not authenticate via an API key.
+    /// </summary>
+    public string CallerKeyId { get; init; }
+
     public string TeamKey { get; init; }
     public string AccessLevel { get; init; }
     public AuditCallerSource CallerSource { get; init; }

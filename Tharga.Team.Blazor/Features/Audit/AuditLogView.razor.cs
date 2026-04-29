@@ -21,6 +21,13 @@ public partial class AuditLogView : ComponentBase
     [Parameter] public string[] CrossTeamRoles { get; set; } = ["Developer"];
     [Parameter] public string[] RequiredScopes { get; set; } = [];
 
+    /// <summary>
+    /// Optional fixed filter dimensions. When set, the matching top-bar controls render
+    /// disabled with the pinned values selected, and the underlying query is forced to
+    /// the pinned values regardless of in-component state.
+    /// </summary>
+    [Parameter] public AuditPinnedFilter PinnedFilter { get; set; }
+
     private const int ChartQueryLimit = 5000;
 
     private bool _hasAccess;
@@ -234,7 +241,7 @@ public partial class AuditLogView : ComponentBase
         if (successValues is { Length: 1 })
             success = successValues[0];
 
-        return new AuditQuery
+        var query = new AuditQuery
         {
             TeamKey = TeamKey,
             TeamKeys = teamKeys is { Length: > 0 } ? teamKeys : null,
@@ -253,6 +260,28 @@ public partial class AuditLogView : ComponentBase
             SortField = sortField,
             SortDescending = sortDesc
         };
+
+        // Pinned filters always win — they override any local _filterX state.
+        if (PinnedFilter != null)
+        {
+            query = query with
+            {
+                CallerKeyId = PinnedFilter.CallerKeyId ?? query.CallerKeyId,
+                CallerType = PinnedFilter.CallerType ?? query.CallerType,
+                TeamKey = PinnedFilter.TeamKey ?? query.TeamKey,
+                CallerIdentity = PinnedFilter.CallerIdentity ?? query.CallerIdentity,
+                Feature = PinnedFilter.Feature ?? query.Feature,
+                Action = PinnedFilter.Action ?? query.Action,
+            };
+
+            // When the pinned single-value Feature/Action is set, suppress the multi-value collections
+            // so the In() filter doesn't widen results past the pinned value.
+            if (PinnedFilter.Feature != null) query = query with { Features = null };
+            if (PinnedFilter.Action != null) query = query with { Actions = null };
+            if (PinnedFilter.TeamKey != null) query = query with { TeamKeys = null };
+        }
+
+        return query;
     }
 
     private (DateTime? from, DateTime? to) GetDateRange()

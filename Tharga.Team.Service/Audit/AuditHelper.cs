@@ -50,6 +50,7 @@ internal static class AuditHelper
                 ?? user?.FindFirst("preferred_username")?.Value
                 ?? user?.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? user?.FindFirst("name")?.Value,
+            CallerKeyId = user?.FindFirst(TeamClaimTypes.ApiKeyId)?.Value,
             TeamKey = teamKey ?? user?.FindFirst(TeamClaimTypes.TeamKey)?.Value,
             AccessLevel = user?.FindFirst(TeamClaimTypes.AccessLevel)?.Value,
             CallerSource = callerSource,

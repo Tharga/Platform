@@ -18,6 +18,10 @@ public record AuditQuery
     // Single-value filters (kept for backwards compat and simple queries)
     public string TeamKey { get; init; }
     public string CallerIdentity { get; init; }
+
+    /// <summary>Filters entries by the API key Guid string that authenticated the caller (matches <see cref="AuditEntry.CallerKeyId"/>).</summary>
+    public string CallerKeyId { get; init; }
+
     public string MethodName { get; init; }
     public string Feature { get; init; }
     public string Action { get; init; }
