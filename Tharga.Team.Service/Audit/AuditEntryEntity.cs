@@ -28,6 +28,10 @@ public record AuditEntryEntity : EntityBase
     public AuditCallerType CallerType { get; init; }
 
     public string CallerIdentity { get; init; }
+
+    [BsonIgnoreIfNull]
+    public string CallerKeyId { get; init; }
+
     public string TeamKey { get; init; }
     public string AccessLevel { get; init; }
 

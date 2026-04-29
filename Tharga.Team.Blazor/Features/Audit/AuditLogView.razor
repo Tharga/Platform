@@ -25,6 +25,21 @@ else
     <RadzenTabs Change="@OnTabChange">
         <Tabs>
             <RadzenTabsItem Text="Log">
+                @if (PinnedFilter != null)
+                {
+                    <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" Variant="Variant.Flat" AllowClose="false" class="rz-mb-3">
+                        <RadzenText TextStyle="TextStyle.Body2">
+                            Scoped view —
+                            @if (PinnedFilter.CallerKeyId != null) { <span>API key <code>@PinnedFilter.CallerKeyId</code> </span> }
+                            @if (PinnedFilter.CallerType != null) { <span>caller type <code>@PinnedFilter.CallerType</code> </span> }
+                            @if (PinnedFilter.TeamKey != null) { <span>team <code>@PinnedFilter.TeamKey</code> </span> }
+                            @if (PinnedFilter.CallerIdentity != null) { <span>caller <code>@PinnedFilter.CallerIdentity</code> </span> }
+                            @if (PinnedFilter.Feature != null) { <span>feature <code>@PinnedFilter.Feature</code> </span> }
+                            @if (PinnedFilter.Action != null) { <span>action <code>@PinnedFilter.Action</code> </span> }
+                        </RadzenText>
+                    </RadzenAlert>
+                }
+
                 @* Top-bar filters — all RadzenSelectBar multi-select *@
                 <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.End" class="rz-mb-4 rz-mt-2" Wrap="FlexWrap.Wrap">
                     <RadzenStack Orientation="Orientation.Vertical" Gap="0">
@@ -41,7 +56,8 @@ else
                     <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_teams.Any())">
                         <RadzenLabel Text="Team" />
                         <RadzenSelectBar @bind-Value="_filterTeams" TValue="IEnumerable<string>" Multiple="true"
-                                         Change="@OnFilterChanged" Size="ButtonSize.Small">
+                                         Change="@OnFilterChanged" Size="ButtonSize.Small"
+                                         Disabled="@(PinnedFilter?.TeamKey != null)">
                             <Items>
                                 @foreach (var team in _teams)
                                 {
@@ -65,7 +81,8 @@ else
                     <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_features.Any())">
                         <RadzenLabel Text="Feature" />
                         <RadzenSelectBar @bind-Value="_filterFeatures" TValue="IEnumerable<string>" Multiple="true"
-                                         Change="@OnFilterChanged" Size="ButtonSize.Small">
+                                         Change="@OnFilterChanged" Size="ButtonSize.Small"
+                                         Disabled="@(PinnedFilter?.Feature != null)">
                             <Items>
                                 @foreach (var f in _features)
                                 {
@@ -77,7 +94,8 @@ else
                     <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_actions.Any())">
                         <RadzenLabel Text="Action" />
                         <RadzenSelectBar @bind-Value="_filterActions" TValue="IEnumerable<string>" Multiple="true"
-                                         Change="@OnFilterChanged" Size="ButtonSize.Small">
+                                         Change="@OnFilterChanged" Size="ButtonSize.Small"
+                                         Disabled="@(PinnedFilter?.Action != null)">
                             <Items>
                                 @foreach (var a in _actions)
                                 {

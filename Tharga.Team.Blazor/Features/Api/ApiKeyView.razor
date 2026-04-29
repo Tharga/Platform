@@ -80,11 +80,12 @@ else
                     </Template>
                 </RadzenDataGridColumn>
             }
-            <RadzenDataGridColumn Width="@(_options.AdvancedMode ? "220px" : "180px")">
+            <RadzenDataGridColumn Width="@GetActionsColumnWidth()">
                 <Template>
                     <RadzenButton Icon="visibility" Click="@(_ => context.VisibleKey = context.ApiKey)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey == _apiKeyMask)" />
                     <RadzenButton Icon="visibility_off" Click="@(_ => context.VisibleKey = _apiKeyMask)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey != _apiKeyMask)" />
                     <RadzenButton Icon="content_copy" Click="@(_ => CopyToClipboard(context))" Visible="@(!string.IsNullOrEmpty(context.ApiKey))" />
+                    <RadzenButton Icon="manage_search" Click="@(_ => OpenAuditLogAsync(context))" Visible="@ShowAuditLogButton" title="View audit log for this key" />
                     <RadzenButton Icon="lock" Click="@(_ => LockKeyAsync(context))" Visible="@(!string.IsNullOrEmpty(context.ApiKey))" />
                     <RadzenButton Icon="refresh" Click="@(_ => RefreshAsync(context))" />
                     <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Click="@(_ => DeleteAsync(context))" Visible="@(_options.AdvancedMode)" />
@@ -122,6 +123,12 @@ else
 @code {
     [Parameter] public string[] CrossTeamRoles { get; set; } = ["Developer"];
     [Parameter] public string[] RequiredScopes { get; set; } = [];
+
+    /// <summary>
+    /// When true, each row gets a "View audit log" button that opens a dialog scoped to that key
+    /// (CallerKeyId pinned). Default false — opt in on Developer pages where the audit log is configured.
+    /// </summary>
+    [Parameter] public bool ShowAuditLogButton { get; set; }
 
     private bool _apiKeyServiceMissing;
     private IApiKeyManagementService _apiKeyManagementService;
@@ -289,5 +296,28 @@ else
         {
             NotificationService.Notify(NotificationSeverity.Error, "Failed to delete key", ex.Message);
         }
+    }
+
+    private async Task OpenAuditLogAsync(ApiKeyModel context)
+    {
+        var pinned = new Tharga.Team.Blazor.Features.Audit.AuditPinnedFilter
+        {
+            CallerKeyId = context.Key,
+            CallerType = Tharga.Team.Service.Audit.AuditCallerType.ApiKey,
+        };
+
+        await DialogService.OpenAsync($"Audit log — {context.Name}", _ =>
+            @<Tharga.Team.Blazor.Features.Audit.AuditLogView PinnedFilter="@pinned" />,
+            new DialogOptions { Width = "90vw", Height = "85vh", Resizable = true, Draggable = true });
+    }
+
+    private string GetActionsColumnWidth()
+    {
+        // Base 180px (matches the original simple-mode width), +40 for delete in advanced mode,
+        // +40 when the audit log button is shown.
+        var width = 180;
+        if (_options?.AdvancedMode == true) width += 40;
+        if (ShowAuditLogButton) width += 40;
+        return $"{width}px";
     }
 }

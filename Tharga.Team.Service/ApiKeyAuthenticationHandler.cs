@@ -46,7 +46,7 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
         var key = await _apiKeyAdministrationService.GetByApiKeyAsync(apiKey);
         if (key == null)
         {
-            LogAuthEvent(null, null, false, "Invalid API key");
+            LogAuthEvent(null, null, null, false, "Invalid API key");
             return AuthenticateResult.Fail("Invalid API key.");
         }
 
@@ -54,6 +54,11 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
         {
             new(ClaimTypes.Name, key.Name ?? key.TeamKey ?? "system"),
         };
+
+        if (!string.IsNullOrEmpty(key.Key))
+        {
+            claims.Add(new Claim(TeamClaimTypes.ApiKeyId, key.Key));
+        }
 
         if (key.TeamKey == null)
         {
@@ -84,12 +89,12 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
         var principal = new ClaimsPrincipal(identity);
         var ticket = new AuthenticationTicket(principal, Scheme.Name);
 
-        LogAuthEvent(key.Name ?? key.TeamKey ?? "system", key.TeamKey, true);
+        LogAuthEvent(key.Name ?? key.TeamKey ?? "system", key.TeamKey, key.Key, true);
 
         return AuthenticateResult.Success(ticket);
     }
 
-    private void LogAuthEvent(string callerIdentity, string teamKey, bool success, string errorMessage = null)
+    private void LogAuthEvent(string callerIdentity, string teamKey, string callerKeyId, bool success, string errorMessage = null)
     {
         _auditLogger?.Log(new AuditEntry
         {
@@ -102,6 +107,7 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
             ErrorMessage = errorMessage,
             CallerType = AuditCallerType.ApiKey,
             CallerIdentity = callerIdentity,
+            CallerKeyId = callerKeyId,
             TeamKey = teamKey,
             CallerSource = AuditCallerSource.Api,
         });

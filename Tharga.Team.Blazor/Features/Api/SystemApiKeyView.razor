@@ -50,11 +50,12 @@
                         </Template>
                     </RadzenDataGridColumn>
                     <RadzenDataGridColumn Title="Created By" Property="@nameof(SystemApiKeyModel.CreatedBy)" Width="150px" />
-                    <RadzenDataGridColumn Width="220px">
+                    <RadzenDataGridColumn Width="@(ShowAuditLogButton ? "260px" : "220px")">
                         <Template>
                             <RadzenButton Icon="visibility" Click="@(_ => context.VisibleKey = context.ApiKey)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey == _apiKeyMask)" />
                             <RadzenButton Icon="visibility_off" Click="@(_ => context.VisibleKey = _apiKeyMask)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey != _apiKeyMask)" />
                             <RadzenButton Icon="content_copy" Click="@(_ => CopyToClipboard(context))" Visible="@(!string.IsNullOrEmpty(context.ApiKey))" />
+                            <RadzenButton Icon="manage_search" Click="@(_ => OpenAuditLogAsync(context))" Visible="@ShowAuditLogButton" title="View audit log for this key" />
                             <RadzenButton Icon="lock" Click="@(_ => LockKeyAsync(context))" Visible="@(!string.IsNullOrEmpty(context.ApiKey))" />
                             <RadzenButton Icon="refresh" Click="@(_ => RefreshAsync(context))" />
                             <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Click="@(_ => DeleteAsync(context))" />
@@ -96,6 +97,12 @@
 </AuthorizeView>
 
 @code {
+    /// <summary>
+    /// When true, each row gets a "View audit log" button that opens a dialog scoped to that key
+    /// (CallerKeyId pinned). Default false — opt in on Developer pages where the audit log is configured.
+    /// </summary>
+    [Parameter] public bool ShowAuditLogButton { get; set; }
+
     private bool _apiKeyServiceMissing;
     private IApiKeyManagementService _apiKeyManagementService;
     private IScopeRegistry _scopeRegistry;
@@ -209,5 +216,18 @@
         {
             NotificationService.Notify(NotificationSeverity.Error, "Failed to delete key", ex.Message);
         }
+    }
+
+    private async Task OpenAuditLogAsync(SystemApiKeyModel context)
+    {
+        var pinned = new Tharga.Team.Blazor.Features.Audit.AuditPinnedFilter
+        {
+            CallerKeyId = context.Key,
+            CallerType = Tharga.Team.Service.Audit.AuditCallerType.ApiKey,
+        };
+
+        await DialogService.OpenAsync($"Audit log — {context.Name}", _ =>
+            @<Tharga.Team.Blazor.Features.Audit.AuditLogView PinnedFilter="@pinned" />,
+            new DialogOptions { Width = "90vw", Height = "85vh", Resizable = true, Draggable = true });
     }
 }
