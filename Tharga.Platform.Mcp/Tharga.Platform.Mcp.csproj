@@ -31,7 +31,7 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Tharga.Mcp" Version="0.1.2" />
+    <PackageReference Include="Tharga.Mcp" Version="0.1.3" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Tharga.Team.Service\Tharga.Team.Service.csproj" />
