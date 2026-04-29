@@ -1,0 +1,138 @@
+@using Tharga.Team
+@typeparam TMember where TMember : class, Tharga.Team.ITeamMember
+@inject ITeamService TeamService
+@inject IUserService UserService
+
+@if (_loaded)
+{
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="0.5rem" class="rz-mb-3 rz-mt-2">
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0">
+            <RadzenLabel Text="Search" />
+            <RadzenTextBox @bind-Value="_userSearch" Placeholder="Name or email..." Change="@OnUserSearchChanged" Style="width: 250px;" />
+        </RadzenStack>
+    </RadzenStack>
+    <RadzenDataGrid Data="@_filteredUsers" TItem="UserViewModel" AllowSorting="true" AllowPaging="true" PageSize="10"
+                    RowSelect="@OnUserSelected" Style="cursor: pointer;">
+        <Columns>
+            <RadzenDataGridColumn Title="" Width="66px" Sortable="false" Filterable="false">
+                <Template>
+                    <RadzenGravatar Email="@context.EMail" Style="width: 32px; height: 32px;" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Name" Property="Name" />
+            <RadzenDataGridColumn Title="Email" Property="EMail" />
+            <RadzenDataGridColumn Title="Teams" Sortable="false">
+                <Template>
+                    @context.TeamCount
+                </Template>
+            </RadzenDataGridColumn>
+            @if (ActionsTemplate != null)
+            {
+                <RadzenDataGridColumn Title="" Sortable="false" Filterable="false">
+                    <Template>
+                        @ActionsTemplate(context)
+                    </Template>
+                </RadzenDataGridColumn>
+            }
+        </Columns>
+    </RadzenDataGrid>
+
+    @if (_selectedUser != null)
+    {
+        <RadzenCard class="rz-mt-3">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" class="rz-mb-2">
+                <RadzenGravatar Email="@_selectedUser.EMail" Style="width: 48px; height: 48px;" />
+                <RadzenStack Orientation="Orientation.Vertical" Gap="0">
+                    <RadzenText TextStyle="TextStyle.Subtitle1"><strong>@(_selectedUser.Name ?? _selectedUser.EMail)</strong></RadzenText>
+                    <RadzenText TextStyle="TextStyle.Caption">@_selectedUser.EMail</RadzenText>
+                </RadzenStack>
+            </RadzenStack>
+            <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-mb-1">Team memberships</RadzenText>
+            <RadzenDataGrid Data="@_selectedUser.Teams" TItem="UserTeamInfo" AllowSorting="true">
+                <Columns>
+                    <RadzenDataGridColumn Title="Team" Property="TeamName" />
+                    <RadzenDataGridColumn Title="Role" Property="AccessLevel" Width="120px" />
+                    <RadzenDataGridColumn Title="State" Property="State" Width="100px" />
+                </Columns>
+            </RadzenDataGrid>
+        </RadzenCard>
+    }
+}
+else
+{
+    <Loading />
+}
+
+@code {
+    /// <summary>
+    /// Optional template rendered as an extra column at the right of each user row.
+    /// Use to inject row-level actions (edit, delete, custom links) without forking the component.
+    /// </summary>
+    [Parameter] public RenderFragment<UserViewModel> ActionsTemplate { get; set; }
+
+    private bool _loaded;
+    private IUser[] _users;
+    private ITeam<TMember>[] _teams;
+
+    private string _userSearch = "";
+    private List<UserViewModel> _allUsers = new();
+    private List<UserViewModel> _filteredUsers = new();
+    private UserViewModel _selectedUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _users = await UserService.GetAsync().ToArrayAsync();
+        _teams = await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
+
+        BuildViewModels();
+        _loaded = true;
+
+        await base.OnInitializedAsync();
+    }
+
+    private void BuildViewModels()
+    {
+        var teamLookup = _teams
+            .Where(t => t.Members != null)
+            .SelectMany(t => t.Members.Select(m => new { Team = t, Member = m }))
+            .ToLookup(x => x.Member.Key);
+
+        _allUsers = _users.Select(u => new UserViewModel
+        {
+            Key = u.Key,
+            Name = u.Name ?? TeamServiceBase.ResolveDisplayName(u),
+            EMail = u.EMail,
+            TeamCount = teamLookup[u.Key].Count(),
+            Teams = teamLookup[u.Key].Select(x => new UserTeamInfo
+            {
+                TeamName = x.Team.Name,
+                AccessLevel = x.Member.AccessLevel,
+                State = x.Member.State
+            }).ToArray()
+        }).OrderBy(u => u.Name).ToList();
+
+        _filteredUsers = _allUsers;
+    }
+
+    private void OnUserSearchChanged()
+    {
+        if (string.IsNullOrWhiteSpace(_userSearch))
+        {
+            _filteredUsers = _allUsers;
+        }
+        else
+        {
+            var search = _userSearch.ToLowerInvariant();
+            _filteredUsers = _allUsers
+                .Where(u => (u.Name?.ToLowerInvariant().Contains(search) ?? false)
+                          || (u.EMail?.ToLowerInvariant().Contains(search) ?? false))
+                .ToList();
+        }
+        _selectedUser = null;
+    }
+
+    private void OnUserSelected(UserViewModel user)
+    {
+        _selectedUser = _selectedUser?.Key == user.Key ? null : user;
+    }
+}
