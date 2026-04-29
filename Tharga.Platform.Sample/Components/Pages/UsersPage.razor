@@ -1,8 +1,74 @@
 @page "/users"
 @rendermode InteractiveServer
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Developer")]
 @using Microsoft.AspNetCore.Authorization
+@using Tharga.Platform.Sample.Framework.Team
+@using Tharga.Team.Blazor.Features.User
+@inject AppUserAdminService UserAdmin
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager Navigation
 
 <PageTitle>Users</PageTitle>
 
-<UsersView TMember="Tharga.Platform.Sample.Framework.Team.TeamMember" />
+<RadzenTabs>
+    <Tabs>
+        <RadzenTabsItem Text="Users">
+            <UsersListView TMember="TeamMember" ActionsTemplate="UserActions" />
+        </RadzenTabsItem>
+        <RadzenTabsItem Text="Teams">
+            <TeamsListView TMember="TeamMember" />
+        </RadzenTabsItem>
+    </Tabs>
+</RadzenTabs>
+
+@code {
+    private RenderFragment<UserViewModel> UserActions => u => __builder =>
+    {
+        <RadzenButton Icon="edit" Variant="Variant.Text" Size="ButtonSize.Small"
+                      Click="@(async () => await EditUser(u))"
+                      title="Edit name and email" />
+        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Text" Size="ButtonSize.Small"
+                      Click="@(async () => await DeleteUser(u))"
+                      title="Delete user" />
+    };
+
+    private async Task EditUser(UserViewModel u)
+    {
+        var name = u.Name ?? "";
+        var email = u.EMail ?? "";
+
+        var result = await DialogService.OpenAsync("Edit user", ds =>
+            @<RadzenStack Gap="0.75rem">
+                <RadzenStack Gap="0.25rem">
+                    <RadzenLabel Text="Name" />
+                    <RadzenTextBox Value="@name" ValueChanged="@(v => name = v)" Style="width: 100%;" />
+                </RadzenStack>
+                <RadzenStack Gap="0.25rem">
+                    <RadzenLabel Text="Email" />
+                    <RadzenTextBox Value="@email" ValueChanged="@(v => email = v)" Style="width: 100%;" />
+                </RadzenStack>
+                <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(_ => ds.Close(false))" />
+                    <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Click="@(_ => ds.Close(true))" />
+                </RadzenStack>
+            </RadzenStack>,
+            new DialogOptions { Width = "420px" });
+
+        if (result is not true) return;
+
+        await UserAdmin.UpdateAsync(u.Key, name, email);
+        NotificationService.Notify(NotificationSeverity.Success, "User updated");
+        Navigation.Refresh();
+    }
+
+    private async Task DeleteUser(UserViewModel u)
+    {
+        var confirmed = await DialogService.Confirm($"Delete user '{u.Name ?? u.EMail}'? This cannot be undone.", "Confirm delete");
+        if (confirmed != true) return;
+
+        await UserAdmin.DeleteAsync(u.Key);
+        NotificationService.Notify(NotificationSeverity.Success, "User deleted");
+        Navigation.Refresh();
+    }
+}

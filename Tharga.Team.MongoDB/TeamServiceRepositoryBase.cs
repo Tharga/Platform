@@ -111,6 +111,11 @@ public abstract class TeamServiceRepositoryBase<TTeamEntity, TMember> : TeamServ
         return _teamRepository.SetMemberScopeOverridesAsync(teamKey, userKey, scopeOverrides);
     }
 
+    protected override Task SetTeamMemberNameAsync(string teamKey, string userKey, string name)
+    {
+        return _teamRepository.SetMemberNameAsync(teamKey, userKey, name);
+    }
+
     protected override IAsyncEnumerable<ITeam> GetTeamsAsync(IUser user)
     {
         return _teamRepository.GetTeamsByUserAsync(user.Key);

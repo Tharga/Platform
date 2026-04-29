@@ -60,6 +60,20 @@ internal class TestTeamService : TeamServiceBase
     protected override Task SetTeamMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel) => Task.CompletedTask;
     protected override Task SetTeamMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles) => Task.CompletedTask;
     protected override Task SetTeamMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides) => Task.CompletedTask;
+
+    public string LastSetMemberName_TeamKey;
+    public string LastSetMemberName_UserKey;
+    public string LastSetMemberName_Name;
+    public int SetMemberNameCallCount;
+    protected override Task SetTeamMemberNameAsync(string teamKey, string userKey, string name)
+    {
+        SetMemberNameCallCount++;
+        LastSetMemberName_TeamKey = teamKey;
+        LastSetMemberName_UserKey = userKey;
+        LastSetMemberName_Name = name;
+        return Task.CompletedTask;
+    }
+
     protected override Task SetTeamConsentInternalAsync(string teamKey, string[] consentedRoles) => Task.CompletedTask;
     protected override IAsyncEnumerable<ITeam> GetConsentedTeamsInternalAsync(string[] userRoles) => AsyncEnumerable.Empty<ITeam>();
 }

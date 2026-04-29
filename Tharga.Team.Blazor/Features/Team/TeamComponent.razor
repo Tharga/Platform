@@ -60,7 +60,56 @@ else
                                             }
                                         </Template>
                                     </RadzenDataGridColumn>
-                                    <RadzenDataGridColumn Title="Name" Property="@nameof(ITeamMember.Name)"/>
+                                    <RadzenDataGridColumn Title="Name" Property="@nameof(ITeamMember.Name)">
+                                        <Template>
+                                            @if (EnableMemberNameEdit && _canManage && _editingMemberKey == context.Key)
+                                            {
+                                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem"
+                                                             Style="min-width: 0; flex-wrap: nowrap;">
+                                                    <RadzenTextBox Value="@_editingMemberName"
+                                                                   ValueChanged="@(v => _editingMemberName = v)"
+                                                                   Style="flex: 1 1 0; min-width: 0;" />
+                                                    <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Small"
+                                                                  Click="@(() => SaveMemberName(team, context))"
+                                                                  Style="flex: 0 0 auto;" />
+                                                    @if (!string.IsNullOrEmpty(context.Name))
+                                                    {
+                                                        <RadzenButton Icon="restart_alt" ButtonStyle="ButtonStyle.Warning" Variant="Variant.Flat" Size="ButtonSize.Small"
+                                                                      Click="@(() => ResetMemberName(team, context))"
+                                                                      title="Clear override (use the global user name)"
+                                                                      Style="flex: 0 0 auto;" />
+                                                    }
+                                                    <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Small"
+                                                                  Click="@CancelMemberNameEdit"
+                                                                  Style="flex: 0 0 auto;" />
+                                                </RadzenStack>
+                                            }
+                                            else
+                                            {
+                                                var member = context;
+                                                var user = _users.FirstOrDefault(x => x.Key == member.Key);
+                                                var displayName = !string.IsNullOrEmpty(member.Name)
+                                                    ? member.Name
+                                                    : user?.Name ?? TeamServiceBase.ResolveDisplayName(user);
+                                                var hasOverride = !string.IsNullOrEmpty(member.Name)
+                                                                  && !string.IsNullOrEmpty(user?.Name)
+                                                                  && member.Name != user.Name;
+                                                var tooltip = hasOverride
+                                                    ? $"Team override. Original name: {user.Name}"
+                                                    : null;
+
+                                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
+                                                    <span title="@tooltip" style="@(hasOverride ? "font-style: italic;" : "")">@displayName</span>
+                                                    @if (EnableMemberNameEdit && _canManage)
+                                                    {
+                                                        <RadzenButton Icon="edit" Variant="Variant.Text" Size="ButtonSize.Small"
+                                                                      Click="@(() => StartMemberNameEdit(member))"
+                                                                      title="Edit display name" />
+                                                    }
+                                                </RadzenStack>
+                                            }
+                                        </Template>
+                                    </RadzenDataGridColumn>
                                     <RadzenDataGridColumn Title="Access Level" Property="@nameof(ITeamMember.AccessLevel)">
                                         <Template>
                                             @if (_user.Key == context.Key || context.AccessLevel == AccessLevel.Owner) //Cannot change self or owner.
@@ -175,6 +224,23 @@ else
 }
 
 @code {
+    /// <summary>
+    /// When true, callers with the <c>team:manage</c> scope can inline-edit a member's display name
+    /// (Member.Name) via a pencil icon. When false (default), the Name column is read-only — preserves
+    /// the existing behavior for consumers that haven't opted in.
+    /// </summary>
+    [Parameter] public bool EnableMemberNameEdit { get; set; }
+
+    /// <summary>
+    /// Optional callback invoked after a successful inline edit of <see cref="ITeamMember.Name"/>.
+    /// Use to refresh derived caches, log additional context, etc.
+    /// Platform handles the persistence itself; this is purely observational.
+    /// </summary>
+    [Parameter] public EventCallback<MemberNameChangedArgs> OnMemberNameChanged { get; set; }
+
+    private string _editingMemberKey;
+    private string _editingMemberName;
+
     private ITeam<TMember>[] _teams;
     private IUser[] _users;
     private ITeam _selectedTeam;
@@ -341,6 +407,68 @@ else
 
         await TeamManagementService.SetMemberRoleAsync(team.Key, member.Key, accessLevel);
         await ReloadTeams();
+    }
+
+    private void StartMemberNameEdit(TMember member)
+    {
+        _editingMemberKey = member.Key;
+        _editingMemberName = member.Name ?? ResolveDefaultMemberName(member);
+    }
+
+    private void CancelMemberNameEdit()
+    {
+        _editingMemberKey = null;
+        _editingMemberName = null;
+    }
+
+    private string ResolveDefaultMemberName(TMember member)
+    {
+        var user = _users.FirstOrDefault(x => x.Key == member.Key);
+        return user?.Name ?? TeamServiceBase.ResolveDisplayName(user);
+    }
+
+    private async Task SaveMemberName(ITeam<TMember> team, TMember member)
+    {
+        var trimmed = string.IsNullOrWhiteSpace(_editingMemberName) ? null : _editingMemberName.Trim();
+        var defaultName = ResolveDefaultMemberName(member);
+
+        // Auto-fallback: if the input matches the resolved default, persist null (no override).
+        var newName = trimmed == defaultName ? null : trimmed;
+        var oldName = member.Name;
+
+        if (newName == oldName)
+        {
+            CancelMemberNameEdit();
+            return;
+        }
+
+        await TeamManagementService.SetMemberNameAsync(team.Key, member.Key, newName);
+        CancelMemberNameEdit();
+        await ReloadTeams();
+
+        if (OnMemberNameChanged.HasDelegate)
+        {
+            await OnMemberNameChanged.InvokeAsync(new MemberNameChangedArgs(team.Key, member.Key, oldName, newName));
+        }
+    }
+
+    private async Task ResetMemberName(ITeam<TMember> team, TMember member)
+    {
+        var oldName = member.Name;
+        if (oldName == null)
+        {
+            CancelMemberNameEdit();
+            return;
+        }
+
+        await TeamManagementService.SetMemberNameAsync(team.Key, member.Key, null);
+        CancelMemberNameEdit();
+        await ReloadTeams();
+
+        if (OnMemberNameChanged.HasDelegate)
+        {
+            await OnMemberNameChanged.InvokeAsync(new MemberNameChangedArgs(team.Key, member.Key, oldName, null));
+        }
     }
 
     private async Task TransferOwnership(ITeam<TMember> team)

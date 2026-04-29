@@ -108,6 +108,22 @@ internal class TeamRepository<TTeamEntity, TMember> : ITeamRepository<TTeamEntit
         await _collection.UpdateOneAsync(filter, update);
     }
 
+    public async Task SetMemberNameAsync(string teamKey, string userKey, string name)
+    {
+        var team = await _collection.GetOneAsync(x => x.Key == teamKey);
+        var member = team.Members.Single(x => x.Key == userKey);
+        var trimmed = string.IsNullOrWhiteSpace(name) ? null : name.Trim();
+        member = member with { Name = trimmed };
+        var members = team.Members.Where(x => x.Key != userKey).Union([member]);
+
+        var filter = new FilterDefinitionBuilder<TTeamEntity>()
+            .Eq(x => x.Key, teamKey);
+        var update = new UpdateDefinitionBuilder<TTeamEntity>()
+            .Set(x => x.Members, members);
+
+        await _collection.UpdateOneAsync(filter, update);
+    }
+
     public async Task<ITeam> SetInvitationResponseAsync(string teamKey, string userKey, string inviteKey, bool accept)
     {
         var team = await _collection.GetOneAsync(x => x.Key == teamKey);
