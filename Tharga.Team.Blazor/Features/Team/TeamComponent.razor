@@ -84,21 +84,25 @@ else
                                             {
                                                 var member = context;
                                                 var user = _users.FirstOrDefault(x => x.Key == member.Key);
+                                                var displayName = !string.IsNullOrEmpty(member.Name)
+                                                    ? member.Name
+                                                    : user?.Name ?? TeamServiceBase.ResolveDisplayName(user);
                                                 var hasOverride = !string.IsNullOrEmpty(member.Name)
                                                                   && !string.IsNullOrEmpty(user?.Name)
                                                                   && member.Name != user.Name;
+                                                var tooltip = hasOverride
+                                                    ? $"Team override. Original name: {user.Name}"
+                                                    : null;
 
-                                                <RadzenText>@member.Name</RadzenText>
-                                                @if (hasOverride)
-                                                {
-                                                    <RadzenBadge Text="override" BadgeStyle="BadgeStyle.Light" class="rz-ms-1" />
-                                                }
-                                                @if (EnableMemberNameEdit && _canManage)
-                                                {
-                                                    <RadzenButton Icon="edit" Variant="Variant.Text" Size="ButtonSize.Small"
-                                                                  Click="@(() => StartMemberNameEdit(member))"
-                                                                  title="Edit display name" />
-                                                }
+                                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
+                                                    <span title="@tooltip" style="@(hasOverride ? "font-style: italic;" : "")">@displayName</span>
+                                                    @if (EnableMemberNameEdit && _canManage)
+                                                    {
+                                                        <RadzenButton Icon="edit" Variant="Variant.Text" Size="ButtonSize.Small"
+                                                                      Click="@(() => StartMemberNameEdit(member))"
+                                                                      title="Edit display name" />
+                                                    }
+                                                </RadzenStack>
                                             }
                                         </Template>
                                     </RadzenDataGridColumn>

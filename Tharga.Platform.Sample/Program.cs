@@ -47,6 +47,8 @@ builder.Services.AddThargaMcp(mcp =>
 
 builder.AddMongoDB();
 
+builder.Services.AddScoped<AppUserAdminService>();
+
 builder.Services.AddThargaTeamRepository(o =>
 {
     o.RegisterUserRepository<UserEntity>();
