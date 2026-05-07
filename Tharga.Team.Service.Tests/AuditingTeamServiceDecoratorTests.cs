@@ -158,8 +158,8 @@ public class AuditingTeamServiceDecoratorTests
     [Fact]
     public async Task ReadOperations_DoNotLog()
     {
-        await _sut.GetTeamsAsync().ToArrayAsync();
-        await _sut.GetTeamsAsync<TestMember>().ToArrayAsync();
+        await _sut.GetTeamsAsync().ToArrayAsync(TestContext.Current.CancellationToken);
+        await _sut.GetTeamsAsync<TestMember>().ToArrayAsync(TestContext.Current.CancellationToken);
 
         Assert.Empty(_backend.Entries);
     }

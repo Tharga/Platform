@@ -106,6 +106,6 @@ public class SystemApiKeyAuthenticationHandlerTests
         var result = await handler.AuthenticateAsync();
 
         Assert.True(result.Succeeded);
-        Assert.Empty(result.Principal!.Claims.Where(c => c.Type == TeamClaimTypes.Scope));
+        Assert.DoesNotContain(result.Principal!.Claims, c => c.Type == TeamClaimTypes.Scope);
     }
 }

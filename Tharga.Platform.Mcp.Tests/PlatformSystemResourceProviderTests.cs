@@ -38,7 +38,7 @@ public class PlatformSystemResourceProviderTests
     {
         var sut = new PlatformSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
 
-        var result = await sut.ListResourcesAsync(MakeContext(isDeveloper: false), default);
+        var result = await sut.ListResourcesAsync(MakeContext(isDeveloper: false), TestContext.Current.CancellationToken);
 
         Assert.Empty(result);
     }
@@ -48,7 +48,7 @@ public class PlatformSystemResourceProviderTests
     {
         var sut = new PlatformSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
 
-        var result = await sut.ListResourcesAsync(MakeContext(isDeveloper: true), default);
+        var result = await sut.ListResourcesAsync(MakeContext(isDeveloper: true), TestContext.Current.CancellationToken);
 
         Assert.Equal(3, result.Count);
         Assert.Contains(result, r => r.Uri == PlatformSystemResourceProvider.SystemKeysUri);
@@ -61,7 +61,7 @@ public class PlatformSystemResourceProviderTests
     {
         var sut = new PlatformSystemResourceProvider(_apiKeyService, _roleRegistry, auditLogger: null);
 
-        var result = await sut.ListResourcesAsync(MakeContext(isDeveloper: true), default);
+        var result = await sut.ListResourcesAsync(MakeContext(isDeveloper: true), TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain(result, r => r.Uri == PlatformSystemResourceProvider.AuditUri);
         Assert.Equal(2, result.Count);
@@ -73,7 +73,7 @@ public class PlatformSystemResourceProviderTests
         var sut = new PlatformSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            sut.ReadResourceAsync(PlatformSystemResourceProvider.RolesUri, MakeContext(isDeveloper: false), default));
+            sut.ReadResourceAsync(PlatformSystemResourceProvider.RolesUri, MakeContext(isDeveloper: false), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public class PlatformSystemResourceProviderTests
         var sut = new PlatformSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.ReadResourceAsync("platform://system/unknown", MakeContext(isDeveloper: true), default));
+            sut.ReadResourceAsync("platform://system/unknown", MakeContext(isDeveloper: true), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -98,7 +98,7 @@ public class PlatformSystemResourceProviderTests
 
         var sut = new PlatformSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
 
-        var content = await sut.ReadResourceAsync(PlatformSystemResourceProvider.SystemKeysUri, MakeContext(isDeveloper: true), default);
+        var content = await sut.ReadResourceAsync(PlatformSystemResourceProvider.SystemKeysUri, MakeContext(isDeveloper: true), TestContext.Current.CancellationToken);
 
         Assert.NotNull(content.Text);
         Assert.Contains("mcp-gate", content.Text);
@@ -116,7 +116,7 @@ public class PlatformSystemResourceProviderTests
 
         var sut = new PlatformSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
 
-        var content = await sut.ReadResourceAsync(PlatformSystemResourceProvider.RolesUri, MakeContext(isDeveloper: true), default);
+        var content = await sut.ReadResourceAsync(PlatformSystemResourceProvider.RolesUri, MakeContext(isDeveloper: true), TestContext.Current.CancellationToken);
 
         Assert.Contains("Editor", content.Text);
         Assert.Contains("feature:read", content.Text);
@@ -127,7 +127,7 @@ public class PlatformSystemResourceProviderTests
     {
         var sut = new PlatformSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
 
-        var content = await sut.ReadResourceAsync(PlatformSystemResourceProvider.AuditUri, MakeContext(isDeveloper: true), default);
+        var content = await sut.ReadResourceAsync(PlatformSystemResourceProvider.AuditUri, MakeContext(isDeveloper: true), TestContext.Current.CancellationToken);
 
         Assert.NotNull(content.Text);
         Assert.Contains("items", content.Text);

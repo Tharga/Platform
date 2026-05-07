@@ -2,7 +2,7 @@ namespace Tharga.Team;
 
 /// <summary>
 /// Delegates to <see cref="ITeamService"/> for all operations.
-/// Scope enforcement is handled by <see cref="ScopeProxy{T}"/>.
+/// Scope enforcement is handled by <c>ScopeProxy&lt;T&gt;</c> in Tharga.Team.Service.
 /// Generic methods (GetTeamsAsync, DeleteTeamAsync, RenameTeamAsync) call non-generic
 /// internal versions since the proxy resolves the member type from the team data.
 /// </summary>
