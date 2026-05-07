@@ -45,7 +45,7 @@ public class SystemApiKeyAdministrationServiceTests
         var sys = CreateSystemEntity("sys-key", "h2");
         _repository.GetAsync().Returns(ToAsyncEnumerable(team, sys));
 
-        var keys = await _sut.GetSystemKeysAsync().ToArrayAsync();
+        var keys = await _sut.GetSystemKeysAsync().ToArrayAsync(TestContext.Current.CancellationToken);
 
         Assert.Single(keys);
         Assert.Null(keys[0].TeamKey);

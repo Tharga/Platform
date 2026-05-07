@@ -45,7 +45,7 @@ public class ApiKeyAdministrationServiceTests
         var entity2 = CreateEntity("key-2", "hash-2", "team-1");
         _repository.GetAsync().Returns(ToAsyncEnumerable(entity1, entity2));
 
-        var keys = await _sut.GetKeysAsync("team-1").ToArrayAsync();
+        var keys = await _sut.GetKeysAsync("team-1").ToArrayAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(2, keys.Length);
     }
@@ -58,7 +58,7 @@ public class ApiKeyAdministrationServiceTests
         var entity3 = CreateEntity("key-3", "hash-3", "team-1");
         _repository.GetAsync().Returns(ToAsyncEnumerable(entity1, entity2, entity3));
 
-        var keys = await _sut.GetKeysAsync("team-1").ToArrayAsync();
+        var keys = await _sut.GetKeysAsync("team-1").ToArrayAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(2, keys.Length);
         Assert.All(keys, k => Assert.Equal("team-1", k.TeamKey));
@@ -72,7 +72,7 @@ public class ApiKeyAdministrationServiceTests
         _apiKeyService.Encrypt("new-key").Returns("new-hash");
         _repository.AddAsync(Arg.Any<ApiKeyEntity>()).Returns(ci => Task.FromResult(ci.Arg<ApiKeyEntity>()));
 
-        var keys = await _sut.GetKeysAsync("team-1").ToArrayAsync();
+        var keys = await _sut.GetKeysAsync("team-1").ToArrayAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(2, keys.Length);
         await _repository.Received(2).AddAsync(Arg.Any<ApiKeyEntity>());
