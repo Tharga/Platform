@@ -36,4 +36,27 @@ public abstract class UserServiceRepositoryBase<TUserEntity> : UserServiceBase
     {
         return _userRepository.GetAsync();
     }
+
+    public override async Task SeedUserNameAsync(string userKey, string name)
+    {
+        if (string.IsNullOrEmpty(userKey)) return;
+
+        var user = await _userRepository.GetByKeyAsync(userKey);
+        if (user == null) return;
+        if (!string.IsNullOrEmpty(user.Name)) return;
+
+        await _userRepository.SetNameAsync(userKey, name);
+        InvalidateUserCache(user.Identity);
+    }
+
+    public override async Task SetUserNameAsync(string userKey, string name)
+    {
+        if (string.IsNullOrEmpty(userKey)) return;
+
+        var user = await _userRepository.GetByKeyAsync(userKey);
+        if (user == null) return;
+
+        await _userRepository.SetNameAsync(userKey, name);
+        InvalidateUserCache(user.Identity);
+    }
 }

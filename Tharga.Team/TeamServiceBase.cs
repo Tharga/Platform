@@ -174,7 +174,17 @@ public abstract class TeamServiceBase : ITeamService
     {
         if (accept)
         {
+            // Capture the admin-entered Member.Name *before* the accept clears it, so we can
+            // promote it to User.Name (only-if-empty) once the response has been recorded.
+            var seedName = await GetInvitedMemberNameAsync(teamKey, inviteKey);
+
             var team = await SetTeamMemberInvitationResponseAsync(teamKey, userKey, inviteKey, true);
+
+            if (!string.IsNullOrWhiteSpace(seedName))
+            {
+                await _userService.SeedUserNameAsync(userKey, seedName);
+            }
+
             TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
             SelectTeamEvent?.Invoke(this, new SelectTeamEventArgs(team));
         }
@@ -185,6 +195,17 @@ public abstract class TeamServiceBase : ITeamService
         }
 
         _teamMemberCache.TryRemove($"{teamKey}.{userKey}", out _);
+    }
+
+    /// <summary>
+    /// Look up the (admin-entered) Name of the member identified by <paramref name="inviteKey"/>
+    /// inside the given team. Used to capture the invitation Name *before* accept clears it,
+    /// so it can be promoted to <c>User.Name</c>. Default implementation returns null;
+    /// derivatives that have access to the typed team document override it.
+    /// </summary>
+    protected virtual Task<string> GetInvitedMemberNameAsync(string teamKey, string inviteKey)
+    {
+        return Task.FromResult<string>(null);
     }
 
     public async Task SetMemberLastSeenAsync(string teamKey)

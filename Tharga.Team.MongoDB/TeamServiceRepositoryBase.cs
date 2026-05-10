@@ -52,6 +52,13 @@ public abstract class TeamServiceRepositoryBase<TTeamEntity, TMember> : TeamServ
     {
         var memberModel = await CreateTeamMember(model);
 
+        // Auto-generate Member.Key if not set by the consumer (typical for invited members
+        // that don't yet correspond to a User document)
+        if (string.IsNullOrEmpty(memberModel.Key))
+        {
+            memberModel = memberModel with { Key = Guid.NewGuid().ToString() };
+        }
+
         // Auto-generate Invitation if not set by the consumer
         if (memberModel.Invitation == null && !string.IsNullOrEmpty(model.Email))
         {
@@ -83,6 +90,13 @@ public abstract class TeamServiceRepositoryBase<TTeamEntity, TMember> : TeamServ
     protected override Task<ITeam> SetTeamMemberInvitationResponseAsync(string teamKey, string userKey, string inviteKey, bool accept)
     {
         return _teamRepository.SetInvitationResponseAsync(teamKey, userKey, inviteKey, accept);
+    }
+
+    protected override async Task<string> GetInvitedMemberNameAsync(string teamKey, string inviteKey)
+    {
+        var team = await _teamRepository.GetAsync(teamKey);
+        var member = team?.Members.FirstOrDefault(x => x.Invitation != null && x.Invitation.InviteKey == inviteKey);
+        return member?.Name;
     }
 
     protected override Task SetTeamMemberLastSeenAsync(string teamKey, string userKey)

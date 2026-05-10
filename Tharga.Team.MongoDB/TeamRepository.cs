@@ -133,6 +133,7 @@ internal class TeamRepository<TTeamEntity, TMember> : ITeamRepository<TTeamEntit
             member = member with
             {
                 Key = userKey,
+                Name = null,
                 Invitation = null,
                 LastSeen = DateTime.UtcNow,
                 State = MembershipState.Member
