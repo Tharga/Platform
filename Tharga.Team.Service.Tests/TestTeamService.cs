@@ -45,6 +45,13 @@ internal class TestTeamService : TeamServiceBase
         return Task.FromResult<ITeam>(team);
     }
 
+    protected override Task<string> GetInvitedMemberNameAsync(string teamKey, string inviteKey)
+    {
+        if (!_teams.TryGetValue(teamKey, out var team)) return Task.FromResult<string>(null);
+        var member = team.Members.FirstOrDefault(m => m.Invitation != null && m.Invitation.InviteKey == inviteKey);
+        return Task.FromResult(member?.Name);
+    }
+
     protected override Task SetTeamMemberLastSeenAsync(string teamKey, string userKey) => Task.CompletedTask;
 
     protected override Task<ITeamMember> GetTeamMembersAsync(string teamKey, string userKey)

@@ -7,5 +7,7 @@ public interface IUserRepository<TUserEntity> : IRepository
 {
     IAsyncEnumerable<TUserEntity> GetAsync();
     Task<TUserEntity> GetAsync(string identity);
+    Task<TUserEntity> GetByKeyAsync(string userKey);
     Task AddAsync(TUserEntity user);
+    Task SetNameAsync(string userKey, string name);
 }

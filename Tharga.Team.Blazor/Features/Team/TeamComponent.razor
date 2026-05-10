@@ -64,7 +64,11 @@ else
                                     </RadzenDataGridColumn>
                                     <RadzenDataGridColumn Title="Name" Property="@nameof(ITeamMember.Name)">
                                         <Template>
-                                            @if (EnableMemberNameEdit && _canManage && _editingMemberKey == context.Key)
+                                            @{
+                                                var canEditThisRow = EnableMemberNameEdit && (_canManage || context.Key == _user.Key);
+                                                var isSelfEdit = context.Key == _user.Key;
+                                            }
+                                            @if (canEditThisRow && !string.IsNullOrEmpty(_editingMemberKey) && _editingMemberKey == context.Key)
                                             {
                                                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem"
                                                              Style="min-width: 0; flex-wrap: nowrap;">
@@ -74,7 +78,7 @@ else
                                                     <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Small"
                                                                   Click="@(() => SaveMemberName(team, context))"
                                                                   Style="flex: 0 0 auto;" />
-                                                    @if (!string.IsNullOrEmpty(context.Name))
+                                                    @if (!isSelfEdit && !string.IsNullOrEmpty(context.Name))
                                                     {
                                                         <RadzenButton Icon="restart_alt" ButtonStyle="ButtonStyle.Warning" Variant="Variant.Flat" Size="ButtonSize.Small"
                                                                       Click="@(() => ResetMemberName(team, context))"
@@ -102,7 +106,7 @@ else
 
                                                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
                                                     <span title="@tooltip" style="@(hasOverride ? "font-style: italic;" : "")">@displayName</span>
-                                                    @if (EnableMemberNameEdit && _canManage)
+                                                    @if (canEditThisRow)
                                                     {
                                                         <RadzenButton Icon="edit" Variant="Variant.Text" Size="ButtonSize.Small"
                                                                       Click="@(() => StartMemberNameEdit(member))"
@@ -462,11 +466,36 @@ else
     private async Task SaveMemberName(ITeam<TMember> team, TMember member)
     {
         var trimmed = string.IsNullOrWhiteSpace(_editingMemberName) ? null : _editingMemberName.Trim();
+        var oldName = member.Name;
+        var isSelfEdit = member.Key == _user.Key;
+
+        if (isSelfEdit)
+        {
+            // Self-edit: this is "set my global name". Always overwrites User.Name; clear the
+            // per-team Member.Name override in this team so the row falls through to User.Name.
+            if (string.IsNullOrEmpty(trimmed))
+            {
+                CancelMemberNameEdit();
+                return;
+            }
+
+            await UserService.SetUserNameAsync(_user.Key, trimmed);
+            await TeamManagementService.SetMemberNameAsync(team.Key, _user.Key, null);
+            CancelMemberNameEdit();
+            await ReloadTeams();
+
+            if (OnMemberNameChanged.HasDelegate)
+            {
+                await OnMemberNameChanged.InvokeAsync(new MemberNameChangedArgs(team.Key, member.Key, oldName, null));
+            }
+            return;
+        }
+
+        // Admin-edit on another row: per-team override.
         var defaultName = ResolveDefaultMemberName(member);
 
         // Auto-fallback: if the input matches the resolved default, persist null (no override).
         var newName = trimmed == defaultName ? null : trimmed;
-        var oldName = member.Name;
 
         if (newName == oldName)
         {

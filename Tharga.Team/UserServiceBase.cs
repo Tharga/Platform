@@ -44,4 +44,13 @@ public abstract class UserServiceBase : IUserService
     {
         return GetAllAsync();
     }
+
+    public virtual Task SeedUserNameAsync(string userKey, string name) => Task.CompletedTask;
+
+    public virtual Task SetUserNameAsync(string userKey, string name) => Task.CompletedTask;
+
+    protected void InvalidateUserCache(string identity)
+    {
+        if (!string.IsNullOrEmpty(identity)) _userCache.TryRemove(identity, out _);
+    }
 }
