@@ -28,7 +28,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Tharga.MongoDB" Version="2.10.9" />
+    <PackageReference Include="Tharga.MongoDB" Version="2.10.10" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Tharga.Team\Tharga.Team.csproj" />
