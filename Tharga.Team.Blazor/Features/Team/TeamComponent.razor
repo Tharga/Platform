@@ -1,5 +1,6 @@
 ﻿@using System.Text.Json
 @using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Logging
 @using Microsoft.Extensions.Options
 @using Microsoft.JSInterop
 @using Tharga.Team
@@ -17,6 +18,7 @@
 @inject NotificationService NotificationService
 @inject IOptions<ThargaBlazorOptions> BlazorOptions
 @inject IServiceProvider ServiceProvider
+@inject ILogger<TeamComponent<TMember>> Logger
 
 @if (_teams == null)
 {
@@ -313,7 +315,13 @@ else
     private async Task ChangeTenantRoles(ITeam<TMember> team, string userKey, IEnumerable<string> roles)
     {
         var user = _users.FirstOrDefault(x => x.Key == userKey || x.Identity == userKey);
-        var member = team.Members.Single(x => x.Key == (user?.Key ?? userKey));
+        var lookupKey = user?.Key ?? userKey;
+        var member = TeamMemberResolver.Resolve(team.Members, x => x.Key == lookupKey, Logger, team.Key, lookupKey);
+        if (member == null)
+        {
+            NotifyMemberNotFound();
+            return;
+        }
 
         await TeamManagementService.SetMemberTenantRolesAsync(team.Key, member.Key, roles.ToArray());
         await ReloadTeams();
@@ -322,7 +330,13 @@ else
     private async Task ChangeScopeOverrides(ITeam<TMember> team, string userKey, IEnumerable<string> scopes)
     {
         var user = _users.FirstOrDefault(x => x.Key == userKey || x.Identity == userKey);
-        var member = team.Members.Single(x => x.Key == (user?.Key ?? userKey));
+        var lookupKey = user?.Key ?? userKey;
+        var member = TeamMemberResolver.Resolve(team.Members, x => x.Key == lookupKey, Logger, team.Key, lookupKey);
+        if (member == null)
+        {
+            NotifyMemberNotFound();
+            return;
+        }
 
         await TeamManagementService.SetMemberScopeOverridesAsync(team.Key, member.Key, scopes.ToArray());
         await ReloadTeams();
@@ -391,7 +405,14 @@ else
     private async Task RemoveUserFromTeam(ITeam<TMember> team, string userKey)
     {
         var user = _users.FirstOrDefault(x => x.Key == userKey || x.Identity == userKey);
-        var member = team.Members.Single(x => x.Key == (user?.Key ?? userKey));
+        var lookupKey = user?.Key ?? userKey;
+        var member = TeamMemberResolver.Resolve(team.Members, x => x.Key == lookupKey, Logger, team.Key, lookupKey);
+        if (member == null)
+        {
+            NotifyMemberNotFound();
+            return;
+        }
+
         var email = member.Invitation?.EMail ?? user?.EMail;
         var response = await DialogService.Confirm($"User '{email}' will be removed from the team '{team.Name}'.");
         if (response != true) return;
@@ -403,10 +424,21 @@ else
     private async Task ChangeRole(ITeam<TMember> team, string userKey, AccessLevel accessLevel)
     {
         var user = _users.FirstOrDefault(x => x.Key == userKey || x.Identity == userKey);
-        var member = team.Members.Single(x => x.Key == (user?.Key ?? userKey));
+        var lookupKey = user?.Key ?? userKey;
+        var member = TeamMemberResolver.Resolve(team.Members, x => x.Key == lookupKey, Logger, team.Key, lookupKey);
+        if (member == null)
+        {
+            NotifyMemberNotFound();
+            return;
+        }
 
         await TeamManagementService.SetMemberRoleAsync(team.Key, member.Key, accessLevel);
         await ReloadTeams();
+    }
+
+    private void NotifyMemberNotFound()
+    {
+        NotificationService.Notify(NotificationSeverity.Warning, "Member not found", "The member could not be located. Please reload the page.");
     }
 
     private void StartMemberNameEdit(TMember member)
@@ -532,7 +564,8 @@ else
 
     private bool HasAccessLevel(ITeam<TMember> team, AccessLevel accessLevel)
     {
-        var member = team.Members.Single(x => x.Key == _user.Key);
+        var member = TeamMemberResolver.Resolve(team.Members, x => x.Key == _user.Key, Logger, team.Key, _user.Key);
+        if (member == null) return false;
         return member.AccessLevel <= accessLevel;
     }
 
