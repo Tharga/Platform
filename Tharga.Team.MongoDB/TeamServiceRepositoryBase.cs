@@ -132,6 +132,7 @@ public abstract class TeamServiceRepositoryBase<TTeamEntity, TMember> : TeamServ
 
     protected override IAsyncEnumerable<ITeam> GetTeamsAsync(IUser user)
     {
+        if (user == null) return AsyncEnumerable.Empty<ITeam>();
         return _teamRepository.GetTeamsByUserAsync(user.Key);
     }
 

@@ -36,6 +36,7 @@ public abstract class TeamServiceBase : ITeamService
     public async IAsyncEnumerable<ITeam> GetTeamsAsync()
     {
         var user = await GetCurrentUserAsync();
+        if (user == null) yield break;
 
         await foreach (var team in GetTeamsAsync(user))
         {
@@ -46,6 +47,7 @@ public abstract class TeamServiceBase : ITeamService
     public async IAsyncEnumerable<ITeam<TMember>> GetTeamsAsync<TMember>() where TMember : ITeamMember
     {
         var user = await GetCurrentUserAsync();
+        if (user == null) yield break;
 
         await foreach (var team in GetTeamsAsync(user))
         {
@@ -61,7 +63,7 @@ public abstract class TeamServiceBase : ITeamService
 
     public async Task<ITeam> CreateTeamAsync(string name)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await RequireCurrentUserAsync();
 
         var displayName = ResolveDisplayName(user);
         name ??= $"{displayName}'s team";
@@ -124,7 +126,7 @@ public abstract class TeamServiceBase : ITeamService
                 if (member.AccessLevel == AccessLevel.Owner)
                     throw new InvalidOperationException("The owner cannot leave the team. Transfer ownership first.");
 
-                var user = await GetCurrentUserAsync();
+                var user = await RequireCurrentUserAsync();
                 if (member.Key == user.Key && member.AccessLevel == AccessLevel.Administrator)
                 {
                     var otherAdminsOrOwners = members.Count(x =>
@@ -211,13 +213,14 @@ public abstract class TeamServiceBase : ITeamService
     public async Task SetMemberLastSeenAsync(string teamKey)
     {
         var user = await GetCurrentUserAsync();
+        if (user == null) return;
         await SetTeamMemberLastSeenAsync(teamKey, user.Key);
         _teamMemberCache.TryRemove($"{teamKey}.{user.Key}", out _);
     }
 
     public async Task TransferOwnershipAsync<TMember>(string teamKey, string newOwnerUserKey) where TMember : ITeamMember
     {
-        var user = await GetCurrentUserAsync();
+        var user = await RequireCurrentUserAsync();
         var team = await GetTeamAsync<TMember>(teamKey);
         var currentOwner = team.Members.SingleOrDefault(x => x.Key == user.Key);
         if (currentOwner == null || currentOwner.AccessLevel != AccessLevel.Owner)
@@ -262,7 +265,7 @@ public abstract class TeamServiceBase : ITeamService
 
     private async Task AssureAccessLevel<TMember>(string teamKey, AccessLevel accessLevel) where TMember : ITeamMember
     {
-        var user = await GetCurrentUserAsync();
+        var user = await RequireCurrentUserAsync();
         var team = await GetTeamAsync<TMember>(teamKey);
         var member = team.Members.Single(x => x.Key == user.Key);
         if (member.State != MembershipState.Member) throw new InvalidOperationException("User is not a member.");
@@ -272,6 +275,13 @@ public abstract class TeamServiceBase : ITeamService
     private async Task<IUser> GetCurrentUserAsync()
     {
         var user = await _userService.GetCurrentUserAsync();
+        return user;
+    }
+
+    private async Task<IUser> RequireCurrentUserAsync()
+    {
+        var user = await GetCurrentUserAsync();
+        if (user == null) throw new UnauthorizedAccessException("Authentication required.");
         return user;
     }
 
