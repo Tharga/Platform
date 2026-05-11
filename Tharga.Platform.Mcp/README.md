@@ -25,6 +25,28 @@ builder.Services.AddThargaMcp(mcp =>
 app.UseThargaMcp();
 ```
 
+## User and team resources
+
+Always-on resource providers that surface the authenticated caller's own data. Both providers self-gate on the principal's claims, so anonymous and system-only callers see no resources.
+
+### User scope (`McpScope.User`)
+
+| URI | Contents |
+|-----|----------|
+| `platform://me` | The caller's `IUser` (`key`, `identity`, `name`, `email`) and a `memberships` array — for each team the caller is in, its `teamKey`, `teamName`, plus the caller's `accessLevel` and membership `state`. |
+
+Listed when the principal carries a `NameIdentifier` (or equivalent) claim. Read fails with `UnauthorizedAccessException` if `IUserService.GetCurrentUserAsync` returns null.
+
+### Team scope (`McpScope.Team`)
+
+| URI | Contents |
+|-----|----------|
+| `platform://team` | Metadata for the caller's *current* team (from the `TeamKey` claim): `key`, `name`, `icon`, `consentedRoles`. |
+| `platform://team/members` | Members of the current team: `key`, `name`, `accessLevel`, `state`, `tenantRoles`, `scopeOverrides`, and an `invited` flag. |
+| `platform://team/apikeys` | API keys for the current team. Raw key values are redacted (the `apiKey` property is omitted entirely). Listed only when `IApiKeyAdministrationService` is registered. |
+
+Listed only when the principal carries a `TeamKey` claim. Read fails with `UnauthorizedAccessException` if no team is selected. Cross-tenant team listing (reading other teams) is intentionally not supported here — that's a future system-scope provider once `ITeamService.GetAllTeamsAsync` is added.
+
 ## System-scope diagnostic resources (opt-in)
 
 Expose read-only diagnostic data under `platform://system/*` for callers with the Developer role. Non-developers see no resources and get `UnauthorizedAccessException` on read.
@@ -47,7 +69,7 @@ Available resources (listed only when the matching dependency is registered):
 | `platform://system/roles` | Tenant roles registered via `AddThargaTenantRoles` |
 | `platform://system/audit` | Most recent ~100 audit entries from the last 7 days |
 
-Cross-tenant team listings and per-team API-key listings are deferred — they require a new `ITeamService` method and are tracked separately.
+Per-team API-key listings now ship under `platform://team/apikeys` (see "Team scope" above). Cross-tenant team listings remain deferred — they require a new `ITeamService.GetAllTeamsAsync` method.
 
 ## Related packages
 

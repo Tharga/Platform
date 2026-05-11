@@ -111,6 +111,17 @@ public abstract class TeamServiceBase : ITeamService
         return teamMember;
     }
 
+    public virtual async IAsyncEnumerable<ITeamMember> GetMembersAsync(string teamKey)
+    {
+        var team = await GetTeamAsync(teamKey);
+        var members = GetMembersFromTeam(team);
+        if (members == null) yield break;
+        foreach (var member in members)
+        {
+            yield return member;
+        }
+    }
+
     public async Task AddMemberAsync(string teamKey, InviteUserModel model)
     {
         await AddTeamMemberAsync(teamKey, model);

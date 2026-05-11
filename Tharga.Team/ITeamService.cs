@@ -12,6 +12,7 @@ public interface ITeamService
     Task RenameTeamAsync<TMember>(string teamKey, string name) where TMember : ITeamMember;
     Task DeleteTeamAsync<TMember>(string teamKey) where TMember : ITeamMember;
     Task<ITeamMember> GetTeamMemberAsync(string teamKey, string userKey);
+    IAsyncEnumerable<ITeamMember> GetMembersAsync(string teamKey);
     Task AddMemberAsync(string teamKey, InviteUserModel model);
     Task RemoveMemberAsync(string teamKey, string userKey);
     Task SetMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel);

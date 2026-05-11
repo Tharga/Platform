@@ -42,6 +42,11 @@ public static class McpPlatformBuilderExtensions
             scopes.Register(McpScopes.Discover, AccessLevel.Viewer);
         });
 
+        // Always-on user-scope and team-scope resource providers. They self-gate on the
+        // principal's UserId / TeamKey claim, so anonymous and system-only callers see nothing.
+        builder.AddResourceProvider<PlatformUserResourceProvider>();
+        builder.AddResourceProvider<PlatformTeamResourceProvider>();
+
         // Opt-in system-scope resource providers (diagnostic data for Developers).
         if (options.ExposeSystemResources)
         {
