@@ -26,6 +26,32 @@ builder.Services.AddThargaTeamRepository(o =>
 
 Requires [Tharga.MongoDB](https://www.nuget.org/packages/Tharga.MongoDB) to be configured with a connection string.
 
+## Adding per-deployment User indices
+
+The built-in `UserRepositoryCollection<TUserEntity>` declares a unique index on `Identity`. To add additional indices (e.g. on a custom email column), subclass the collection and register the subclass via the `RegisterUserRepository<TUserEntity, TCollection>` overload:
+
+```csharp
+public class MyUserRepositoryCollection : UserRepositoryCollection<MyUserEntity>
+{
+    public MyUserRepositoryCollection(IMongoDbServiceFactory factory, ILogger<UserRepositoryCollection<MyUserEntity>> logger, IOptions<ThargaTeamOptions> options = null)
+        : base(factory, logger, options) { }
+
+    public override IEnumerable<CreateIndexModel<MyUserEntity>> Indices =>
+    [
+        // Keep the base Identity index
+        ..base.Indices,
+        // Plus your own
+        new(Builders<MyUserEntity>.IndexKeys.Ascending(x => x.EMail),
+            new CreateIndexOptions { Unique = true, Name = "EMail" })
+    ];
+}
+
+builder.Services.AddThargaTeamRepository(o =>
+{
+    o.RegisterUserRepository<MyUserEntity, MyUserRepositoryCollection>();
+});
+```
+
 ## Dependencies
 
 - [Tharga.Team](https://www.nuget.org/packages/Tharga.Team) - Domain models and service abstractions.
