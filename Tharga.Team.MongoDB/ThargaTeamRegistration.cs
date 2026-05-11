@@ -21,7 +21,8 @@ public static class ThargaTeamRegistration
             var userRepositoryImplementationType = typeof(UserRepository<>).MakeGenericType(userEntityType);
 
             var userRepositoryCollectionInterfaceType = typeof(IUserRepositoryCollection<>).MakeGenericType(userEntityType);
-            var userRepositoryCollectionImplementationType = typeof(UserRepositoryCollection<>).MakeGenericType(userEntityType);
+            var userRepositoryCollectionImplementationType = o._userCollectionType
+                ?? typeof(UserRepositoryCollection<>).MakeGenericType(userEntityType);
 
             services.AddTransient(userRepositoryInterfaceType, userRepositoryImplementationType);
             services.AddTransient(userRepositoryCollectionInterfaceType, userRepositoryCollectionImplementationType);

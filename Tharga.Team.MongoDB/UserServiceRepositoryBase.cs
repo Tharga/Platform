@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components.Authorization;
+using MongoDB.Driver;
 using System.Security.Claims;
 using Tharga.MongoDB;
 using Tharga.Toolkit;
@@ -23,13 +24,21 @@ public abstract class UserServiceRepositoryBase<TUserEntity> : UserServiceBase
         var identity = claimsPrincipal.GetIdentity().Identity;
 
         var user = await _userRepository.GetAsync(identity);
-        if (user == null)
-        {
-            user = await CreateUserEntityAsync(claimsPrincipal, identity);
-            await _userRepository.AddAsync(user);
-        }
+        if (user != null) return user;
 
-        return user;
+        var candidate = await CreateUserEntityAsync(claimsPrincipal, identity);
+        try
+        {
+            await _userRepository.AddAsync(candidate);
+            return candidate;
+        }
+        catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+        {
+            // Lost the race against a concurrent first-time login for the same identity.
+            // The unique Identity index on UserRepositoryCollection guarantees only one wins;
+            // re-read and return the winner. Issue Tharga/Platform#65.
+            return await _userRepository.GetAsync(identity);
+        }
     }
 
     protected override IAsyncEnumerable<IUser> GetAllAsync()
