@@ -320,7 +320,7 @@ else
     {
         var user = _users.FirstOrDefault(x => x.Key == userKey || x.Identity == userKey);
         var lookupKey = user?.Key ?? userKey;
-        var member = TeamMemberResolver.Resolve(team.Members, x => x.Key == lookupKey, Logger, team.Key, lookupKey);
+        var member = team.Members.PickOneOrDefault(x => x.Key == lookupKey, Logger, team.Key, lookupKey);
         if (member == null)
         {
             NotifyMemberNotFound();
@@ -335,7 +335,7 @@ else
     {
         var user = _users.FirstOrDefault(x => x.Key == userKey || x.Identity == userKey);
         var lookupKey = user?.Key ?? userKey;
-        var member = TeamMemberResolver.Resolve(team.Members, x => x.Key == lookupKey, Logger, team.Key, lookupKey);
+        var member = team.Members.PickOneOrDefault(x => x.Key == lookupKey, Logger, team.Key, lookupKey);
         if (member == null)
         {
             NotifyMemberNotFound();
@@ -410,7 +410,7 @@ else
     {
         var user = _users.FirstOrDefault(x => x.Key == userKey || x.Identity == userKey);
         var lookupKey = user?.Key ?? userKey;
-        var member = TeamMemberResolver.Resolve(team.Members, x => x.Key == lookupKey, Logger, team.Key, lookupKey);
+        var member = team.Members.PickOneOrDefault(x => x.Key == lookupKey, Logger, team.Key, lookupKey);
         if (member == null)
         {
             NotifyMemberNotFound();
@@ -429,7 +429,7 @@ else
     {
         var user = _users.FirstOrDefault(x => x.Key == userKey || x.Identity == userKey);
         var lookupKey = user?.Key ?? userKey;
-        var member = TeamMemberResolver.Resolve(team.Members, x => x.Key == lookupKey, Logger, team.Key, lookupKey);
+        var member = team.Members.PickOneOrDefault(x => x.Key == lookupKey, Logger, team.Key, lookupKey);
         if (member == null)
         {
             NotifyMemberNotFound();
@@ -593,7 +593,7 @@ else
 
     private bool HasAccessLevel(ITeam<TMember> team, AccessLevel accessLevel)
     {
-        var member = TeamMemberResolver.Resolve(team.Members, x => x.Key == _user.Key, Logger, team.Key, _user.Key);
+        var member = team.Members.PickOneOrDefault(x => x.Key == _user.Key, Logger, team.Key, _user.Key);
         if (member == null) return false;
         return member.AccessLevel <= accessLevel;
     }
@@ -608,7 +608,7 @@ else
 
     private async Task CopyInvitationLink(ITeam<TMember> team, string userKey)
     {
-        var member = team.Members.SingleOrDefault(x => x.Key == userKey);
+        var member = team.Members.PickOneOrDefault(x => x.Key == userKey, Logger, team.Key, userKey);
         if (member?.Invitation == null) return;
 
         var link = BuildInviteLink(team.Key, member.Invitation.InviteKey);

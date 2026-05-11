@@ -1,4 +1,5 @@
 using MongoDB.Bson;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Tharga.Team;
 using Tharga.Toolkit;
@@ -13,15 +14,17 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
 {
     private readonly IApiKeyRepository _repository;
     private readonly IApiKeyService _apiKeyService;
+    private readonly ILogger<ApiKeyAdministrationService> _logger;
     private readonly Tharga.Team.ApiKeyOptions _options;
 
     /// <summary>
     /// Creates a new instance using the specified repository and key hashing service.
     /// </summary>
-    public ApiKeyAdministrationService(IApiKeyRepository repository, IApiKeyService apiKeyService, IOptions<Tharga.Team.ApiKeyOptions> options = null)
+    public ApiKeyAdministrationService(IApiKeyRepository repository, IApiKeyService apiKeyService, IOptions<Tharga.Team.ApiKeyOptions> options = null, ILogger<ApiKeyAdministrationService> logger = null)
     {
         _repository = repository;
         _apiKeyService = apiKeyService;
+        _logger = logger;
         _options = options?.Value ?? new Tharga.Team.ApiKeyOptions();
     }
 
@@ -34,13 +37,13 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
         if (prefix != null)
         {
             var candidates = await _repository.GetByPrefixAsync(prefix).ToArrayAsync();
-            item = candidates.SingleOrDefault(x => _apiKeyService.Verify(apiKey, x.ApiKeyHash));
+            item = candidates.PickOneOrDefault(x => _apiKeyService.Verify(apiKey, x.ApiKeyHash), _logger, $"ApiKey verify prefix={prefix}");
         }
 
         if (item == null)
         {
             var allItems = await _repository.GetAsync().ToArrayAsync();
-            item = allItems.SingleOrDefault(x => _apiKeyService.Verify(apiKey, x.ApiKeyHash));
+            item = allItems.PickOneOrDefault(x => _apiKeyService.Verify(apiKey, x.ApiKeyHash), _logger, "ApiKey verify full-scan");
         }
 
         if (item?.ExpiryDate != null && item.ExpiryDate < DateTime.UtcNow)

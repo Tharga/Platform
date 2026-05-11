@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
 using Tharga.Toolkit;
 
 namespace Tharga.Team;
@@ -6,11 +7,13 @@ namespace Tharga.Team;
 public abstract class TeamServiceBase : ITeamService
 {
     private readonly IUserService _userService;
+    private readonly ILogger<TeamServiceBase> _logger;
     private static readonly ConcurrentDictionary<string, ITeamMember> _teamMemberCache = new();
 
-    protected TeamServiceBase(IUserService userService)
+    protected TeamServiceBase(IUserService userService, ILogger<TeamServiceBase> logger = null)
     {
         _userService = userService;
+        _logger = logger;
     }
 
     public event EventHandler<TeamsListChangedEventArgs> TeamsListChangedEvent;
@@ -120,7 +123,7 @@ public abstract class TeamServiceBase : ITeamService
         var members = GetMembersFromTeam(team);
         if (members != null)
         {
-            var member = members.SingleOrDefault(x => x.Key == userKey);
+            var member = members.PickOneOrDefault(x => x.Key == userKey, _logger, teamKey, userKey);
             if (member != null)
             {
                 if (member.AccessLevel == AccessLevel.Owner)
@@ -222,11 +225,11 @@ public abstract class TeamServiceBase : ITeamService
     {
         var user = await RequireCurrentUserAsync();
         var team = await GetTeamAsync<TMember>(teamKey);
-        var currentOwner = team.Members.SingleOrDefault(x => x.Key == user.Key);
+        var currentOwner = team.Members.PickOneOrDefault(x => x.Key == user.Key, _logger, teamKey, user.Key);
         if (currentOwner == null || currentOwner.AccessLevel != AccessLevel.Owner)
             throw new InvalidOperationException("Only the current owner can transfer ownership.");
 
-        var newOwner = team.Members.SingleOrDefault(x => x.Key == newOwnerUserKey);
+        var newOwner = team.Members.PickOneOrDefault(x => x.Key == newOwnerUserKey, _logger, teamKey, newOwnerUserKey);
         if (newOwner == null)
             throw new InvalidOperationException($"User '{newOwnerUserKey}' is not a member of this team.");
         if (newOwner.Key == user.Key)
@@ -267,7 +270,8 @@ public abstract class TeamServiceBase : ITeamService
     {
         var user = await RequireCurrentUserAsync();
         var team = await GetTeamAsync<TMember>(teamKey);
-        var member = team.Members.Single(x => x.Key == user.Key);
+        var member = team.Members.PickOneOrDefault(x => x.Key == user.Key, _logger, teamKey, user.Key);
+        if (member == null) throw new InvalidOperationException("User is not a member.");
         if (member.State != MembershipState.Member) throw new InvalidOperationException("User is not a member.");
         if (member.AccessLevel > accessLevel) throw new InvalidOperationException($"Cannot be executed by user {user.EMail} with {member.AccessLevel}.");
     }

@@ -1,4 +1,5 @@
 ﻿@using System.Text.Json
+@using Microsoft.Extensions.Logging
 @using Tharga.Team
 @using Tharga.Toolkit
 @typeparam TMember where TMember : class, Tharga.Team.ITeamMember
@@ -6,6 +7,7 @@
 @inject ITeamService TeamService
 @inject IUserService UserService
 @inject NavigationManager NavigationManager
+@inject ILogger<TeamInviteView<TMember>> Logger
 
 <RadzenStack Visible="@(!string.IsNullOrEmpty(_inviteCode) && _team != null)">
     <CascadingAuthenticationState>
@@ -40,7 +42,7 @@
             var inviteModelJson = inviteCode.FromBase64();
             var inviteModel = JsonSerializer.Deserialize<InviteModel>(inviteModelJson);
             _team = await TeamService.GetTeamAsync<TMember>(inviteModel.TeamKey);
-            var member = _team?.Members.SingleOrDefault(x => x.Invitation?.InviteKey == inviteModel.Code);
+            var member = _team?.Members.PickOneOrDefault(x => x.Invitation?.InviteKey == inviteModel.Code, Logger, _team.Key, inviteModel.Code);
             if (member == null)
             {
                 //No team or member found with this invitation.
