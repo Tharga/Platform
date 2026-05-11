@@ -27,6 +27,24 @@ public class ApiKeyAdministrationServiceTests
     }
 
     [Fact]
+    public async Task GetByApiKeyAsync_With_TwoMatchingHashes_ReturnsFirst_DoesNotThrow()
+    {
+        // Hash-collision scenario: two stored keys both verify true against the raw key.
+        // Previously: .SingleOrDefault threw InvalidOperationException ("Sequence contains more than one element").
+        // After Tharga/Platform#64 fix: resilient pick returns the first match and logs a warning.
+        var entity1 = CreateEntity("key-1", "hash-1", "team-1");
+        var entity2 = CreateEntity("key-2", "hash-2", "team-2");
+        _repository.GetAsync().Returns(ToAsyncEnumerable(entity1, entity2));
+        _apiKeyService.Verify("raw-key", "hash-1").Returns(true);
+        _apiKeyService.Verify("raw-key", "hash-2").Returns(true);
+
+        var result = await _sut.GetByApiKeyAsync("raw-key");
+
+        Assert.NotNull(result);
+        Assert.Equal("team-1", result.TeamKey);
+    }
+
+    [Fact]
     public async Task GetByApiKeyAsync_With_No_Match_Returns_Null()
     {
         var entity = CreateEntity("key-1", "hash-1", "team-1");

@@ -1,4 +1,5 @@
-﻿using MongoDB.Driver;
+using Microsoft.Extensions.Logging;
+using MongoDB.Driver;
 
 namespace Tharga.Team.MongoDB;
 
@@ -7,10 +8,12 @@ internal class TeamRepository<TTeamEntity, TMember> : ITeamRepository<TTeamEntit
     where TMember : TeamMemberBase
 {
     private readonly ITeamRepositoryCollection<TTeamEntity, TMember> _collection;
+    private readonly ILogger<TeamRepository<TTeamEntity, TMember>> _logger;
 
-    public TeamRepository(ITeamRepositoryCollection<TTeamEntity, TMember> collection)
+    public TeamRepository(ITeamRepositoryCollection<TTeamEntity, TMember> collection, ILogger<TeamRepository<TTeamEntity, TMember>> logger = null)
     {
         _collection = collection;
+        _logger = logger;
     }
 
     public IAsyncEnumerable<TTeamEntity> GetTeamsByUserAsync(string userKey)
@@ -32,12 +35,12 @@ internal class TeamRepository<TTeamEntity, TMember> : ITeamRepository<TTeamEntit
     {
         var filter = new FilterDefinitionBuilder<TTeamEntity>().Eq(x => x.Key, teamKey);
         var team = await _collection.GetOneAsync(filter);
-        team = team with
-        {
-            Members = team.Members.Where(x => x.Key != userKey)
-                .Union([team.Members.Single(x => x.Key == userKey) with { LastSeen = utcNow }])
-                .ToArray()
-        };
+
+        var target = team.Members.PickOneOrDefault(x => x.Key == userKey, _logger, teamKey, userKey);
+        if (target == null) return;
+
+        var updated = target with { LastSeen = utcNow };
+        team = team with { Members = team.Members.ReplaceByReference(target, updated) };
         await _collection.ReplaceOneAsync(team);
     }
 
@@ -66,9 +69,12 @@ internal class TeamRepository<TTeamEntity, TMember> : ITeamRepository<TTeamEntit
     public async Task SetMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel)
     {
         var team = await _collection.GetOneAsync(x => x.Key == teamKey);
-        var member = team.Members.Single(x => x.Key == userKey);
-        member = member with { AccessLevel = accessLevel };
-        var members = team.Members.Where(x => x.Key != userKey).Union([member]);
+
+        var target = team.Members.PickOneOrDefault(x => x.Key == userKey, _logger, teamKey, userKey);
+        if (target == null) return;
+
+        var updated = target with { AccessLevel = accessLevel };
+        var members = team.Members.ReplaceByReference(target, updated);
 
         var filter = new FilterDefinitionBuilder<TTeamEntity>()
             .Eq(x => x.Key, teamKey);
@@ -81,9 +87,12 @@ internal class TeamRepository<TTeamEntity, TMember> : ITeamRepository<TTeamEntit
     public async Task SetMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles)
     {
         var team = await _collection.GetOneAsync(x => x.Key == teamKey);
-        var member = team.Members.Single(x => x.Key == userKey);
-        member = member with { TenantRoles = tenantRoles };
-        var members = team.Members.Where(x => x.Key != userKey).Union([member]);
+
+        var target = team.Members.PickOneOrDefault(x => x.Key == userKey, _logger, teamKey, userKey);
+        if (target == null) return;
+
+        var updated = target with { TenantRoles = tenantRoles };
+        var members = team.Members.ReplaceByReference(target, updated);
 
         var filter = new FilterDefinitionBuilder<TTeamEntity>()
             .Eq(x => x.Key, teamKey);
@@ -96,9 +105,12 @@ internal class TeamRepository<TTeamEntity, TMember> : ITeamRepository<TTeamEntit
     public async Task SetMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides)
     {
         var team = await _collection.GetOneAsync(x => x.Key == teamKey);
-        var member = team.Members.Single(x => x.Key == userKey);
-        member = member with { ScopeOverrides = scopeOverrides };
-        var members = team.Members.Where(x => x.Key != userKey).Union([member]);
+
+        var target = team.Members.PickOneOrDefault(x => x.Key == userKey, _logger, teamKey, userKey);
+        if (target == null) return;
+
+        var updated = target with { ScopeOverrides = scopeOverrides };
+        var members = team.Members.ReplaceByReference(target, updated);
 
         var filter = new FilterDefinitionBuilder<TTeamEntity>()
             .Eq(x => x.Key, teamKey);
@@ -111,10 +123,13 @@ internal class TeamRepository<TTeamEntity, TMember> : ITeamRepository<TTeamEntit
     public async Task SetMemberNameAsync(string teamKey, string userKey, string name)
     {
         var team = await _collection.GetOneAsync(x => x.Key == teamKey);
-        var member = team.Members.Single(x => x.Key == userKey);
+
+        var target = team.Members.PickOneOrDefault(x => x.Key == userKey, _logger, teamKey, userKey);
+        if (target == null) return;
+
         var trimmed = string.IsNullOrWhiteSpace(name) ? null : name.Trim();
-        member = member with { Name = trimmed };
-        var members = team.Members.Where(x => x.Key != userKey).Union([member]);
+        var updated = target with { Name = trimmed };
+        var members = team.Members.ReplaceByReference(target, updated);
 
         var filter = new FilterDefinitionBuilder<TTeamEntity>()
             .Eq(x => x.Key, teamKey);
@@ -127,10 +142,14 @@ internal class TeamRepository<TTeamEntity, TMember> : ITeamRepository<TTeamEntit
     public async Task<ITeam> SetInvitationResponseAsync(string teamKey, string userKey, string inviteKey, bool accept)
     {
         var team = await _collection.GetOneAsync(x => x.Key == teamKey);
-        var member = team.Members.Single(x => x.Invitation != null && x.Invitation.InviteKey == inviteKey);
+
+        var target = team.Members.PickOneOrDefault(x => x.Invitation != null && x.Invitation.InviteKey == inviteKey, _logger, teamKey, inviteKey);
+        if (target == null) return null;
+
+        TMember updated;
         if (accept)
         {
-            member = member with
+            updated = target with
             {
                 Key = userKey,
                 Name = null,
@@ -141,7 +160,7 @@ internal class TeamRepository<TTeamEntity, TMember> : ITeamRepository<TTeamEntit
         }
         else
         {
-            member = member with
+            updated = target with
             {
                 Key = userKey,
                 LastSeen = DateTime.UtcNow,
@@ -149,9 +168,7 @@ internal class TeamRepository<TTeamEntity, TMember> : ITeamRepository<TTeamEntit
             };
         }
 
-        var members = team.Members
-            .Where(x => x.Invitation == null || x.Invitation.InviteKey != inviteKey)
-            .Union([member]);
+        var members = team.Members.ReplaceByReference(target, updated);
 
         var filter = new FilterDefinitionBuilder<TTeamEntity>()
             .Eq(x => x.Key, teamKey);
@@ -185,4 +202,5 @@ internal class TeamRepository<TTeamEntity, TMember> : ITeamRepository<TTeamEntit
     {
         return _collection.GetAsync(x => x.ConsentedRoles != null && x.ConsentedRoles.Any(r => roles.Contains(r)));
     }
+
 }
