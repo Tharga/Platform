@@ -14,7 +14,7 @@ Domain models, service abstractions, and authorization primitives for multi-tena
 - `Invitation`, `InviteUserModel`, `MembershipState`.
 
 ### Service interfaces
-- `ITeamService` - Team CRUD, member management, invitations.
+- `ITeamService` - Team CRUD, member management, invitations. Includes `GetMembersAsync(teamKey)` returning `IAsyncEnumerable<ITeamMember>` for consumers that need to enumerate members without knowing the per-consumer `TMember` type.
 - `ITeamManagementService` - Scope-enforced mutations (create, rename, delete, invite, etc.).
 - `IUserService` - Current user resolution.
 - `IApiKeyAdministrationService` / `IApiKeyManagementService` - API key management.
