@@ -99,20 +99,4 @@ public class AddPlatformTests
 
         Assert.Equal("SuperAdmin", options.Value.DeveloperRole);
     }
-
-    [Fact]
-#pragma warning disable CS0618 // Type or member is obsolete
-    public void ObsoleteAddMcpPlatform_ForwardsToAddPlatform()
-    {
-        var services = new ServiceCollection();
-
-        services.AddThargaMcp(mcp =>
-        {
-            mcp.AddMcpPlatform();
-        });
-
-        var provider = services.BuildServiceProvider();
-        Assert.IsType<HttpContextMcpContextAccessor>(provider.GetRequiredService<IMcpContextAccessor>());
-    }
-#pragma warning restore CS0618
 }

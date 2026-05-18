@@ -63,32 +63,46 @@
   - `dotnet build -c Release` — 0 warnings, 0 errors.
   - `dotnet test -c Release` — 313/313 pass (7 MongoDB + 157 Service + 52 Mcp + 97 Blazor).
 
-- [ ] **7. Drop MapMcpPlatform / AddMcpPlatform**
-  - Delete the two obsolete extension methods from
-    `Tharga.Platform.Mcp/McpPlatformBuilderExtensions.cs` (lines 59–77).
-  - Verify nothing else in the solution references them
-    (already confirmed: sample uses `app.UseThargaMcp()`, no test references).
-  - Update `Tharga.Platform.Mcp/README.md` if it mentions `MapMcpPlatform`
-    (already on `UseThargaMcp` per grep).
+- [x] **7. Drop MapMcpPlatform / AddMcpPlatform**
+  - Deleted `MapMcpPlatform` and `AddMcpPlatform` from
+    `Tharga.Platform.Mcp/McpPlatformBuilderExtensions.cs`.
+  - Removed unused `Microsoft.AspNetCore.Builder` / `Microsoft.AspNetCore.Routing` usings
+    that only existed for the removed methods.
+  - Deleted `Tharga.Platform.Mcp.Tests/AddPlatformTests.cs::ObsoleteAddMcpPlatform_ForwardsToAddPlatform`
+    test (test for the removed alias).
 
-- [ ] **8. Build + test again after the cleanup**
-  - `dotnet build -c Release`
-  - `dotnet test -c Release`
+- [x] **8. Build + test again after the cleanup**
+  - `dotnet build -c Release` — 0 warnings, 0 errors.
+  - `dotnet test -c Release` — 312/312 pass (one fewer than step 6 — the removed test).
 
-- [ ] **9. Smoke-test the sample**
-  - `dotnet run --project Tharga.Platform.Sample`
-  - Confirm `/mcp` is reachable (no broken endpoint after wrapper removal).
+- [x] **9. Smoke-test the sample**
+  - **Skipped.** Running `Tharga.Platform.Sample` requires MongoDB + Azure AD configuration
+    that isn't available in this session.
+  - Risk is low: build succeeds for the sample project (which uses `app.UseThargaMcp()`
+    directly already), and removing two `[Obsolete]` extension methods that just delegated
+    to `UseThargaMcp` cannot have changed runtime behavior. To be flagged in PR.
 
-- [ ] **10. Update Requests.md follow-up + README**
-  - Remove follow-up #55 from `$DOC_ROOT/Tharga/Requests.md`
-    ("Tharga.Platform.Mcp should drop `MapMcpPlatform()` wrapper…").
-  - Update top-level README if it references either obsolete extension.
-  - Note any consumer-facing breaking change in PR description (for release notes).
+- [x] **10. Update Requests.md follow-up + README**
+  - Removed follow-up #55 from `$DOC_ROOT/Tharga/Requests.md`.
+  - Updated `Tharga.Team.Service/README.md` example from `app.MapMcp()` to
+    `app.UseThargaMcp()` (separate stale reference unrelated to the obsolete wrapper).
+  - Top-level `README.md` and other component READMEs already correct.
 
 - [ ] **11. Commit + open PR for review**
-  - Single commit per logical milestone per `CLAUDE.md`.
+  - Two commits: bumps (`9194c83`) + MCP cleanup (this commit).
   - User reviews and merges.
 
 ## Last session
-Plan drafted on `feature/nuget-updates-and-mcp-cleanup`. Awaiting user
-confirmation before starting Step 2.
+All code changes complete on `feature/nuget-updates-and-mcp-cleanup`:
+1. Package bumps committed (`9194c83`) — 12 patch-level bumps, 313/313 tests pass.
+2. MCP cleanup ready to commit — removed `MapMcpPlatform`/`AddMcpPlatform` and the
+   test for the obsolete alias, fixed an unrelated stale `app.MapMcp()` example in
+   `Tharga.Team.Service/README.md`. 312/312 tests pass.
+
+Awaiting user review. Next: commit the cleanup, then user opens PR.
+
+**Breaking change to call out in PR description:** removal of `MapMcpPlatform()` and
+`AddMcpPlatform()` is a public-API removal. Both were `[Obsolete]` already. Per
+`CLAUDE.md`: suggest a minor version bump on next release.
+
+**Smoke test NOT run** — see Step 9; flag this in the PR.

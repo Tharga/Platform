@@ -1,6 +1,4 @@
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Tharga.Mcp;
@@ -55,24 +53,4 @@ public static class McpPlatformBuilderExtensions
 
         return builder;
     }
-
-    /// <summary>
-    /// Maps the MCP endpoint and applies Platform authentication policy.
-    /// </summary>
-    /// <remarks>
-    /// Obsolete since Tharga.Mcp 0.1.2 — <c>UseThargaMcp()</c> now reads
-    /// <see cref="ThargaMcpOptions.RequireAuth"/> and applies <c>RequireAuthorization()</c> itself.
-    /// Consumers should call <c>app.UseThargaMcp()</c> directly.
-    /// </remarks>
-    [Obsolete("Use app.UseThargaMcp() directly — it honors ThargaMcpOptions.RequireAuth since Tharga.Mcp 0.1.2. Will be removed in a future release.")]
-    public static IEndpointConventionBuilder MapMcpPlatform(this IEndpointRouteBuilder endpoints)
-    {
-        ArgumentNullException.ThrowIfNull(endpoints);
-        return endpoints.UseThargaMcp();
-    }
-
-    /// <summary>Obsolete alias for <see cref="AddPlatform"/>.</summary>
-    [Obsolete("Use AddPlatform() instead. Will be removed in a future release.")]
-    public static IThargaMcpBuilder AddMcpPlatform(this IThargaMcpBuilder builder, Action<McpPlatformOptions> configure = null)
-        => builder.AddPlatform(configure);
 }

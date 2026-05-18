@@ -45,7 +45,7 @@ System keys authenticate through the same `X-API-KEY` header. The principal they
 Protect system-only endpoints with the system policy:
 
 ```csharp
-app.MapMcp().RequireAuthorization(ApiKeyConstants.SystemPolicyName);
+app.UseThargaMcp().RequireAuthorization(ApiKeyConstants.SystemPolicyName);
 ```
 
 The two policies are mutually exclusive: `ApiKeyPolicy` rejects system keys, `SystemApiKeyPolicy` rejects team keys.
