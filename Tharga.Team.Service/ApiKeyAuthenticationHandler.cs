@@ -36,10 +36,21 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (!Request.Headers.TryGetValue(ApiKeyConstants.HeaderName, out var apiKeyHeader))
-            return AuthenticateResult.NoResult();
+        // Prefer Authorization: Bearer (MCP convention; the only header most MCP clients can send).
+        // Fall back to X-API-KEY so existing callers keep working.
+        string apiKey = null;
 
-        var apiKey = apiKeyHeader.ToString();
+        if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+        {
+            var auth = authHeader.ToString();
+            if (auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                apiKey = auth["Bearer ".Length..].Trim();
+        }
+
+        if (string.IsNullOrWhiteSpace(apiKey)
+            && Request.Headers.TryGetValue(ApiKeyConstants.HeaderName, out var apiKeyHeader))
+            apiKey = apiKeyHeader.ToString().Trim();
+
         if (string.IsNullOrWhiteSpace(apiKey))
             return AuthenticateResult.NoResult();
 
