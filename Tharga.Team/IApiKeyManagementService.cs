@@ -9,7 +9,7 @@ public interface IApiKeyManagementService
     IAsyncEnumerable<IApiKey> GetKeysAsync(string teamKey);
 
     [RequireScope(ApiKeyScopes.Manage)]
-    Task<IApiKey> CreateKeyAsync(string teamKey, string name, AccessLevel accessLevel, string[] roles = null, DateTime? expiryDate = null);
+    Task<IApiKey> CreateKeyAsync(string teamKey, string name, AccessLevel accessLevel, string[] roles = null, string[] scopeOverrides = null, DateTime? expiryDate = null);
 
     [RequireScope(ApiKeyScopes.Manage)]
     Task<IApiKey> RefreshKeyAsync(string teamKey, string key);
@@ -19,6 +19,9 @@ public interface IApiKeyManagementService
 
     [RequireScope(ApiKeyScopes.Manage)]
     Task DeleteKeyAsync(string teamKey, string key);
+
+    [RequireScope(ApiKeyScopes.Manage)]
+    Task SetScopeOverridesAsync(string teamKey, string key, string[] scopes);
 
     [RequireScope(ApiKeyScopes.SystemManage)]
     IAsyncEnumerable<IApiKey> GetSystemKeysAsync();

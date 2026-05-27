@@ -8,7 +8,7 @@ Team management Blazor components for multi-tenant applications. Works with both
 ## Components
 
 - **Team management** - `TeamSelector`, `TeamComponent`, `TeamDialog`, `InviteUserDialog`, `TeamInviteView`.
-- **API key management** - `ApiKeyView` for team-scoped API keys.
+- **API key management** - `ApiKeyView` for team-scoped API keys. Opt-in parameters: `ShowAuditLogButton` (per-row audit-log dialog), `ShowScopeOverrides` (Scopes column + create-card multi-select + Edit-Scopes dialog per row).
 - **User management** - `UserProfileView`, `UsersView`.
 - **Authentication** - `LoginDisplay` with login/logout and team navigation.
 - **Claims augmentation** - `TeamClaimsAuthenticationStateProvider` adds `TeamKey`, `AccessLevel`, role, and scope claims. Compatible with all hosting models.

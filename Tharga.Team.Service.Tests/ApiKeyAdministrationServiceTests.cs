@@ -138,6 +138,72 @@ public class ApiKeyAdministrationServiceTests
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _sut.DeleteKeyAsync("team-2", "key-1"));
     }
 
+    [Fact]
+    public async Task SetScopeOverridesAsync_Updates_Entity()
+    {
+        var entity = CreateEntity("key-1", "hash-1", "team-1");
+        _repository.GetAsync("key-1").Returns(Task.FromResult(entity));
+
+        await _sut.SetScopeOverridesAsync("team-1", "key-1", new[] { "valuegroup:read", "valuegroup:write" });
+
+        await _repository.Received(1).UpdateAsync("key-1", Arg.Is<ApiKeyEntity>(e =>
+            e.ScopeOverrides != null
+            && e.ScopeOverrides.Length == 2
+            && e.ScopeOverrides[0] == "valuegroup:read"
+            && e.ScopeOverrides[1] == "valuegroup:write"));
+    }
+
+    [Fact]
+    public async Task SetScopeOverridesAsync_EmptyArray_ClearsOverridesToNull()
+    {
+        var entity = CreateEntity("key-1", "hash-1", "team-1") with { ScopeOverrides = new[] { "stale:scope" } };
+        _repository.GetAsync("key-1").Returns(Task.FromResult(entity));
+
+        await _sut.SetScopeOverridesAsync("team-1", "key-1", Array.Empty<string>());
+
+        await _repository.Received(1).UpdateAsync("key-1", Arg.Is<ApiKeyEntity>(e => e.ScopeOverrides == null));
+    }
+
+    [Fact]
+    public async Task SetScopeOverridesAsync_WrongTeam_Throws()
+    {
+        var entity = CreateEntity("key-1", "hash-1", "team-1");
+        _repository.GetAsync("key-1").Returns(Task.FromResult(entity));
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            _sut.SetScopeOverridesAsync("team-2", "key-1", new[] { "x" }));
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<string>(), Arg.Any<ApiKeyEntity>());
+    }
+
+    [Fact]
+    public async Task CreateKeyAsync_With_ScopeOverrides_Sets_Field_On_Entity()
+    {
+        _apiKeyService.BuildApiKey(Arg.Any<string>(), Arg.Any<Func<string>>()).Returns("new-key");
+        _apiKeyService.Encrypt("new-key").Returns("new-hash");
+        _repository.AddAsync(Arg.Any<ApiKeyEntity>()).Returns(ci => Task.FromResult(ci.Arg<ApiKeyEntity>()));
+
+        var scopes = new[] { "doc:read", "doc:write" };
+        await _sut.CreateKeyAsync("team-1", "My Key", AccessLevel.User, roles: null, scopeOverrides: scopes);
+
+        await _repository.Received(1).AddAsync(Arg.Is<ApiKeyEntity>(e =>
+            e.ScopeOverrides != null
+            && e.ScopeOverrides.Length == 2
+            && e.ScopeOverrides[0] == "doc:read"
+            && e.ScopeOverrides[1] == "doc:write"));
+    }
+
+    [Fact]
+    public async Task CreateKeyAsync_Without_ScopeOverrides_LeavesFieldNull()
+    {
+        _apiKeyService.BuildApiKey(Arg.Any<string>(), Arg.Any<Func<string>>()).Returns("new-key");
+        _apiKeyService.Encrypt("new-key").Returns("new-hash");
+        _repository.AddAsync(Arg.Any<ApiKeyEntity>()).Returns(ci => Task.FromResult(ci.Arg<ApiKeyEntity>()));
+
+        await _sut.CreateKeyAsync("team-1", "My Key", AccessLevel.User);
+
+        await _repository.Received(1).AddAsync(Arg.Is<ApiKeyEntity>(e => e.ScopeOverrides == null));
+    }
+
     private static ApiKeyEntity CreateEntity(string key, string hash, string teamKey)
     {
         return new ApiKeyEntity
