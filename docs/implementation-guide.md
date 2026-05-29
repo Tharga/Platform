@@ -362,7 +362,7 @@ builder.Services.AddThargaTeamBlazor(o =>
     o.Title = "My App";
     o.AutoCreateFirstTeam = true;          // default: false — auto-creates a team for first-time users
     o.ShowMemberRoles = false;             // default: false — shows tenant role assignment in team UI
-    o.ShowScopeOverrides = false;          // default: false — shows scope override controls in team UI
+    o.ShowScopeOverrides = false;          // default: false — shows scope override controls in TeamComponent (team-member UI). For ApiKeyView, opt in via the [Parameter] ShowScopeOverrides on the component itself; the two flags are intentionally independent.
     o.RegisterTeamService<MyTeamService, MyUserService>();
 });
 
@@ -490,7 +490,7 @@ public class MyTeamService : TeamServiceRepositoryBase<TeamEntity, TeamMember>
 | `<TeamComponent />` | Full team management (create, rename, delete, members) |
 | `<TeamInviteView />` | Pending invitation view |
 | `<UsersView />` | Admin user list |
-| `<ApiKeyView />` | API key management (requires Step 5) |
+| `<ApiKeyView />` | API key management (requires Step 5). Opt-in `[Parameter]` flags: `ShowAuditLogButton`, `ShowScopeOverrides` (Scopes column + create-card multi-select + Edit-Scopes dialog per row) |
 | `<AuditLogView />` | Audit log viewer (requires Step 8) |
 | `Roles.TeamMember` | Role claim added to authenticated team members |
 | `Roles.Developer` | Role for developer-only UI sections |

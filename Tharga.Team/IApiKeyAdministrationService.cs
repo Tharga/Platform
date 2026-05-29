@@ -12,7 +12,7 @@ public interface IApiKeyAdministrationService
     IAsyncEnumerable<IApiKey> GetKeysAsync(string teamKey);
 
     /// <summary>Creates a new API key with the specified settings (advanced mode).</summary>
-    Task<IApiKey> CreateKeyAsync(string teamKey, string name, AccessLevel accessLevel, string[] roles = null, DateTime? expiryDate = null);
+    Task<IApiKey> CreateKeyAsync(string teamKey, string name, AccessLevel accessLevel, string[] roles = null, string[] scopeOverrides = null, DateTime? expiryDate = null);
 
     /// <summary>Generates a new API key value for an existing key entry. Returns the entity with the raw key visible once.</summary>
     Task<IApiKey> RefreshKeyAsync(string teamKey, string key);
@@ -22,6 +22,12 @@ public interface IApiKeyAdministrationService
 
     /// <summary>Deletes an API key. Verifies team ownership.</summary>
     Task DeleteKeyAsync(string teamKey, string key);
+
+    /// <summary>
+    /// Sets the <c>ScopeOverrides</c> array on an existing team API key. Verifies team ownership.
+    /// Pass <c>null</c> or an empty array to clear all overrides.
+    /// </summary>
+    Task SetScopeOverridesAsync(string teamKey, string key, string[] scopes);
 
     /// <summary>Returns all system-level API keys (not bound to a team).</summary>
     IAsyncEnumerable<IApiKey> GetSystemKeysAsync();

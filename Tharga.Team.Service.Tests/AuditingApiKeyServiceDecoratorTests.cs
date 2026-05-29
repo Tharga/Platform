@@ -12,7 +12,7 @@ public class AuditingApiKeyServiceDecoratorTests
     public AuditingApiKeyServiceDecoratorTests()
     {
         _inner = Substitute.For<IApiKeyAdministrationService>();
-        _inner.CreateKeyAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<AccessLevel>(), Arg.Any<string[]>(), Arg.Any<DateTime?>())
+        _inner.CreateKeyAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<AccessLevel>(), Arg.Any<string[]>(), Arg.Any<string[]>(), Arg.Any<DateTime?>())
             .Returns(Substitute.For<IApiKey>());
         _inner.RefreshKeyAsync(Arg.Any<string>(), Arg.Any<string>())
             .Returns(Substitute.For<IApiKey>());

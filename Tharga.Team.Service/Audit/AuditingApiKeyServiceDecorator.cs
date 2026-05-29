@@ -30,12 +30,12 @@ public class AuditingApiKeyServiceDecorator : IApiKeyAdministrationService
 
     // Mutation operations — log audit entries
 
-    public async Task<IApiKey> CreateKeyAsync(string teamKey, string name, AccessLevel accessLevel, string[] roles = null, DateTime? expiryDate = null)
+    public async Task<IApiKey> CreateKeyAsync(string teamKey, string name, AccessLevel accessLevel, string[] roles = null, string[] scopeOverrides = null, DateTime? expiryDate = null)
     {
         var sw = Stopwatch.StartNew();
         try
         {
-            var result = await _inner.CreateKeyAsync(teamKey, name, accessLevel, roles, expiryDate);
+            var result = await _inner.CreateKeyAsync(teamKey, name, accessLevel, roles, scopeOverrides, expiryDate);
             sw.Stop();
             Log("create", nameof(CreateKeyAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
             return result;
@@ -96,6 +96,23 @@ public class AuditingApiKeyServiceDecorator : IApiKeyAdministrationService
         {
             sw.Stop();
             Log("delete", nameof(DeleteKeyAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey);
+            throw;
+        }
+    }
+
+    public async Task SetScopeOverridesAsync(string teamKey, string key, string[] scopes)
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            await _inner.SetScopeOverridesAsync(teamKey, key, scopes);
+            sw.Stop();
+            Log("set-scope-overrides", nameof(SetScopeOverridesAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            Log("set-scope-overrides", nameof(SetScopeOverridesAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey);
             throw;
         }
     }
