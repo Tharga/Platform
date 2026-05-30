@@ -49,6 +49,18 @@
                             <DateTimeView Date="@context.CreatedAt" />
                         </Template>
                     </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Title="Last used" Width="150px">
+                        <Template>
+                            @if (context.LastUsedAt.HasValue)
+                            {
+                                <DateTimeView Date="@context.LastUsedAt" />
+                            }
+                            else
+                            {
+                                <RadzenText>Never</RadzenText>
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
                     <RadzenDataGridColumn Title="Created By" Property="@nameof(SystemApiKeyModel.CreatedBy)" Width="150px" />
                     <RadzenDataGridColumn Width="@(ShowAuditLogButton ? "260px" : "220px")">
                         <Template>
@@ -140,6 +152,7 @@
                 SystemScopes = x.SystemScopes ?? [],
                 ExpiryDate = x.ExpiryDate,
                 CreatedAt = x.CreatedAt,
+                LastUsedAt = x.LastUsedAt,
                 CreatedBy = x.CreatedBy,
             }).ToArray();
 

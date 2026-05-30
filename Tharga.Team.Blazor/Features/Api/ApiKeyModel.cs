@@ -13,5 +13,6 @@ public record ApiKeyModel
     public string[] ScopeOverrides { get; init; }
     public DateTime? ExpiryDate { get; init; }
     public DateTime? CreatedAt { get; init; }
+    public DateTime? LastUsedAt { get; init; }
     public bool IsExpired => ExpiryDate.HasValue && ExpiryDate < DateTime.UtcNow;
 }

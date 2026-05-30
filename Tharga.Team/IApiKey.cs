@@ -38,6 +38,9 @@ public interface IApiKey
     /// <summary>Expiry date, or null if no expiry.</summary>
     DateTime? ExpiryDate { get; }
 
-    /// <summary>When the key was created.</summary>
+    /// <summary>When the key was created. Reset when the key is recycled (refreshed).</summary>
     DateTime? CreatedAt { get; }
+
+    /// <summary>When the key was last used to authenticate, or null if never used. Reset when the key is recycled (refreshed).</summary>
+    DateTime? LastUsedAt { get; }
 }

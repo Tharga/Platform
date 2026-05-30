@@ -57,6 +57,75 @@ public class ApiKeyAdministrationServiceTests
     }
 
     [Fact]
+    public async Task GetByApiKeyAsync_StampsLastUsed_WhenNeverUsed()
+    {
+        var entity = CreateEntity("key-1", "hash-1", "team-1");
+        _repository.GetAsync().Returns(ToAsyncEnumerable(entity));
+        _apiKeyService.Verify("raw-key", "hash-1").Returns(true);
+
+        await _sut.GetByApiKeyAsync("raw-key");
+
+        await _repository.Received(1).SetLastUsedAsync("key-1", Arg.Any<DateTime>());
+    }
+
+    [Fact]
+    public async Task GetByApiKeyAsync_DoesNotStampLastUsed_WithinThrottleWindow()
+    {
+        var entity = CreateEntity("key-1", "hash-1", "team-1") with { LastUsedAt = DateTime.UtcNow };
+        _repository.GetAsync().Returns(ToAsyncEnumerable(entity));
+        _apiKeyService.Verify("raw-key", "hash-1").Returns(true);
+
+        await _sut.GetByApiKeyAsync("raw-key");
+
+        await _repository.DidNotReceive().SetLastUsedAsync(Arg.Any<string>(), Arg.Any<DateTime>());
+    }
+
+    [Fact]
+    public async Task GetByApiKeyAsync_StampsLastUsed_AfterThrottleWindow()
+    {
+        var entity = CreateEntity("key-1", "hash-1", "team-1") with { LastUsedAt = DateTime.UtcNow.AddMinutes(-5) };
+        _repository.GetAsync().Returns(ToAsyncEnumerable(entity));
+        _apiKeyService.Verify("raw-key", "hash-1").Returns(true);
+
+        await _sut.GetByApiKeyAsync("raw-key");
+
+        await _repository.Received(1).SetLastUsedAsync("key-1", Arg.Any<DateTime>());
+    }
+
+    [Fact]
+    public async Task GetByApiKeyAsync_LastUsedWriteFailure_DoesNotBreakAuthentication()
+    {
+        var entity = CreateEntity("key-1", "hash-1", "team-1");
+        _repository.GetAsync().Returns(ToAsyncEnumerable(entity));
+        _apiKeyService.Verify("raw-key", "hash-1").Returns(true);
+        _repository.SetLastUsedAsync(Arg.Any<string>(), Arg.Any<DateTime>()).Returns(Task.FromException(new Exception("db down")));
+
+        var result = await _sut.GetByApiKeyAsync("raw-key");
+
+        Assert.NotNull(result);
+        Assert.Equal("team-1", result.TeamKey);
+    }
+
+    [Fact]
+    public async Task RefreshKeyAsync_ResetsCreatedAtAndLastUsedAt()
+    {
+        var existing = CreateEntity("key-1", "old-hash", "team-1") with
+        {
+            CreatedAt = DateTime.UtcNow.AddDays(-10),
+            LastUsedAt = DateTime.UtcNow.AddDays(-1),
+        };
+        _repository.GetAsync("key-1").Returns(Task.FromResult(existing));
+        _apiKeyService.BuildApiKey(Arg.Any<string>(), Arg.Any<Func<string>>()).Returns("refreshed-key");
+        _apiKeyService.Encrypt("refreshed-key").Returns("refreshed-hash");
+
+        var before = DateTime.UtcNow;
+        await _sut.RefreshKeyAsync("team-1", "key-1");
+
+        await _repository.Received(1).UpdateAsync("key-1", Arg.Is<ApiKeyEntity>(e =>
+            e.LastUsedAt == null && e.CreatedAt != null && e.CreatedAt >= before));
+    }
+
+    [Fact]
     public async Task GetKeysAsync_Returns_Existing_Keys()
     {
         var entity1 = CreateEntity("key-1", "hash-1", "team-1");
