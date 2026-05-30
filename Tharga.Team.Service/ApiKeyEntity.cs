@@ -60,4 +60,8 @@ public record ApiKeyEntity : EntityBase, IApiKey
     /// <summary>When this key was created.</summary>
     [BsonIgnoreIfNull]
     public DateTime? CreatedAt { get; init; }
+
+    /// <summary>When this key was last used to authenticate. Null if never used.</summary>
+    [BsonIgnoreIfNull]
+    public DateTime? LastUsedAt { get; init; }
 }

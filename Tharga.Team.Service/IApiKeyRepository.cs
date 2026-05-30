@@ -22,6 +22,9 @@ public interface IApiKeyRepository : IRepository
     /// <summary>Marks the API key as locked so it cannot be used.</summary>
     Task LockKeyAsync(string key);
 
+    /// <summary>Sets the "last used" timestamp for the key via a targeted field update (no full-document replace).</summary>
+    Task SetLastUsedAsync(string key, DateTime lastUsedAtUtc);
+
     /// <summary>Returns API key entities matching the given prefix.</summary>
     IAsyncEnumerable<ApiKeyEntity> GetByPrefixAsync(string prefix);
 

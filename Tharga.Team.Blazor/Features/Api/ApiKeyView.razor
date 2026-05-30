@@ -88,6 +88,30 @@ else
                     </Template>
                 </RadzenDataGridColumn>
             }
+            <RadzenDataGridColumn Title="Created" Width="150px">
+                <Template>
+                    @if (context.CreatedAt.HasValue)
+                    {
+                        <DateTimeView Date="@context.CreatedAt" />
+                    }
+                    else
+                    {
+                        <RadzenText>—</RadzenText>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Last used" Width="150px">
+                <Template>
+                    @if (context.LastUsedAt.HasValue)
+                    {
+                        <DateTimeView Date="@context.LastUsedAt" />
+                    }
+                    else
+                    {
+                        <RadzenText>Never</RadzenText>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
             <RadzenDataGridColumn Width="@GetActionsColumnWidth()">
                 <Template>
                     <RadzenButton Icon="visibility" Click="@(_ => context.VisibleKey = context.ApiKey)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey == _apiKeyMask)" />
@@ -223,6 +247,7 @@ else
                     ScopeOverrides = x.ScopeOverrides,
                     ExpiryDate = x.ExpiryDate,
                     CreatedAt = x.CreatedAt,
+                    LastUsedAt = x.LastUsedAt,
                 };
             }).ToArray();
 

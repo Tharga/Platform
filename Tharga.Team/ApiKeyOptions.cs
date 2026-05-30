@@ -28,4 +28,12 @@ public class ApiKeyOptions
     /// Null means no maximum. Default: null.
     /// </summary>
     public int? MaxExpiryDays { get; set; }
+
+    /// <summary>
+    /// Minimum time between "last used" timestamp writes for a given key. A key authenticating more
+    /// often than this only gets its <see cref="IApiKey.LastUsedAt"/> persisted once per window, to
+    /// avoid a database write on every authenticated request. Set to <see cref="TimeSpan.Zero"/> to
+    /// stamp on every successful authentication. Default: 1 minute.
+    /// </summary>
+    public TimeSpan LastUsedThrottle { get; set; } = TimeSpan.FromMinutes(1);
 }

@@ -8,7 +8,7 @@ Team management Blazor components for multi-tenant applications. Works with both
 ## Components
 
 - **Team management** - `TeamSelector`, `TeamComponent`, `TeamDialog`, `InviteUserDialog`, `TeamInviteView`.
-- **API key management** - `ApiKeyView` for team-scoped API keys. Opt-in parameters: `ShowAuditLogButton` (per-row audit-log dialog), `ShowScopeOverrides` (Scopes column + create-card multi-select + Edit-Scopes dialog per row).
+- **API key management** - `ApiKeyView` for team-scoped API keys. Shows **Created** and **Last used** columns per key (`SystemApiKeyView` shows the same for system keys). Opt-in parameters: `ShowAuditLogButton` (per-row audit-log dialog), `ShowScopeOverrides` (Scopes column + create-card multi-select + Edit-Scopes dialog per row). "Last used" writes are throttled by `ApiKeyOptions.LastUsedThrottle` (default 1 min) to avoid a database write on every authenticated request.
 - **User management** - `UserProfileView`, `UsersView`.
 - **Authentication** - `LoginDisplay` with login/logout and team navigation.
 - **Claims augmentation** - `TeamClaimsAuthenticationStateProvider` adds `TeamKey`, `AccessLevel`, role, and scope claims. Compatible with all hosting models.

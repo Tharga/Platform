@@ -490,7 +490,7 @@ public class MyTeamService : TeamServiceRepositoryBase<TeamEntity, TeamMember>
 | `<TeamComponent />` | Full team management (create, rename, delete, members) |
 | `<TeamInviteView />` | Pending invitation view |
 | `<UsersView />` | Admin user list |
-| `<ApiKeyView />` | API key management (requires Step 5). Opt-in `[Parameter]` flags: `ShowAuditLogButton`, `ShowScopeOverrides` (Scopes column + create-card multi-select + Edit-Scopes dialog per row) |
+| `<ApiKeyView />` | API key management (requires Step 5). Shows **Created** and **Last used** columns per key. Opt-in `[Parameter]` flags: `ShowAuditLogButton`, `ShowScopeOverrides` (Scopes column + create-card multi-select + Edit-Scopes dialog per row) |
 | `<AuditLogView />` | Audit log viewer (requires Step 8) |
 | `Roles.TeamMember` | Role claim added to authenticated team members |
 | `Roles.Developer` | Role for developer-only UI sections |
@@ -622,6 +622,7 @@ builder.Services.AddAuthentication()
     o.AutoKeyCount = 2;                    // default: 2 — number of auto-generated keys in simple mode
     o.AutoLockKeys = false;               // default: false — auto-lock keys after creation
     o.MaxExpiryDays = 365;                // default: null — maximum key expiry in days
+    o.LastUsedThrottle = TimeSpan.FromMinutes(1); // default: 1 min — min interval between "last used" timestamp writes per key (TimeSpan.Zero = stamp every request)
 });
 ```
 

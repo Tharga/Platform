@@ -49,7 +49,32 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
         if (item?.ExpiryDate != null && item.ExpiryDate < DateTime.UtcNow)
             return null;
 
+        if (item != null)
+            await TouchLastUsedAsync(item);
+
         return item;
+    }
+
+    /// <summary>
+    /// Stamps the key's "last used" timestamp, throttled by <see cref="ApiKeyOptions.LastUsedThrottle"/>
+    /// so a busy key isn't written on every request. Best-effort: a failure here must never break
+    /// authentication, so it is swallowed (and logged) rather than propagated.
+    /// </summary>
+    private async Task TouchLastUsedAsync(ApiKeyEntity item)
+    {
+        var now = DateTime.UtcNow;
+        var throttle = _options.LastUsedThrottle;
+        if (throttle > TimeSpan.Zero && item.LastUsedAt.HasValue && now - item.LastUsedAt.Value < throttle)
+            return;
+
+        try
+        {
+            await _repository.SetLastUsedAsync(item.Key, now);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to update LastUsedAt for API key {Key}.", item.Key);
+        }
     }
 
     /// <inheritdoc />
