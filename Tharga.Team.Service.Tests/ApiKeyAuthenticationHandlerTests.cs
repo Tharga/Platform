@@ -47,12 +47,12 @@ public class ApiKeyAuthenticationHandlerTests
         return context;
     }
 
-    private static IApiKey CreateApiKey(string teamKey, string name = "Test Key", Dictionary<string, string> tags = null)
+    private static IApiKey CreateApiKey(string teamKey, string name = "Test Key", IReadOnlyList<Tag> tags = null)
     {
         var apiKey = Substitute.For<IApiKey>();
         apiKey.TeamKey.Returns(teamKey);
         apiKey.Name.Returns(name);
-        apiKey.Tags.Returns(tags ?? new Dictionary<string, string>());
+        apiKey.Tags.Returns(tags ?? Array.Empty<Tag>());
         return apiKey;
     }
 
@@ -147,7 +147,7 @@ public class ApiKeyAuthenticationHandlerTests
     }
 
     [Fact]
-    public async Task With_Valid_ApiKey_Without_Tags_Defaults_AccessLevel_To_Viewer()
+    public async Task With_Valid_ApiKey_Without_AccessLevel_Defaults_To_Viewer()
     {
         var apiKey = CreateApiKey("team-123");
         _apiKeyService.GetByApiKeyAsync("valid-key").Returns(Task.FromResult(apiKey));
@@ -255,13 +255,14 @@ public class ApiKeyAuthenticationHandlerTests
     }
 
     [Fact]
-    public async Task With_Valid_ApiKey_And_AccessLevel_Tag_Uses_Tag_Value()
+    public async Task With_NonEntity_ApiKey_Uses_Typed_AccessLevel()
     {
-        var tags = new Dictionary<string, string> { [TeamClaimTypes.AccessLevel] = "Viewer" };
-        var apiKey = CreateApiKey("team-123", tags: tags);
-        _apiKeyService.GetByApiKeyAsync("viewer-key").Returns(Task.FromResult(apiKey));
+        // A custom IApiKey (not ApiKeyEntity) resolves access level from its typed property, not Tags.
+        var apiKey = CreateApiKey("team-123");
+        apiKey.AccessLevel.Returns(AccessLevel.User);
+        _apiKeyService.GetByApiKeyAsync("typed-key").Returns(Task.FromResult(apiKey));
 
-        var context = CreateHttpContext("viewer-key");
+        var context = CreateHttpContext("typed-key");
         var handler = await CreateHandler(context);
 
         var result = await handler.AuthenticateAsync();
@@ -269,6 +270,43 @@ public class ApiKeyAuthenticationHandlerTests
         Assert.True(result.Succeeded);
         var accessLevelClaim = result.Principal.FindFirst(TeamClaimTypes.AccessLevel);
         Assert.NotNull(accessLevelClaim);
-        Assert.Equal("Viewer", accessLevelClaim.Value);
+        Assert.Equal("User", accessLevelClaim.Value);
+    }
+
+    [Fact]
+    public async Task Tags_Emitted_As_Per_Entry_Claims_Including_Duplicate_Keys()
+    {
+        var apiKey = CreateApiKey("team-123", tags: new[]
+        {
+            new Tag("Type", "firewall"),
+            new Tag("Type", "PIM"),
+            new Tag("firewall.groupId", "ABC123"),
+        });
+        _apiKeyService.GetByApiKeyAsync("tagged-key").Returns(Task.FromResult(apiKey));
+
+        var context = CreateHttpContext("tagged-key");
+        var handler = await CreateHandler(context);
+
+        var result = await handler.AuthenticateAsync();
+
+        Assert.True(result.Succeeded);
+        var typeValues = result.Principal.FindAll("tag.Type").Select(c => c.Value).ToArray();
+        Assert.Equal(new[] { "firewall", "PIM" }, typeValues);
+        Assert.Equal("ABC123", result.Principal.FindFirst("tag.firewall.groupId")?.Value);
+    }
+
+    [Fact]
+    public async Task No_Tags_Emits_No_Tag_Claims()
+    {
+        var apiKey = CreateApiKey("team-123");
+        _apiKeyService.GetByApiKeyAsync("plain-key").Returns(Task.FromResult(apiKey));
+
+        var context = CreateHttpContext("plain-key");
+        var handler = await CreateHandler(context);
+
+        var result = await handler.AuthenticateAsync();
+
+        Assert.True(result.Succeeded);
+        Assert.DoesNotContain(result.Principal.Claims, c => c.Type.StartsWith(TeamClaimTypes.TagPrefix));
     }
 }

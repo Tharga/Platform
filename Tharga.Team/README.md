@@ -21,7 +21,8 @@ Domain models, service abstractions, and authorization primitives for multi-tena
 
 ### Authorization
 - `AccessLevel` enum - Owner, Administrator, User, Viewer, Custom. `Custom` grants no inherited base scopes (effective scopes = roles ∪ scope overrides only) for least-privilege keys/members.
-- `TeamClaimTypes` - Claim type constants (`TeamKey`, `AccessLevel`, `Scope`).
+- `Tag` record - System-set key-value tag on an API key (a list, so a key may repeat). Set at creation only; surfaced as a `tag.{Key}` claim on the authenticated principal.
+- `TeamClaimTypes` - Claim type constants (`TeamKey`, `AccessLevel`, `Scope`, `TagPrefix`).
 - `IScopeRegistry` / `ScopeRegistry` - Register and resolve scopes per access level.
 - `ITenantRoleRegistry` / `TenantRoleRegistry` - Register tenant roles with associated scopes.
 - `RequireAccessLevelAttribute` / `RequireScopeAttribute` - Declarative authorization on service methods.

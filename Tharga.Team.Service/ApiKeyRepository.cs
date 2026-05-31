@@ -1,4 +1,6 @@
+using MongoDB.Bson;
 using MongoDB.Driver;
+using Tharga.MongoDB.Disk;
 
 namespace Tharga.Team.Service;
 
@@ -69,5 +71,19 @@ internal class ApiKeyRepository : IApiKeyRepository
     public async Task PurgeExpiredAsync()
     {
         await _collection.DeleteManyAsync(x => x.ExpiryDate != null && x.ExpiryDate < DateTime.UtcNow);
+    }
+
+    public Task<long> CleanLegacyTagsAsync()
+    {
+        // Before #75, Tags was a Dictionary<string,string> persisted as a BSON document. Unset that
+        // legacy field where it is still an object (not the new array), so those documents load again.
+        // Runs server-side via the raw collection — it must not deserialize ApiKeyEntity (which would throw).
+        var filter = new BsonDocument("Tags", new BsonDocument("$type", "object"));
+        var update = new BsonDocument("$unset", new BsonDocument("Tags", 1));
+        return _collection.ExecuteAsync(async collection =>
+        {
+            var result = await collection.UpdateManyAsync(filter, update);
+            return result.IsModifiedCountAvailable ? result.ModifiedCount : result.MatchedCount;
+        }, Operation.Update);
     }
 }

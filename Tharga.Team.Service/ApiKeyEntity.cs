@@ -31,8 +31,9 @@ public record ApiKeyEntity : EntityBase, IApiKey
     public string CreatedBy { get; init; }
 
     /// <inheritdoc />
-    [BsonIgnoreIfDefault]
-    public Dictionary<string, string> Tags { get; init; } = new();
+    [BsonIgnoreIfNull]
+    [BsonSerializer(typeof(TagListBsonSerializer))]
+    public IReadOnlyList<Tag> Tags { get; init; }
 
     /// <summary>Hashed value of the API key used for verification.</summary>
     public required string ApiKeyHash { get; init; }

@@ -19,4 +19,7 @@ public static class TeamClaimTypes
 
     /// <summary>Claim type carrying the stable identifier of the API key used to authenticate (the <c>IApiKey.Key</c> Guid string).</summary>
     public const string ApiKeyId = "ApiKeyId";
+
+    /// <summary>Prefix for per-tag claims emitted from an API key's <c>Tags</c>. A tag with key <c>K</c> becomes a claim of type <c>tag.K</c>. Multiple claims with the same type may be present.</summary>
+    public const string TagPrefix = "tag.";
 }

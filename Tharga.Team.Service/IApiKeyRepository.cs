@@ -33,4 +33,12 @@ public interface IApiKeyRepository : IRepository
 
     /// <summary>Deletes all expired API key entities.</summary>
     Task PurgeExpiredAsync();
+
+    /// <summary>
+    /// One-time migration: removes the legacy <c>Tags</c> field from documents where it is still stored as a
+    /// BSON document (the pre-#75 <c>Dictionary&lt;string,string&gt;</c> representation). Runs server-side and
+    /// returns the number of documents cleaned. Safe to run repeatedly. Reading is already tolerant of the
+    /// legacy shape; this just purges it permanently.
+    /// </summary>
+    Task<long> CleanLegacyTagsAsync();
 }

@@ -23,8 +23,12 @@ public interface IApiKey
     /// <summary>User who created this key (identity/display name). Null if not recorded.</summary>
     string CreatedBy { get; }
 
-    /// <summary>Arbitrary key-value metadata associated with this API key.</summary>
-    Dictionary<string, string> Tags { get; }
+    /// <summary>
+    /// System-set key-value tags on this API key. A list (not a map), so a key may repeat.
+    /// Set only at creation via the service; immutable thereafter and not editable from the UI.
+    /// Each tag is surfaced as a <c>tag.{Key}</c> claim on the authenticated principal.
+    /// </summary>
+    IReadOnlyList<Tag> Tags { get; }
 
     /// <summary>Access level assigned to this API key. Null defaults to Administrator.</summary>
     AccessLevel? AccessLevel { get; }

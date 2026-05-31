@@ -490,7 +490,7 @@ public class MyTeamService : TeamServiceRepositoryBase<TeamEntity, TeamMember>
 | `<TeamComponent />` | Full team management (create, rename, delete, members) |
 | `<TeamInviteView />` | Pending invitation view |
 | `<UsersView />` | Admin user list |
-| `<ApiKeyView />` | API key management (requires Step 5). Shows **Created** and **Last used** columns per key. Opt-in `[Parameter]` flags: `ShowAuditLogButton`, `ShowScopeOverrides` (Scopes column + create-card multi-select + Edit-Scopes dialog per row) |
+| `<ApiKeyView />` | API key management (requires Step 5). Shows **Created** and **Last used** columns per key, and a **Tags** column (chips for keys in `ChipTagKeys`, plus an `(i)` tooltip of all tags). Opt-in `[Parameter]` flags: `ShowAuditLogButton`, `ShowScopeOverrides` (Scopes column + create-card multi-select + Edit-Scopes dialog per row), `ChipTagKeys` |
 | `<AuditLogView />` | Audit log viewer (requires Step 8) |
 | `Roles.TeamMember` | Role claim added to authenticated team members |
 | `Roles.Developer` | Role for developer-only UI sections |
@@ -638,6 +638,21 @@ builder.Services.AddAuthentication()
 ```razor
 @using Tharga.Team.Service
 ```
+
+### System-set tags
+
+API keys can carry **system-set tags** — a key-value list (`IReadOnlyList<Tag>`, `record Tag(string Key, string Value)`) set by backend code at creation. Tags are **backend-only**: there's a `tags` parameter on `CreateKeyAsync`, no mutation API, and no input in the `ApiKeyView` create card — so an operator can't add or re-point them from the UI.
+
+```csharp
+await apiKeyManagementService.CreateKeyAsync(
+    teamKey, "Firewall opener", AccessLevel.Custom,
+    scopeOverrides: new[] { "firewall:open" },
+    tags: new[] { new Tag("Type", "firewall"), new Tag("firewall.groupId", "ABC123") });
+```
+
+- **Surfaced as claims.** Each tag becomes a `tag.{Key}` claim on the authenticated principal (`TeamClaimTypes.TagPrefix = "tag."`) — no DB round-trip to read a key's binding. Because it's a *list*, a key may carry the same key twice (e.g. `Type=firewall` + `Type=PIM`), producing two `tag.Type` claims; read them with `user.FindAll("tag.Type")`.
+- **Displayed read-only.** `ApiKeyView` shows all tags in an `(i)` tooltip; pass `ChipTagKeys` to render selected keys as chips (e.g. `ChipTagKeys="@(new[] { "Type" })"`).
+- **Legacy data.** Pre-tags keys stored an empty `Tags` document; reads tolerate this automatically (it deserializes as no tags). To purge the legacy field, call `IApiKeyRepository.CleanLegacyTagsAsync()` once (server-side, safe to repeat).
 
 ### Verification
 

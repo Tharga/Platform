@@ -40,7 +40,7 @@ public class ApiKeyIdClaimTests
         key.Key.Returns("11111111-1111-1111-1111-111111111111");
         key.TeamKey.Returns("team-1");
         key.Name.Returns("team-key");
-        key.Tags.Returns(new Dictionary<string, string>());
+        key.Tags.Returns(Array.Empty<Tag>());
         _apiKeyService.GetByApiKeyAsync("raw").Returns(key);
 
         var handler = await CreateHandler(CreateHttpContext("raw"));
@@ -60,7 +60,7 @@ public class ApiKeyIdClaimTests
         key.TeamKey.Returns((string)null);
         key.Name.Returns("system-key");
         key.SystemScopes.Returns(new[] { "mcp:discover" });
-        key.Tags.Returns(new Dictionary<string, string>());
+        key.Tags.Returns(Array.Empty<Tag>());
         _apiKeyService.GetByApiKeyAsync("raw").Returns(key);
 
         var handler = await CreateHandler(CreateHttpContext("raw"));

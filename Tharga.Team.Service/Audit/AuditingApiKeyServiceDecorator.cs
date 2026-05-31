@@ -30,12 +30,12 @@ public class AuditingApiKeyServiceDecorator : IApiKeyAdministrationService
 
     // Mutation operations — log audit entries
 
-    public async Task<IApiKey> CreateKeyAsync(string teamKey, string name, AccessLevel accessLevel, string[] roles = null, string[] scopeOverrides = null, DateTime? expiryDate = null)
+    public async Task<IApiKey> CreateKeyAsync(string teamKey, string name, AccessLevel accessLevel, string[] roles = null, string[] scopeOverrides = null, DateTime? expiryDate = null, IReadOnlyList<Tag> tags = null)
     {
         var sw = Stopwatch.StartNew();
         try
         {
-            var result = await _inner.CreateKeyAsync(teamKey, name, accessLevel, roles, scopeOverrides, expiryDate);
+            var result = await _inner.CreateKeyAsync(teamKey, name, accessLevel, roles, scopeOverrides, expiryDate, tags);
             sw.Stop();
             Log("create", nameof(CreateKeyAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
             return result;

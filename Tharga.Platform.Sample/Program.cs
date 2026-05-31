@@ -27,11 +27,19 @@ builder.AddThargaPlatform(o =>
     //o.Blazor.ShowScopeOverrides = true;
     //o.Blazor.ShowMemberRoles = true;
 
-    //o.ConfigureScopes = scopes =>
-    //{
-    //    scopes.Register("orders:read", AccessLevel.Viewer);
-    //    scopes.Register("orders:write", AccessLevel.Administrator);
-    //};
+    // Advanced mode unlocks the full API key UI (access level, roles, scope overrides, tags).
+    o.ApiKey.AdvancedMode = true;
+
+    // Register scopes so the scope-override picker and Custom (no-base-scope) keys have something to grant.
+    o.ConfigureScopes = scopes =>
+    {
+        scopes.Register("orders:read", AccessLevel.Viewer);
+        scopes.Register("orders:write", AccessLevel.Administrator);
+        scopes.Register("valuegroup:read", AccessLevel.Viewer);
+        scopes.Register("firewall:open", AccessLevel.Administrator);
+        scopes.Register("content:load", AccessLevel.Viewer);
+        scopes.Register("pim:manage", AccessLevel.Administrator);
+    };
 
     //o.ConfigureTenantRoles = roles =>
     //{
