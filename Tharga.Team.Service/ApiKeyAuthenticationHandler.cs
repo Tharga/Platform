@@ -134,18 +134,11 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
             return (al, roles, overrides);
         }
 
-        var accessLevelStr = key.Tags.TryGetValue(TeamClaimTypes.AccessLevel, out var level)
-            ? level
-            : AccessLevel.Viewer.ToString();
-
-        var accessLevel = Enum.TryParse<AccessLevel>(accessLevelStr, out var parsed)
-            ? parsed
-            : AccessLevel.Viewer;
-
-        var roleStr = key.Tags.TryGetValue("TenantRoles", out var r)
-            ? r.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            : Array.Empty<string>();
-
-        return (accessLevel, roleStr, Array.Empty<string>());
+        // Non-entity IApiKey (custom store): read the typed properties directly. (These superseded
+        // the old Tags["AccessLevel"]/["TenantRoles"] fallback, which also ignored ScopeOverrides.)
+        return (
+            key.AccessLevel ?? AccessLevel.Viewer,
+            key.Roles ?? Array.Empty<string>(),
+            key.ScopeOverrides ?? Array.Empty<string>());
     }
 }
