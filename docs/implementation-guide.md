@@ -688,9 +688,11 @@ The `ScopeProxy<T>` automatically checks that the current user has the required 
 
 ### How scopes are resolved
 
-1. **Access level** — Owner and Administrator get all scopes. User gets scopes at User or Viewer level. Viewer gets only Viewer-level scopes.
+1. **Access level** — Owner and Administrator get all scopes. User gets scopes at User or Viewer level. Viewer gets only Viewer-level scopes. **`Custom` gets no base scopes** (and is exempt from the Owner/Administrator "all scopes" rule).
 2. **Tenant roles** — Additional scopes granted by assigned roles (see Step 7).
 3. **Scope overrides** — Per-member overrides set in the team management UI (when `ShowScopeOverrides = true`).
+
+> **`AccessLevel.Custom` — least-privilege keys/members.** Use `Custom` when a principal should carry *only* its explicitly assigned roles and scope overrides, with nothing inherited from the access-level tier — e.g. a machine API key minted with a single scope. Its effective scopes are exactly `roles ∪ scopeOverrides`. Set it **explicitly**: a key created without an access level still defaults to a non-`Custom` level. `Custom` is surfaced in the `ApiKeyView` create card; it is intentionally hidden from the team-member pickers until member scope/role editing lands ([#76](https://github.com/Tharga/Platform/issues/76)).
 
 ### Built-in scopes
 
@@ -715,6 +717,8 @@ builder.Services.AddScopedWithAccessLevel<IMyService, MyService>();
 [RequireAccessLevel(AccessLevel.Administrator)]
 public Task DeleteAsync(string id) { ... }
 ```
+
+> A `Custom` principal is the lowest tier and fails **every** `[RequireAccessLevel]` gate (including `Viewer`). Authorize such principals with scope-based checks (`[RequireScope]`) rather than access-level enforcement.
 
 ### Verification
 

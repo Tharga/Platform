@@ -5,6 +5,8 @@ namespace Tharga.Team;
 /// Owner and Administrator get all registered scopes.
 /// User gets scopes registered at User or Viewer level.
 /// Viewer gets only scopes registered at Viewer level.
+/// Custom gets no base scopes at all (exempt from the Owner/Administrator all-scopes rule);
+/// its effective scopes come solely from roles and scope overrides.
 /// Role scopes are unioned with access level scopes.
 /// </summary>
 public class ScopeRegistry : IScopeRegistry
@@ -29,6 +31,11 @@ public class ScopeRegistry : IScopeRegistry
 
     public IReadOnlyList<string> GetScopesForAccessLevel(AccessLevel accessLevel)
     {
+        // Custom grants no base scopes — effective scopes come solely from roles and overrides.
+        // Explicit guard so the invariant holds even if a scope is ever registered at Custom level.
+        if (accessLevel == AccessLevel.Custom)
+            return Array.Empty<string>();
+
         if (accessLevel <= AccessLevel.Administrator)
             return _scopes.Select(s => s.Name).ToList();
 
