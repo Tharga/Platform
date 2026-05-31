@@ -1,0 +1,122 @@
+@using Microsoft.Extensions.DependencyInjection
+@using Tharga.Team
+@using Tharga.Team.Blazor.Features.Team
+@inject ITeamStateService TeamStateService
+@inject IServiceProvider ServiceProvider
+@inject NotificationService NotificationService
+
+@*
+    Demonstrates creating a "special" least-privilege API key:
+    AccessLevel.Custom (no inherited base scopes) + explicit scope overrides + system-set Tags.
+    Tags are backend-only (no input in the stock ApiKeyView create card), so this custom form shows
+    how a consumer mints such keys via IApiKeyManagementService.CreateKeyAsync(.., tags: ..).
+*@
+<RadzenCard class="rz-mb-4">
+    <RadzenText TextStyle="TextStyle.H6">Create special API key</RadzenText>
+    <RadzenText TextStyle="TextStyle.Body2" class="rz-mb-3">
+        Creates a least-privilege key (<code>AccessLevel.Custom</code>) carrying only the scopes you pick,
+        plus system-set tags. Reload after creating to see it in the list below.
+    </RadzenText>
+
+    @if (_apiKeyManagementService == null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat">
+            API key management is not configured.
+        </RadzenAlert>
+    }
+    else if (_scopeRegistry == null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat">
+            No scope registry configured. Register scopes via <code>o.ConfigureScopes</code> in Program.cs.
+        </RadzenAlert>
+    }
+    else
+    {
+        <div class="rz-mb-2">
+            <RadzenText TextStyle="TextStyle.Subtitle2">Name</RadzenText>
+            <RadzenTextBox @bind-Value="_name" Placeholder="e.g. Firewall opener" Style="width:100%" />
+        </div>
+        <div class="rz-mb-2">
+            <RadzenText TextStyle="TextStyle.Subtitle2">Type tag(s) — shown as chips in the list</RadzenText>
+            <RadzenDropDown @bind-Value="_types" Data="@_typeOptions" Multiple="true" AllowClear="true"
+                            Placeholder="firewall, PIM, Content…" Style="width:100%" />
+        </div>
+        <div class="rz-mb-2">
+            <RadzenText TextStyle="TextStyle.Subtitle2">Scopes (scope overrides)</RadzenText>
+            <RadzenDropDown @bind-Value="_scopes" Data="@_scopeOptions" Multiple="true" AllowClear="true"
+                            Placeholder="Pick scopes…" Style="width:100%" />
+        </div>
+        <div class="rz-display-flex rz-mb-2" style="gap:.5rem">
+            <div style="flex:1">
+                <RadzenText TextStyle="TextStyle.Subtitle2">Extra tag key (optional)</RadzenText>
+                <RadzenTextBox @bind-Value="_extraKey" Placeholder="e.g. firewall.groupId" Style="width:100%" />
+            </div>
+            <div style="flex:1">
+                <RadzenText TextStyle="TextStyle.Subtitle2">Extra tag value</RadzenText>
+                <RadzenTextBox @bind-Value="_extraValue" Placeholder="e.g. ABC123" Style="width:100%" />
+            </div>
+        </div>
+        <RadzenButton Text="Create special key" Icon="vpn_key" Click="@CreateAsync"
+                      Disabled="@(string.IsNullOrWhiteSpace(_name))" class="rz-mt-2" />
+
+        @if (_createdKey != null)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Success" ShowIcon="true" Variant="Variant.Flat" class="rz-mt-3">
+                Created <b>@_createdKey.Name</b> — copy the value now (shown once):
+                <pre style="white-space:pre-wrap; margin:.5rem 0 0">@_createdKey.ApiKey</pre>
+            </RadzenAlert>
+        }
+    }
+</RadzenCard>
+
+@code {
+    private IApiKeyManagementService _apiKeyManagementService;
+    private IScopeRegistry _scopeRegistry;
+
+    private string _name;
+    private IEnumerable<string> _types = Array.Empty<string>();
+    private IEnumerable<string> _scopes = Array.Empty<string>();
+    private string _extraKey;
+    private string _extraValue;
+    private IApiKey _createdKey;
+
+    private readonly string[] _typeOptions = ["firewall", "PIM", "Content"];
+    private string[] _scopeOptions = [];
+
+    protected override void OnInitialized()
+    {
+        _apiKeyManagementService = ServiceProvider.GetService<IApiKeyManagementService>();
+        _scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
+        if (_scopeRegistry != null)
+            _scopeOptions = _scopeRegistry.All.Select(s => s.Name).ToArray();
+    }
+
+    private async Task CreateAsync()
+    {
+        var team = await TeamStateService.GetSelectedTeamAsync();
+        if (team?.Key == null)
+        {
+            NotificationService.Notify(NotificationSeverity.Warning, "No team selected.");
+            return;
+        }
+
+        var tags = new List<Tag>();
+        foreach (var type in _types ?? Enumerable.Empty<string>())
+            tags.Add(new Tag("Type", type));
+        if (!string.IsNullOrWhiteSpace(_extraKey) && !string.IsNullOrWhiteSpace(_extraValue))
+            tags.Add(new Tag(_extraKey.Trim(), _extraValue.Trim()));
+
+        var scopes = (_scopes ?? Enumerable.Empty<string>()).ToArray();
+
+        _createdKey = await _apiKeyManagementService.CreateKeyAsync(
+            team.Key, _name, AccessLevel.Custom,
+            roles: null, scopeOverrides: scopes, expiryDate: null, tags: tags);
+
+        NotificationService.Notify(NotificationSeverity.Success, "Special API key created.");
+        _name = null;
+        _types = Array.Empty<string>();
+        _scopes = Array.Empty<string>();
+        _extraKey = null;
+        _extraValue = null;
+    }
+}

@@ -112,6 +112,20 @@ else
                     }
                 </Template>
             </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Tags" Width="180px">
+                <Template>
+                    @foreach (var tag in context.Tags.Where(t => ChipTagKeys.Contains(t.Key)))
+                    {
+                        <RadzenBadge Text="@tag.Value" class="rz-mr-1 rz-mb-1" />
+                    }
+                    @if (context.Tags.Count > 0)
+                    {
+                        <span title="@GetKeyTagsText(context)">
+                            <RadzenIcon Icon="info" Style="cursor: help;" />
+                        </span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
             <RadzenDataGridColumn Width="@GetActionsColumnWidth()">
                 <Template>
                     <RadzenButton Icon="visibility" Click="@(_ => context.VisibleKey = context.ApiKey)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey == _apiKeyMask)" />
@@ -185,6 +199,14 @@ else
     /// </summary>
     [Parameter] public bool ShowScopeOverrides { get; set; }
 
+    /// <summary>
+    /// Tag keys to render as chips in the key row. Tags whose <see cref="Tag.Key"/> is listed here
+    /// show as a badge per value (e.g. a "Type" key on a combination key renders one chip per type).
+    /// All tags — including binding tags not listed here — remain visible in the row's (i) tooltip.
+    /// Default: none (tooltip only).
+    /// </summary>
+    [Parameter] public string[] ChipTagKeys { get; set; } = Array.Empty<string>();
+
     private bool _apiKeyServiceMissing;
     private IApiKeyManagementService _apiKeyManagementService;
     private bool _hasAccess;
@@ -248,6 +270,7 @@ else
                     ExpiryDate = x.ExpiryDate,
                     CreatedAt = x.CreatedAt,
                     LastUsedAt = x.LastUsedAt,
+                    Tags = x.Tags ?? Array.Empty<Tag>(),
                 };
             }).ToArray();
 
@@ -315,6 +338,9 @@ else
         }
         return string.Join("\n", lines);
     }
+
+    private static string GetKeyTagsText(ApiKeyModel context)
+        => string.Join("\n", context.Tags.Select(t => $"{t.Key} = {t.Value}"));
 
     private bool IsKeyVisible(ApiKeyModel context)
     {

@@ -47,12 +47,12 @@ public class ApiKeyAuthenticationHandlerTests
         return context;
     }
 
-    private static IApiKey CreateApiKey(string teamKey, string name = "Test Key", Dictionary<string, string> tags = null)
+    private static IApiKey CreateApiKey(string teamKey, string name = "Test Key", IReadOnlyList<Tag> tags = null)
     {
         var apiKey = Substitute.For<IApiKey>();
         apiKey.TeamKey.Returns(teamKey);
         apiKey.Name.Returns(name);
-        apiKey.Tags.Returns(tags ?? new Dictionary<string, string>());
+        apiKey.Tags.Returns(tags ?? Array.Empty<Tag>());
         return apiKey;
     }
 
@@ -271,5 +271,42 @@ public class ApiKeyAuthenticationHandlerTests
         var accessLevelClaim = result.Principal.FindFirst(TeamClaimTypes.AccessLevel);
         Assert.NotNull(accessLevelClaim);
         Assert.Equal("User", accessLevelClaim.Value);
+    }
+
+    [Fact]
+    public async Task Tags_Emitted_As_Per_Entry_Claims_Including_Duplicate_Keys()
+    {
+        var apiKey = CreateApiKey("team-123", tags: new[]
+        {
+            new Tag("Type", "firewall"),
+            new Tag("Type", "PIM"),
+            new Tag("firewall.groupId", "ABC123"),
+        });
+        _apiKeyService.GetByApiKeyAsync("tagged-key").Returns(Task.FromResult(apiKey));
+
+        var context = CreateHttpContext("tagged-key");
+        var handler = await CreateHandler(context);
+
+        var result = await handler.AuthenticateAsync();
+
+        Assert.True(result.Succeeded);
+        var typeValues = result.Principal.FindAll("tag.Type").Select(c => c.Value).ToArray();
+        Assert.Equal(new[] { "firewall", "PIM" }, typeValues);
+        Assert.Equal("ABC123", result.Principal.FindFirst("tag.firewall.groupId")?.Value);
+    }
+
+    [Fact]
+    public async Task No_Tags_Emits_No_Tag_Claims()
+    {
+        var apiKey = CreateApiKey("team-123");
+        _apiKeyService.GetByApiKeyAsync("plain-key").Returns(Task.FromResult(apiKey));
+
+        var context = CreateHttpContext("plain-key");
+        var handler = await CreateHandler(context);
+
+        var result = await handler.AuthenticateAsync();
+
+        Assert.True(result.Succeeded);
+        Assert.DoesNotContain(result.Principal.Claims, c => c.Type.StartsWith(TeamClaimTypes.TagPrefix));
     }
 }

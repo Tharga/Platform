@@ -40,7 +40,7 @@ public class SystemApiKeyAuthenticationHandlerTests
         key.TeamKey.Returns((string)null);
         key.Name.Returns(name);
         key.SystemScopes.Returns(scopes);
-        key.Tags.Returns(new Dictionary<string, string>());
+        key.Tags.Returns(Array.Empty<Tag>());
         return key;
     }
 
@@ -82,7 +82,7 @@ public class SystemApiKeyAuthenticationHandlerTests
         var teamKey = Substitute.For<IApiKey>();
         teamKey.TeamKey.Returns("team-1");
         teamKey.Name.Returns("team-bound");
-        teamKey.Tags.Returns(new Dictionary<string, string>());
+        teamKey.Tags.Returns(Array.Empty<Tag>());
         _apiKeyService.GetByApiKeyAsync("raw").Returns(teamKey);
 
         var ctx = CreateHttpContext("raw");

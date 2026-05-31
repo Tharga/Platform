@@ -274,6 +274,40 @@ public class ApiKeyAdministrationServiceTests
     }
 
     [Fact]
+    public async Task CreateKeyAsync_With_Tags_Persists_Them()
+    {
+        _apiKeyService.BuildApiKey(Arg.Any<string>(), Arg.Any<Func<string>>()).Returns("new-key");
+        _apiKeyService.Encrypt("new-key").Returns("new-hash");
+        _repository.AddAsync(Arg.Any<ApiKeyEntity>()).Returns(ci => Task.FromResult(ci.Arg<ApiKeyEntity>()));
+
+        var tags = new[] { new Tag("Type", "firewall"), new Tag("firewall.groupId", "ABC123") };
+        await _sut.CreateKeyAsync("team-1", "My Key", AccessLevel.Custom, tags: tags);
+
+        await _repository.Received(1).AddAsync(Arg.Is<ApiKeyEntity>(e =>
+            e.Tags != null
+            && e.Tags.Count == 2
+            && e.Tags[0].Key == "Type" && e.Tags[0].Value == "firewall"
+            && e.Tags[1].Key == "firewall.groupId" && e.Tags[1].Value == "ABC123"));
+    }
+
+    [Fact]
+    public async Task RefreshKeyAsync_Preserves_Tags()
+    {
+        var existing = CreateEntity("key-1", "old-hash", "team-1") with
+        {
+            Tags = new[] { new Tag("Type", "firewall") },
+        };
+        _repository.GetAsync("key-1").Returns(Task.FromResult(existing));
+        _apiKeyService.BuildApiKey(Arg.Any<string>(), Arg.Any<Func<string>>()).Returns("refreshed-key");
+        _apiKeyService.Encrypt("refreshed-key").Returns("refreshed-hash");
+
+        await _sut.RefreshKeyAsync("team-1", "key-1");
+
+        await _repository.Received(1).UpdateAsync("key-1", Arg.Is<ApiKeyEntity>(e =>
+            e.Tags != null && e.Tags.Count == 1 && e.Tags[0].Key == "Type" && e.Tags[0].Value == "firewall"));
+    }
+
+    [Fact]
     public async Task CreateKeyAsync_With_Custom_AccessLevel_Persists_Custom_And_Overrides()
     {
         // The headline #74 use case: a least-privilege machine key minted with Custom + a single

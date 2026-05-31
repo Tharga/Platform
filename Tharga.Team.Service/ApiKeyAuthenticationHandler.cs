@@ -94,6 +94,11 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
                     claims.Add(new Claim(TeamClaimTypes.Scope, scope));
                 }
             }
+
+            foreach (var tag in key.Tags ?? Array.Empty<Tag>())
+            {
+                claims.Add(new Claim($"{TeamClaimTypes.TagPrefix}{tag.Key}", tag.Value));
+            }
         }
 
         var identity = new ClaimsIdentity(claims, Scheme.Name);
