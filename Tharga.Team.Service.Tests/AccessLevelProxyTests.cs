@@ -130,4 +130,19 @@ public class AccessLevelProxyTests
         var proxy = CreateProxy("team-1", "Administrator");
         Assert.Throws<InvalidOperationException>(() => proxy.UnprotectedMethod());
     }
+
+    [Fact]
+    public void Custom_Cannot_Call_Viewer_Method()
+    {
+        // Custom is the lowest tier, so it fails even the least-restrictive access-level gate.
+        var proxy = CreateProxy("team-1", "Custom");
+        Assert.Throws<UnauthorizedAccessException>(() => proxy.ViewerMethod());
+    }
+
+    [Fact]
+    public void Custom_Cannot_Call_Admin_Method()
+    {
+        var proxy = CreateProxy("team-1", "Custom");
+        Assert.Throws<UnauthorizedAccessException>(() => proxy.AdminMethod());
+    }
 }

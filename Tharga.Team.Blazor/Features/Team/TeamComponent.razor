@@ -124,7 +124,8 @@ else
                                             }
                                             else if (_canChangeRole)
                                             {
-                                                var accessLevels = Enum.GetValues<AccessLevel>().Where(x => x != AccessLevel.Owner);
+                                                // Custom hidden until #76 adds member scope/role editing (see InviteUserDialog).
+                                                var accessLevels = Enum.GetValues<AccessLevel>().Where(x => x != AccessLevel.Owner && x != AccessLevel.Custom);
                                                 <RadzenDropDown TValue="AccessLevel" Value="@context.AccessLevel" ValueChanged="@(x => ChangeRole(team, context.Key, x))" Data="@accessLevels"/>
                                             }
                                             else

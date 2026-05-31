@@ -273,6 +273,26 @@ public class ApiKeyAdministrationServiceTests
         await _repository.Received(1).AddAsync(Arg.Is<ApiKeyEntity>(e => e.ScopeOverrides == null));
     }
 
+    [Fact]
+    public async Task CreateKeyAsync_With_Custom_AccessLevel_Persists_Custom_And_Overrides()
+    {
+        // The headline #74 use case: a least-privilege machine key minted with Custom + a single
+        // explicit override, carrying no inherited base scopes.
+        _apiKeyService.BuildApiKey(Arg.Any<string>(), Arg.Any<Func<string>>()).Returns("new-key");
+        _apiKeyService.Encrypt("new-key").Returns("new-hash");
+        _repository.AddAsync(Arg.Any<ApiKeyEntity>()).Returns(ci => Task.FromResult(ci.Arg<ApiKeyEntity>()));
+
+        var created = await _sut.CreateKeyAsync("team-1", "Value Group reader", AccessLevel.Custom,
+            roles: null, scopeOverrides: new[] { "valuegroup:read" });
+
+        Assert.Equal(AccessLevel.Custom, created.AccessLevel);
+        await _repository.Received(1).AddAsync(Arg.Is<ApiKeyEntity>(e =>
+            e.AccessLevel == AccessLevel.Custom
+            && e.ScopeOverrides != null
+            && e.ScopeOverrides.Length == 1
+            && e.ScopeOverrides[0] == "valuegroup:read"));
+    }
+
     private static ApiKeyEntity CreateEntity(string key, string hash, string teamKey)
     {
         return new ApiKeyEntity

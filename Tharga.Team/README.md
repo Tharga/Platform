@@ -20,7 +20,7 @@ Domain models, service abstractions, and authorization primitives for multi-tena
 - `IApiKeyAdministrationService` / `IApiKeyManagementService` - API key management.
 
 ### Authorization
-- `AccessLevel` enum - Owner, Administrator, User, Viewer.
+- `AccessLevel` enum - Owner, Administrator, User, Viewer, Custom. `Custom` grants no inherited base scopes (effective scopes = roles ∪ scope overrides only) for least-privilege keys/members.
 - `TeamClaimTypes` - Claim type constants (`TeamKey`, `AccessLevel`, `Scope`).
 - `IScopeRegistry` / `ScopeRegistry` - Register and resolve scopes per access level.
 - `ITenantRoleRegistry` / `TenantRoleRegistry` - Register tenant roles with associated scopes.

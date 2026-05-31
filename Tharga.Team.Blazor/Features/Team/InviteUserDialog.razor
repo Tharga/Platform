@@ -76,7 +76,9 @@
         {
             AccessLevel = AccessLevel.User
         };
-        _accessLevels = Enum.GetValues<AccessLevel>().Where(x => x != AccessLevel.Owner).ToArray();
+        // Custom is hidden from the member picker until #76 adds member scope/role editing
+        // (a Custom member with no editable grants would be locked out). Keys surface it in ApiKeyView.
+        _accessLevels = Enum.GetValues<AccessLevel>().Where(x => x != AccessLevel.Owner && x != AccessLevel.Custom).ToArray();
         _emailSenderAvailable = ServiceProvider.GetService<ITeamEmailSender>() != null;
 
         await base.OnInitializedAsync();
