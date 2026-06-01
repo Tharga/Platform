@@ -15,7 +15,8 @@ public static class ScopeServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddThargaScopes(this IServiceCollection services, Action<ScopeRegistry> configure)
     {
-        var registry = services.BuildServiceProvider().GetService<IScopeRegistry>() as ScopeRegistry;
+        var provider = services.BuildServiceProvider();
+        var registry = provider.GetService<IScopeRegistry>() as ScopeRegistry;
         if (registry == null)
         {
             registry = new ScopeRegistry();
@@ -23,6 +24,13 @@ public static class ScopeServiceCollectionExtensions
         }
 
         configure(registry);
+
+        // Order-independent linkage: if the tenant-role registry is already registered, link it now so role
+        // scopes resolve. (AddThargaTenantRoles performs the same link when it runs after scopes; this handles
+        // the reverse order, where roles were registered first.)
+        if (provider.GetService<ITenantRoleRegistry>() is { } roleRegistry)
+            registry.SetRoleRegistry(roleRegistry);
+
         return services;
     }
 

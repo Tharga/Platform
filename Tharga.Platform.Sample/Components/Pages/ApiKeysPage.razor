@@ -5,4 +5,32 @@
 
 <PageTitle>API Keys</PageTitle>
 
-<ApiKeyView ShowAuditLogButton="true" />
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1.5rem" class="rz-mb-3">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+        <RadzenSwitch @bind-Value="_showScopeTooltip" /> <RadzenLabel Text="Show scope tooltip" />
+    </RadzenStack>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+        <RadzenSwitch @bind-Value="_showScopeOverrides" /> <RadzenLabel Text="Show scope overrides" />
+    </RadzenStack>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+        <RadzenSwitch @bind-Value="_showRoles" /> <RadzenLabel Text="Show roles" />
+    </RadzenStack>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+        <RadzenSwitch @bind-Value="_showLastUsed" /> <RadzenLabel Text="Show last used" />
+    </RadzenStack>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+        <RadzenSwitch @bind-Value="_showExpiryDatePicker" /> <RadzenLabel Text="Show Expiry date picker" />
+    </RadzenStack>
+</RadzenStack>
+
+<ApiKeyView ShowAuditLogButton="true" ShowScopeTooltip="_showScopeTooltip"
+            ShowScopeOverrides="_showScopeOverrides" ShowRoles="_showRoles" ShowLastUsed="_showLastUsed"
+            ShowExpiryDatePicker="_showExpiryDatePicker" />
+
+@code {
+    private bool _showScopeTooltip = true;
+    private bool _showScopeOverrides;
+    private bool _showRoles;
+    private bool _showLastUsed = true;
+    private bool _showExpiryDatePicker;
+}

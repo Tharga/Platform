@@ -117,6 +117,23 @@ public class AuditingApiKeyServiceDecorator : IApiKeyAdministrationService
         }
     }
 
+    public async Task SetRolesAsync(string teamKey, string key, string[] roles)
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            await _inner.SetRolesAsync(teamKey, key, roles);
+            sw.Stop();
+            Log("set-roles", nameof(SetRolesAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            Log("set-roles", nameof(SetRolesAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey);
+            throw;
+        }
+    }
+
     // System key operations
 
     public IAsyncEnumerable<IApiKey> GetSystemKeysAsync() => _inner.GetSystemKeysAsync();

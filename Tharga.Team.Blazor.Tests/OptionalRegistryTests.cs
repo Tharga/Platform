@@ -77,10 +77,10 @@ public class OptionalRegistryTests
     {
         var services = new ServiceCollection();
 
+        // Role/scope editors are now per-component parameters; the tenant-role registry remains optional.
         var exception = Record.Exception(() => services.AddThargaTeamBlazor(o =>
         {
-            o.ShowMemberRoles = true;
-            o.ShowScopeOverrides = true;
+            o.Title = "Test";
         }));
 
         Assert.Null(exception);

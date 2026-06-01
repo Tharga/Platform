@@ -170,6 +170,15 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
         await _repository.UpdateAsync(key, updated);
     }
 
+    public async Task SetRolesAsync(string teamKey, string key, string[] roles)
+    {
+        var item = await _repository.GetAsync(key);
+        VerifyTeamOwnership(item, teamKey);
+        var normalised = roles is { Length: > 0 } ? roles : null;
+        var updated = item with { Roles = normalised };
+        await _repository.UpdateAsync(key, updated);
+    }
+
     /// <inheritdoc />
     public async IAsyncEnumerable<IApiKey> GetSystemKeysAsync()
     {

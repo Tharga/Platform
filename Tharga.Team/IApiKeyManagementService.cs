@@ -23,6 +23,9 @@ public interface IApiKeyManagementService
     [RequireScope(ApiKeyScopes.Manage)]
     Task SetScopeOverridesAsync(string teamKey, string key, string[] scopes);
 
+    [RequireScope(ApiKeyScopes.Manage)]
+    Task SetRolesAsync(string teamKey, string key, string[] roles);
+
     [RequireScope(ApiKeyScopes.SystemManage)]
     IAsyncEnumerable<IApiKey> GetSystemKeysAsync();
 

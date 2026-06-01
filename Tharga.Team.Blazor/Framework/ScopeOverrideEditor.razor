@@ -1,0 +1,69 @@
+@namespace Tharga.Team.Blazor.Framework
+
+@*
+    Scope-override picker (option b): shows ALL scopes; the ones inherited from the principal's access level
+    and roles are pre-checked and disabled, so the operator sees the full effective set and can only toggle
+    the additional override scopes. Persists only the non-inherited selections via OverridesChanged.
+*@
+<RadzenDropDown TValue="IEnumerable<string>"
+                Multiple="true"
+                AllowClear="true"
+                Data="@_options"
+                TextProperty="Name"
+                ValueProperty="Name"
+                DisabledProperty="Inherited"
+                Value="@_value"
+                ValueChanged="@OnValueChanged"
+                Placeholder="Add scopes..."
+                Style="@Style">
+    <Template>
+        <span title="@(((ScopeOption)context).Description)">@(((ScopeOption)context).Name)</span>
+    </Template>
+</RadzenDropDown>
+
+@code {
+    /// <summary>All registered scope names to offer.</summary>
+    [Parameter] public IReadOnlyCollection<string> AllScopes { get; set; } = Array.Empty<string>();
+
+    /// <summary>Scopes the principal already gets from its access level and roles — shown checked + disabled.</summary>
+    [Parameter] public IReadOnlyCollection<string> InheritedScopes { get; set; } = Array.Empty<string>();
+
+    /// <summary>Current per-principal override scopes (the editable additions).</summary>
+    [Parameter] public IReadOnlyCollection<string> Overrides { get; set; } = Array.Empty<string>();
+
+    /// <summary>Optional scope-name → description map; shown as a tooltip on each option.</summary>
+    [Parameter] public IReadOnlyDictionary<string, string> Descriptions { get; set; }
+
+    /// <summary>Invoked with the non-inherited selection (the overrides to persist).</summary>
+    [Parameter] public EventCallback<string[]> OverridesChanged { get; set; }
+
+    [Parameter] public string Style { get; set; } = "min-width: 220px;";
+
+    private List<ScopeOption> _options = new();
+    private IEnumerable<string> _value = Array.Empty<string>();
+
+    protected override void OnParametersSet()
+    {
+        var inherited = new HashSet<string>(InheritedScopes ?? Array.Empty<string>());
+        _options = (AllScopes ?? Array.Empty<string>())
+            .OrderBy(s => s, StringComparer.Ordinal)
+            .Select(s => new ScopeOption(s, inherited.Contains(s), GetDescription(s)))
+            .ToList();
+        // Inherited scopes appear checked (and disabled); current overrides are also checked.
+        _value = inherited.Concat(Overrides ?? Array.Empty<string>()).Distinct().ToList();
+    }
+
+    private async Task OnValueChanged(IEnumerable<string> value)
+    {
+        var inherited = new HashSet<string>(InheritedScopes ?? Array.Empty<string>());
+        var selected = (value ?? Enumerable.Empty<string>()).ToList();
+        _value = selected;
+        var overrides = selected.Where(s => !inherited.Contains(s)).ToArray();
+        await OverridesChanged.InvokeAsync(overrides);
+    }
+
+    private string GetDescription(string scope)
+        => Descriptions != null && Descriptions.TryGetValue(scope, out var d) ? d : null;
+
+    public sealed record ScopeOption(string Name, bool Inherited, string Description);
+}

@@ -9,12 +9,15 @@ public class TenantRoleRegistry : ITenantRoleRegistry
 
     public IReadOnlyList<TenantRoleDefinition> All => _roles;
 
-    public void Register(string roleName, params string[] scopes)
+    public void Register(string roleName, params string[] scopes) => Register(roleName, scopes, null);
+
+    /// <summary>Registers a tenant role with an optional human-readable description.</summary>
+    public void Register(string roleName, string[] scopes, string description)
     {
         if (_roles.Any(r => r.Name == roleName))
             throw new InvalidOperationException($"Tenant role '{roleName}' is already registered.");
 
-        _roles.Add(new TenantRoleDefinition(roleName, scopes));
+        _roles.Add(new TenantRoleDefinition(roleName, scopes, description));
     }
 
     public TenantRoleDefinition Get(string roleName)

@@ -18,18 +18,6 @@ public record ThargaBlazorOptions : BlazorOptions
     public bool AutoCreateFirstTeam { get; set; } = false;
 
     /// <summary>
-    /// Show member role management in the team component.
-    /// Default is false.
-    /// </summary>
-    public bool ShowMemberRoles { get; set; } = false;
-
-    /// <summary>
-    /// Show individual scope overrides in the team component.
-    /// Default is false.
-    /// </summary>
-    public bool ShowScopeOverrides { get; set; } = false;
-
-    /// <summary>
     /// Allow users to create and delete teams via the UI.
     /// When false, the "Create team" and "Delete team" buttons are hidden.
     /// Independent of AutoCreateFirstTeam (system behavior).

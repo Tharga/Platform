@@ -57,8 +57,6 @@ public static class ThargaPlatformRegistration
             o.ShowConsentToggle = options.Blazor.ShowConsentToggle;
             o.DefaultConsent = options.Blazor.DefaultConsent;
             o.ConsentAccessLevel = options.Blazor.ConsentAccessLevel;
-            o.ShowMemberRoles = options.Blazor.ShowMemberRoles;
-            o.ShowScopeOverrides = options.Blazor.ShowScopeOverrides;
             o.SkipAuthStateDecoration = options.Blazor.SkipAuthStateDecoration;
             o._teamService = options.Blazor._teamService;
             o._userService = options.Blazor._userService;

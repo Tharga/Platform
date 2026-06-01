@@ -37,7 +37,7 @@ public static class McpPlatformBuilderExtensions
         // Register built-in mcp:* scopes. Uses AddThargaScopes, which creates the registry if missing.
         builder.Services.AddThargaScopes(scopes =>
         {
-            scopes.Register(McpScopes.Discover, AccessLevel.Viewer);
+            scopes.Register(McpScopes.Discover, AccessLevel.Viewer, "Discover and list available MCP tools and resources.");
         });
 
         // Always-on user-scope and team-scope resource providers. They self-gate on the

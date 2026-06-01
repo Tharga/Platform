@@ -24,10 +24,10 @@ public class ApiKeyOptions
     public bool AutoLockKeys { get; set; }
 
     /// <summary>
-    /// Maximum allowed expiry in days for API keys in advanced mode.
-    /// Null means no maximum. Default: null.
+    /// Maximum allowed expiry in days for API keys (caps both team and system keys).
+    /// Null means no maximum. Default: 365.
     /// </summary>
-    public int? MaxExpiryDays { get; set; }
+    public int? MaxExpiryDays { get; set; } = 365;
 
     /// <summary>
     /// Minimum time between "last used" timestamp writes for a given key. A key authenticating more
