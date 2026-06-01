@@ -53,10 +53,7 @@ public static class ThargaPlatformRegistration
             o.Title = options.Blazor.Title;
             o.AutoCreateFirstTeam = options.Blazor.AutoCreateFirstTeam;
             o.AllowTeamCreation = options.Blazor.AllowTeamCreation;
-            o.ConsentRoles = options.Blazor.ConsentRoles;
-            o.ShowConsentToggle = options.Blazor.ShowConsentToggle;
-            o.DefaultConsent = options.Blazor.DefaultConsent;
-            o.ConsentAccessLevel = options.Blazor.ConsentAccessLevel;
+            o.Consent = options.Blazor.Consent;
             o.SkipAuthStateDecoration = options.Blazor.SkipAuthStateDecoration;
             o._teamService = options.Blazor._teamService;
             o._userService = options.Blazor._userService;

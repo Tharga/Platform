@@ -106,7 +106,7 @@ internal class TeamServerClaimsTransformation : IClaimsTransformation
 
                 if (consentedTeam != null)
                 {
-                    var consentLevel = _options.ConsentAccessLevel;
+                    var consentLevel = consentedTeam.ConsentAccessLevel ?? _options.Consent.AccessLevel;
                     AddClaimSafe(identity, TeamClaimTypes.TeamKey, teamKey);
                     AddClaimSafe(identity, ClaimTypes.Role, Roles.TeamMember);
                     AddClaimSafe(identity, ClaimTypes.Role, $"Team{consentLevel}");
