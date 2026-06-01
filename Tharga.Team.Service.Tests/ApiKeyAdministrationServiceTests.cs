@@ -245,6 +245,40 @@ public class ApiKeyAdministrationServiceTests
     }
 
     [Fact]
+    public async Task SetRolesAsync_Updates_Entity()
+    {
+        var entity = CreateEntity("key-1", "hash-1", "team-1");
+        _repository.GetAsync("key-1").Returns(Task.FromResult(entity));
+
+        await _sut.SetRolesAsync("team-1", "key-1", new[] { "Editor", "Support" });
+
+        await _repository.Received(1).UpdateAsync("key-1", Arg.Is<ApiKeyEntity>(e =>
+            e.Roles != null && e.Roles.Length == 2 && e.Roles[0] == "Editor" && e.Roles[1] == "Support"));
+    }
+
+    [Fact]
+    public async Task SetRolesAsync_EmptyArray_ClearsRolesToNull()
+    {
+        var entity = CreateEntity("key-1", "hash-1", "team-1") with { Roles = new[] { "Stale" } };
+        _repository.GetAsync("key-1").Returns(Task.FromResult(entity));
+
+        await _sut.SetRolesAsync("team-1", "key-1", Array.Empty<string>());
+
+        await _repository.Received(1).UpdateAsync("key-1", Arg.Is<ApiKeyEntity>(e => e.Roles == null));
+    }
+
+    [Fact]
+    public async Task SetRolesAsync_WrongTeam_Throws()
+    {
+        var entity = CreateEntity("key-1", "hash-1", "team-1");
+        _repository.GetAsync("key-1").Returns(Task.FromResult(entity));
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            _sut.SetRolesAsync("team-2", "key-1", new[] { "Editor" }));
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<string>(), Arg.Any<ApiKeyEntity>());
+    }
+
+    [Fact]
     public async Task CreateKeyAsync_With_ScopeOverrides_Sets_Field_On_Entity()
     {
         _apiKeyService.BuildApiKey(Arg.Any<string>(), Arg.Any<Func<string>>()).Returns("new-key");

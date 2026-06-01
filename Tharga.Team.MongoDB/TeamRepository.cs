@@ -191,10 +191,12 @@ internal class TeamRepository<TTeamEntity, TMember> : ITeamRepository<TTeamEntit
         return _collection.UpdateOneAsync(filter, update);
     }
 
-    public Task SetConsentAsync(string teamKey, string[] consentedRoles)
+    public Task SetConsentAsync(string teamKey, string[] consentedRoles, AccessLevel? accessLevel = null)
     {
         var filter = new FilterDefinitionBuilder<TTeamEntity>().Eq(x => x.Key, teamKey);
-        var update = new UpdateDefinitionBuilder<TTeamEntity>().Set(x => x.ConsentedRoles, consentedRoles);
+        var update = new UpdateDefinitionBuilder<TTeamEntity>()
+            .Set(x => x.ConsentedRoles, consentedRoles)
+            .Set(x => x.ConsentAccessLevel, accessLevel);
         return _collection.UpdateOneAsync(filter, update);
     }
 

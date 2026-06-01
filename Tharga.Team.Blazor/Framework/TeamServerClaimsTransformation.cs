@@ -16,6 +16,7 @@ internal class TeamServerClaimsTransformation : IClaimsTransformation
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IScopeRegistry _scopeRegistry;
+    private readonly ISystemRoleRegistry _systemRoleRegistry;
     private readonly ITeamClaimsEnricher _claimsEnricher;
     private readonly ThargaBlazorOptions _options;
 
@@ -25,6 +26,7 @@ internal class TeamServerClaimsTransformation : IClaimsTransformation
         IUserService userService,
         IOptions<ThargaBlazorOptions> options,
         IScopeRegistry scopeRegistry = null,
+        ISystemRoleRegistry systemRoleRegistry = null,
         ITeamClaimsEnricher claimsEnricher = null)
     {
         _httpContextAccessor = httpContextAccessor;
@@ -32,6 +34,7 @@ internal class TeamServerClaimsTransformation : IClaimsTransformation
         _userService = userService;
         _options = options.Value;
         _scopeRegistry = scopeRegistry;
+        _systemRoleRegistry = systemRoleRegistry;
         _claimsEnricher = claimsEnricher;
     }
 
@@ -48,6 +51,15 @@ internal class TeamServerClaimsTransformation : IClaimsTransformation
         if (_claimsEnricher != null)
         {
             await _claimsEnricher.EnrichAsync(identity);
+        }
+
+        // System scopes: global capabilities granted by the user's app roles (team-independent — applied even
+        // when no team is selected). Added as Scope claims so [RequireScope] works the same as for team scopes.
+        if (_systemRoleRegistry != null)
+        {
+            var appRoles = identity.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value).ToArray();
+            foreach (var scope in _systemRoleRegistry.GetScopesForRoles(appRoles))
+                AddClaimSafe(identity, TeamClaimTypes.Scope, scope);
         }
 
         var httpContext = _httpContextAccessor.HttpContext;
@@ -94,7 +106,7 @@ internal class TeamServerClaimsTransformation : IClaimsTransformation
 
                 if (consentedTeam != null)
                 {
-                    var consentLevel = _options.ConsentAccessLevel;
+                    var consentLevel = consentedTeam.ConsentAccessLevel ?? _options.Consent.AccessLevel;
                     AddClaimSafe(identity, TeamClaimTypes.TeamKey, teamKey);
                     AddClaimSafe(identity, ClaimTypes.Role, Roles.TeamMember);
                     AddClaimSafe(identity, ClaimTypes.Role, $"Team{consentLevel}");

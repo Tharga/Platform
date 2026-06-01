@@ -3,10 +3,8 @@
 @using Microsoft.Extensions.Logging
 @using Microsoft.Extensions.Options
 @using Microsoft.JSInterop
-@using Tharga.Team
 @using Tharga.Toolkit
 @typeparam TMember where TMember : class, Tharga.Team.ITeamMember
-@using Microsoft.AspNetCore.Components.Authorization
 @inject ITeamService TeamService
 @inject ITeamManagementService TeamManagementService
 @inject ITeamStateService TeamStateService
@@ -37,9 +35,13 @@ else
                         @if (_showConsentToggle && HasAccessLevel(team, AccessLevel.Administrator))
                         {
                             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
-                                <RadzenLabel Text="@($"Allow {string.Join(", ", _consentRoles)} viewer access")" Style="font-size: 0.85em;" />
-                                <RadzenSwitch Value="@(team.ConsentedRoles != null && team.ConsentedRoles.Length > 0)"
-                                              Change="@(async (bool v) => await ToggleConsent(team, v))" />
+                                <RadzenLabel Text="@($"Consent access for {string.Join(", ", _consentRoles)}")" Style="font-size: 0.85em;" />
+                                <RadzenDropDown TValue="AccessLevel?"
+                                                Value="@(team.ConsentedRoles is { Length: > 0 } ? team.ConsentAccessLevel ?? AccessLevel.Viewer : (AccessLevel?)null)"
+                                                Data="@_consentLevels"
+                                                AllowClear="true"
+                                                Placeholder="No access"
+                                                Change="@(async args => await SetConsent(team, (AccessLevel?)args))" />
                             </RadzenStack>
                         }
                         <RadzenButton icon="edit" Text="Rename" Click="@(async () => { await RenameTeam(team); })" Visible="@(_canManage)"/>
@@ -134,57 +136,55 @@ else
                                             }
                                         </Template>
                                     </RadzenDataGridColumn>
-                                    @if (_showMemberRoles)
-                                    {
-                                        <RadzenDataGridColumn Title="Roles" Width="200px">
-                                            <Template>
-                                                @if (_canChangeRole && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
-                                                {
-                                                    <RadzenDropDown TValue="IEnumerable<string>"
-                                                                    Value="@(context.TenantRoles ?? Array.Empty<string>())"
-                                                                    ValueChanged="@(roles => ChangeTenantRoles(team, context.Key, roles))"
-                                                                    Data="@_availableRoles"
-                                                                    Multiple="true"
-                                                                    Placeholder="Select roles..." />
-                                                }
-                                                else
-                                                {
-                                                    <RadzenText>@(string.Join(", ", context.TenantRoles ?? Array.Empty<string>()))</RadzenText>
-                                                }
-                                            </Template>
-                                        </RadzenDataGridColumn>
-                                    }
-                                    @if (_showScopeOverrides)
-                                    {
-                                        <RadzenDataGridColumn Title="Scope Overrides" Width="200px">
-                                            <Template>
-                                                @if (_canChangeRole && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
-                                                {
-                                                    <RadzenDropDown TValue="IEnumerable<string>"
-                                                                    Value="@(context.ScopeOverrides ?? Array.Empty<string>())"
-                                                                    ValueChanged="@(scopes => ChangeScopeOverrides(team, context.Key, scopes))"
-                                                                    Data="@_allScopeNames"
-                                                                    Multiple="true"
-                                                                    Placeholder="Add scopes..." />
-                                                }
-                                                else
-                                                {
-                                                    <RadzenText>@(string.Join(", ", context.ScopeOverrides ?? Array.Empty<string>()))</RadzenText>
-                                                }
-                                            </Template>
-                                        </RadzenDataGridColumn>
-                                    }
-                                    @if (_showMemberRoles || _showScopeOverrides)
-                                    {
-                                        <RadzenDataGridColumn Title="" Width="40px">
-                                            <Template>
-                                                <span title="@GetEffectiveScopesWithOriginText(context)">
-                                                    <RadzenIcon Icon="info" Style="cursor: help;" />
-                                                </span>
-                                            </Template>
-                                        </RadzenDataGridColumn>
-                                    }
-                                    <RadzenDataGridColumn Title="Status" Property="@nameof(ITeamMember.State)"/>
+                                    <RadzenDataGridColumn Title="Roles" Width="200px" Visible="@(ShowRoles && _tenantRoleRegistry != null)">
+                                        <Template>
+                                            @if (_canChangeRole && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
+                                            {
+                                                <RoleEditor Roles="_roleDefinitions"
+                                                            Selected="@(context.TenantRoles ?? Array.Empty<string>())"
+                                                            SelectedChanged="@(r => ChangeTenantRoles(team, context.Key, r))" />
+                                            }
+                                            else
+                                            {
+                                                <RadzenText>@(string.Join(", ", context.TenantRoles ?? Array.Empty<string>()))</RadzenText>
+                                            }
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                    <RadzenDataGridColumn Title="Scope Overrides" Width="200px" Visible="@(ShowScopeOverrides && _scopeRegistry != null)">
+                                        <Template>
+                                            @if (_canChangeRole && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
+                                            {
+                                                <ScopeOverrideEditor AllScopes="_allScopeNames"
+                                                                     Descriptions="_scopeDescriptions"
+                                                                     InheritedScopes="@_scopeRegistry.GetEffectiveScopes(context.AccessLevel, context.TenantRoles, null)"
+                                                                     Overrides="@(context.ScopeOverrides ?? Array.Empty<string>())"
+                                                                     OverridesChanged="@(o => ChangeScopeOverrides(team, context.Key, o))" />
+                                            }
+                                            else
+                                            {
+                                                <RadzenText>@(string.Join(", ", context.ScopeOverrides ?? Array.Empty<string>()))</RadzenText>
+                                            }
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                    <RadzenDataGridColumn Title="Scopes" Width="80px" Visible="@(_scopeRegistry != null && ShowScopeTooltip)">
+                                        <Template>
+                                            <span title="@GetEffectiveScopesWithOriginText(context)">
+                                                <RadzenIcon Icon="info" Style="cursor: help;" />
+                                            </span>
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                    <RadzenDataGridColumn Title="Status" Property="@nameof(ITeamMember.State)">
+                                        <Template>
+                                            @if (context.State == MembershipState.Invited && context.Invitation != null)
+                                            {
+                                                <span title="@($"Invited {context.Invitation.InviteTime:yyyy-MM-dd HH:mm} UTC")" style="cursor: help;">@context.State</span>
+                                            }
+                                            else
+                                            {
+                                                <span>@context.State</span>
+                                            }
+                                        </Template>
+                                    </RadzenDataGridColumn>
                                     <RadzenDataGridColumn Title="Last Seen" Property="@nameof(ITeamMember.LastSeen)">
                                         <Template>
                                             <DateTimeView Date="@context.LastSeen"/>
@@ -245,6 +245,15 @@ else
     /// </summary>
     [Parameter] public EventCallback<MemberNameChangedArgs> OnMemberNameChanged { get; set; }
 
+    /// <summary>When true (and an <see cref="IScopeRegistry"/> is registered), shows the per-member effective-scope (i) tooltip. Default true.</summary>
+    [Parameter] public bool ShowScopeTooltip { get; set; } = true;
+
+    /// <summary>When true (and an <see cref="IScopeRegistry"/> is registered), shows the per-member scope-override editor column. Default false.</summary>
+    [Parameter] public bool ShowScopeOverrides { get; set; }
+
+    /// <summary>When true (and an <see cref="ITenantRoleRegistry"/> is registered), shows the per-member tenant-role editor column. Default false.</summary>
+    [Parameter] public bool ShowRoles { get; set; }
+
     private string _editingMemberKey;
     private string _editingMemberName;
 
@@ -252,9 +261,7 @@ else
     private IUser[] _users;
     private ITeam _selectedTeam;
     private IUser _user;
-    private bool _showMemberRoles;
-    private bool _showScopeOverrides;
-    private string[] _availableRoles = Array.Empty<string>();
+    private IReadOnlyList<TenantRoleDefinition> _roleDefinitions = Array.Empty<TenantRoleDefinition>();
     private bool _canManage;
     private bool _canInvite;
     private bool _canRemove;
@@ -263,6 +270,7 @@ else
     private bool _showConsentToggle;
     private string[] _consentRoles;
     private string[] _allScopeNames = Array.Empty<string>();
+    private IReadOnlyDictionary<string, string> _scopeDescriptions = new Dictionary<string, string>();
     private IScopeRegistry _scopeRegistry;
     private ITenantRoleRegistry _tenantRoleRegistry;
 
@@ -278,15 +286,16 @@ else
         _scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
         _tenantRoleRegistry = ServiceProvider.GetService<ITenantRoleRegistry>();
 
-        _showMemberRoles = BlazorOptions.Value.ShowMemberRoles && _tenantRoleRegistry != null;
-        _showScopeOverrides = BlazorOptions.Value.ShowScopeOverrides && _scopeRegistry != null;
         _allowTeamCreation = BlazorOptions.Value.AllowTeamCreation;
-        _showConsentToggle = BlazorOptions.Value.ShowConsentToggle;
-        _consentRoles = BlazorOptions.Value.ConsentRoles ?? [];
-        if (_showMemberRoles)
-            _availableRoles = _tenantRoleRegistry!.All.Select(r => r.Name).ToArray();
-        if (_showMemberRoles || _showScopeOverrides)
-            _allScopeNames = _scopeRegistry!.All.Select(s => s.Name).ToArray();
+        _showConsentToggle = BlazorOptions.Value.Consent.ShowToggle;
+        _consentRoles = BlazorOptions.Value.Consent.Roles ?? [];
+        if (_tenantRoleRegistry != null)
+            _roleDefinitions = _tenantRoleRegistry.All;
+        if (_scopeRegistry != null)
+        {
+            _allScopeNames = _scopeRegistry.All.Select(s => s.Name).ToArray();
+            _scopeDescriptions = _scopeRegistry.All.ToDictionary(s => s.Name, s => s.Description);
+        }
 
         _users = await UserService.GetAsync().ToArrayAsync();
         _user = await UserService.GetCurrentUserAsync();
@@ -307,7 +316,7 @@ else
 
         var lines = new List<string>();
         var allScopes = _scopeRegistry.GetEffectiveScopes(member.AccessLevel, member.TenantRoles, member.ScopeOverrides);
-        foreach (var scope in allScopes)
+        foreach (var scope in allScopes.OrderBy(s => s, StringComparer.Ordinal))
         {
             var origin = overrides.Contains(scope) ? "override"
                 : roleScopes.Contains(scope) ? "role"
@@ -585,10 +594,12 @@ else
         await ReloadTeams();
     }
 
-    private async Task ToggleConsent(ITeam<TMember> team, bool enabled)
+    private readonly AccessLevel[] _consentLevels = [AccessLevel.Viewer, AccessLevel.User, AccessLevel.Administrator];
+
+    private async Task SetConsent(ITeam<TMember> team, AccessLevel? level)
     {
-        var roles = enabled ? _consentRoles : [];
-        await TeamService.SetTeamConsentAsync(team.Key, roles);
+        var roles = level.HasValue ? _consentRoles : Array.Empty<string>();
+        await TeamService.SetTeamConsentAsync(team.Key, roles, level);
         await ReloadTeams();
     }
 

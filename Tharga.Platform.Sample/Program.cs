@@ -24,27 +24,48 @@ builder.AddThargaPlatform(o =>
     o.Blazor.AllowTeamCreation = true;
     o.Blazor.AddClaimsEnricher<DeveloperRoleEnricher>();
 
-    //o.Blazor.ShowScopeOverrides = true;
-    //o.Blazor.ShowMemberRoles = true;
-
     // Advanced mode unlocks the full API key UI (access level, roles, scope overrides, tags).
     o.ApiKey.AdvancedMode = true;
 
     // Register scopes so the scope-override picker and Custom (no-base-scope) keys have something to grant.
     o.ConfigureScopes = scopes =>
     {
-        scopes.Register("orders:read", AccessLevel.Viewer);
-        scopes.Register("orders:write", AccessLevel.Administrator);
-        scopes.Register("valuegroup:read", AccessLevel.Viewer);
-        scopes.Register("firewall:open", AccessLevel.Administrator);
-        scopes.Register("content:load", AccessLevel.Viewer);
-        scopes.Register("pim:manage", AccessLevel.Administrator);
+        // A spread across access levels so option-(b) pickers show a mix of inherited (disabled) and addable
+        // scopes. Remember: Owner/Administrator inherit ALL scopes — to see addable ones, test against a
+        // lower-level member or an AccessLevel.Custom key.
+        scopes.Register("orders:read", AccessLevel.Viewer, "View orders and order details.");
+        scopes.Register("orders:write", AccessLevel.User, "Create and edit orders.");
+        scopes.Register("orders:refund", AccessLevel.Administrator, "Issue refunds on orders.");
+        scopes.Register("valuegroup:read", AccessLevel.Viewer, "Read value groups.");
+        scopes.Register("content:load", AccessLevel.Viewer, "Load published content.");
+        scopes.Register("content:publish", AccessLevel.User, "Publish content to live.");
+        scopes.Register("pim:manage", AccessLevel.Administrator, "Manage the product information catalog.");
+        scopes.Register("firewall:open", AccessLevel.Administrator); // no description — shows no tooltip
+        scopes.Register("reports:export", AccessLevel.User, "Export reports to file.");
+        scopes.Register("billing:manage", AccessLevel.Administrator, "Manage billing and invoices.");
     };
 
-    //o.ConfigureTenantRoles = roles =>
-    //{
-    //    roles.Register("Editor", ["orders:read", "orders:write"]);
-    //};
+    // Demo tenant roles (bundles of scopes). Assign these to members; their scopes resolve live now that
+    // the role->scope linkage is fixed.
+    o.ConfigureTenantRoles = roles =>
+    {
+        roles.Register("Editor", ["orders:write", "content:publish", "reports:export"], "Content editors — manage orders and publish content.");
+        roles.Register("Support", ["orders:read", "valuegroup:read"]); // no description — tooltip shows scopes only
+    };
+
+    // Demo system scopes (global capabilities for system API keys; separate from team scopes).
+    o.ConfigureSystemScopes = scopes =>
+    {
+        scopes.Register("system:teams:read", "Read any team's data (cross-tenant).");
+        scopes.Register("system:metrics:read", "Read infrastructure metrics.");
+        scopes.Register("mcp:discover", "Discover MCP tools and resources.");
+    };
+
+    // Map app/global roles to system scopes — a Developer user gains these as claims (team-independent).
+    o.ConfigureSystemRoles = roles =>
+    {
+        roles.Map("Developer", "system:teams:read", "system:metrics:read", "mcp:discover", "apikey:manage", "audit:read");
+    };
 
     o.Audit = new AuditOptions();
 });

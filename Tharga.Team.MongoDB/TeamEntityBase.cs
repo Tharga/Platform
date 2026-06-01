@@ -16,4 +16,7 @@ public abstract record TeamEntityBase<TTeamMemberModel> : EntityBase, ITeam<TTea
 
     [BsonIgnoreIfNull]
     public string[] ConsentedRoles { get; init; }
+
+    [BsonIgnoreIfNull]
+    public AccessLevel? ConsentAccessLevel { get; init; }
 }

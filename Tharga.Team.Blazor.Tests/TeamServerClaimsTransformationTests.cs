@@ -192,7 +192,7 @@ public class TeamServerClaimsTransformationTests
 
         var sut = new TeamServerClaimsTransformation(
             _httpContextAccessor.Object, _teamService.Object, _userService.Object, _options.Object,
-            _scopeRegistry.Object, enricher.Object);
+            _scopeRegistry.Object, claimsEnricher: enricher.Object);
 
         var result = await sut.TransformAsync(principal);
 

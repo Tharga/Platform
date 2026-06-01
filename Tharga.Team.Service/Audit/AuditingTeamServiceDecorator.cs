@@ -219,12 +219,12 @@ public class AuditingTeamServiceDecorator : ITeamService
         }
     }
 
-    public async Task SetTeamConsentAsync(string teamKey, string[] consentedRoles)
+    public async Task SetTeamConsentAsync(string teamKey, string[] consentedRoles, AccessLevel? accessLevel = null)
     {
         var sw = Stopwatch.StartNew();
         try
         {
-            await _inner.SetTeamConsentAsync(teamKey, consentedRoles);
+            await _inner.SetTeamConsentAsync(teamKey, consentedRoles, accessLevel);
             sw.Stop();
             Log("set-consent", nameof(SetTeamConsentAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
         }

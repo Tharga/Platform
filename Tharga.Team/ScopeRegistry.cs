@@ -21,12 +21,12 @@ public class ScopeRegistry : IScopeRegistry
 
     public IReadOnlyList<ScopeDefinition> All => _scopes;
 
-    public void Register(string scopeName, AccessLevel defaultMinimumLevel)
+    public void Register(string scopeName, AccessLevel defaultMinimumLevel, string description = null)
     {
         if (_scopes.Any(s => s.Name == scopeName))
             throw new InvalidOperationException($"Scope '{scopeName}' is already registered.");
 
-        _scopes.Add(new ScopeDefinition(scopeName, defaultMinimumLevel));
+        _scopes.Add(new ScopeDefinition(scopeName, defaultMinimumLevel, description));
     }
 
     public IReadOnlyList<string> GetScopesForAccessLevel(AccessLevel accessLevel)

@@ -53,12 +53,7 @@ public static class ThargaPlatformRegistration
             o.Title = options.Blazor.Title;
             o.AutoCreateFirstTeam = options.Blazor.AutoCreateFirstTeam;
             o.AllowTeamCreation = options.Blazor.AllowTeamCreation;
-            o.ConsentRoles = options.Blazor.ConsentRoles;
-            o.ShowConsentToggle = options.Blazor.ShowConsentToggle;
-            o.DefaultConsent = options.Blazor.DefaultConsent;
-            o.ConsentAccessLevel = options.Blazor.ConsentAccessLevel;
-            o.ShowMemberRoles = options.Blazor.ShowMemberRoles;
-            o.ShowScopeOverrides = options.Blazor.ShowScopeOverrides;
+            o.Consent = options.Blazor.Consent;
             o.SkipAuthStateDecoration = options.Blazor.SkipAuthStateDecoration;
             o._teamService = options.Blazor._teamService;
             o._userService = options.Blazor._userService;
@@ -87,6 +82,18 @@ public static class ThargaPlatformRegistration
         if (options.ConfigureTenantRoles != null)
         {
             builder.Services.AddThargaTenantRoles(options.ConfigureTenantRoles);
+        }
+
+        // System scopes (opt-in) — global capabilities for system keys / privileged roles
+        if (options.ConfigureSystemScopes != null)
+        {
+            builder.Services.AddThargaSystemScopes(options.ConfigureSystemScopes);
+        }
+
+        // System roles (opt-in) — map app/global roles to system scopes for privileged users
+        if (options.ConfigureSystemRoles != null)
+        {
+            builder.Services.AddThargaSystemRoles(options.ConfigureSystemRoles);
         }
 
         // Audit logging (opt-in)

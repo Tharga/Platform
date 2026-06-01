@@ -25,43 +25,32 @@
                 <Columns>
                     <RadzenDataGridColumn Title="Name" Property="@nameof(SystemApiKeyModel.Name)" Width="180px" />
                     <RadzenDataGridColumn Title="Key" Property="@nameof(SystemApiKeyModel.VisibleKey)" />
-                    <RadzenDataGridColumn Title="Scopes" Width="220px">
+                    <RadzenDataGridColumn Title="Scopes" Width="80px" Visible="@ShowScopeTooltip">
                         <Template>
-                            @string.Join(", ", context.SystemScopes ?? Array.Empty<string>())
+                            <span title="@GetKeyScopesText(context)">
+                                <RadzenIcon Icon="info" Style="cursor: help;" />
+                            </span>
                         </Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn Title="Expiry" Width="130px">
+                    <RadzenDataGridColumn Title="Last used" Width="150px" Visible="@ShowLastUsed">
                         <Template>
-                            @if (context.ExpiryDate.HasValue)
+                            <span title="@GetKeyDatesText(context)">
+                                @if (context.LastUsedAt.HasValue)
+                                {
+                                    <DateTimeView Date="@context.LastUsedAt" />
+                                }
+                                else
+                                {
+                                    <RadzenText>Never</RadzenText>
+                                }
+                            </span>
+                            @if (IsExpiringSoon(context))
                             {
-                                <span style="@(context.IsExpired ? "color: red" : "")">
-                                    <DateTimeView Date="@context.ExpiryDate" />
-                                </span>
-                            }
-                            else
-                            {
-                                <RadzenText>No expiry</RadzenText>
-                            }
-                        </Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn Title="Created" Width="150px">
-                        <Template>
-                            <DateTimeView Date="@context.CreatedAt" />
-                        </Template>
-                    </RadzenDataGridColumn>
-                    <RadzenDataGridColumn Title="Last used" Width="150px">
-                        <Template>
-                            @if (context.LastUsedAt.HasValue)
-                            {
-                                <DateTimeView Date="@context.LastUsedAt" />
-                            }
-                            else
-                            {
-                                <RadzenText>Never</RadzenText>
+                                <RadzenIcon Icon="warning" Style="color: var(--rz-warning); margin-left: .25rem; cursor: help;"
+                                            title="@($"Expires {context.ExpiryDate:yyyy-MM-dd} — within 60 days")" />
                             }
                         </Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn Title="Created By" Property="@nameof(SystemApiKeyModel.CreatedBy)" Width="150px" />
                     <RadzenDataGridColumn Width="@(ShowAuditLogButton ? "260px" : "220px")">
                         <Template>
                             <RadzenButton Icon="visibility" Click="@(_ => context.VisibleKey = context.ApiKey)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey == _apiKeyMask)" />
@@ -82,21 +71,31 @@
                         <RadzenLabel Text="Name" />
                         <RadzenTextBox Value="@_newName" @oninput="@(e => _newName = e.Value?.ToString() ?? "")" Placeholder="Key name" />
                     </RadzenStack>
-                    <RadzenStack Gap="0.25rem" Style="min-width: 260px">
-                        <RadzenLabel Text="Scopes" />
-                        <RadzenDropDown TValue="IEnumerable<string>"
-                                        @bind-Value="_newScopes"
-                                        Data="@_allScopes"
-                                        Multiple="true"
-                                        AllowClear="true"
-                                        Placeholder="Select scopes..." />
-                    </RadzenStack>
-                    <RadzenStack Gap="0.25rem">
-                        <RadzenLabel Text="Expiry Date" />
-                        <RadzenDatePicker @bind-Value="_newExpiryDate" DateFormat="yyyy-MM-dd"
-                                          AllowClear="true"
-                                          Min="@DateTime.UtcNow.Date" />
-                    </RadzenStack>
+                    @if (ShowScopeOverrides)
+                    {
+                        <RadzenStack Gap="0.25rem" Style="min-width: 260px">
+                            <RadzenLabel Text="Scopes" />
+                            <RadzenDropDown TValue="IEnumerable<string>"
+                                            @bind-Value="_newScopes"
+                                            Data="@_allScopes"
+                                            Multiple="true"
+                                            AllowClear="true"
+                                            Placeholder="Select scopes...">
+                                <Template>
+                                    <span title="@(_scopeDescriptions.TryGetValue((string)context, out var d) ? d : null)">@context</span>
+                                </Template>
+                            </RadzenDropDown>
+                        </RadzenStack>
+                    }
+                    @if (ShowExpiryDatePicker)
+                    {
+                        <RadzenStack Gap="0.25rem">
+                            <RadzenLabel Text="Expiry Date" />
+                            <RadzenDatePicker @bind-Value="_newExpiryDate" DateFormat="yyyy-MM-dd"
+                                              AllowClear="true"
+                                              Min="@DateTime.UtcNow.Date" />
+                        </RadzenStack>
+                    }
                     <RadzenButton Text="Create" Icon="add" Click="@CreateAsync"
                                   Disabled="@string.IsNullOrWhiteSpace(_newName)" />
                 </RadzenStack>
@@ -115,11 +114,38 @@
     /// </summary>
     [Parameter] public bool ShowAuditLogButton { get; set; }
 
+    /// <summary>When true, shows the per-key scope (i) tooltip (lists the key's <c>SystemScopes</c>). Default true.</summary>
+    [Parameter] public bool ShowScopeTooltip { get; set; } = true;
+
+    /// <summary>When true, the create card offers a scope picker. Set false to create scopeless system keys. Default true.</summary>
+    [Parameter] public bool ShowScopeOverrides { get; set; } = true;
+
+    /// <summary>Shows the "Last used" column (tooltip lists Created + Expiry + Created By; a warning icon appears within 60 days of expiry). Default true.</summary>
+    [Parameter] public bool ShowLastUsed { get; set; } = true;
+
+    /// <summary>Shows the expiry-date picker on the create card. When hidden, new keys use the default expiry (capped by <c>ApiKeyOptions.MaxExpiryDays</c>). Default false.</summary>
+    [Parameter] public bool ShowExpiryDatePicker { get; set; }
+
+    private static string GetKeyScopesText(SystemApiKeyModel context)
+        => string.Join("\n", (context.SystemScopes ?? Array.Empty<string>()).OrderBy(s => s, StringComparer.Ordinal));
+
+    private static string GetKeyDatesText(SystemApiKeyModel context)
+    {
+        var created = context.CreatedAt.HasValue ? context.CreatedAt.Value.ToString("yyyy-MM-dd") : "—";
+        var expires = context.ExpiryDate.HasValue ? context.ExpiryDate.Value.ToString("yyyy-MM-dd") : "No expiry";
+        var by = string.IsNullOrWhiteSpace(context.CreatedBy) ? "—" : context.CreatedBy;
+        return $"Created: {created}\nExpires: {expires}\nCreated by: {by}";
+    }
+
+    private static bool IsExpiringSoon(SystemApiKeyModel context)
+        => context.ExpiryDate.HasValue && context.ExpiryDate.Value <= DateTime.UtcNow.AddDays(60);
+
     private bool _apiKeyServiceMissing;
     private IApiKeyManagementService _apiKeyManagementService;
-    private IScopeRegistry _scopeRegistry;
+    private ISystemScopeRegistry _systemScopeRegistry;
     private SystemApiKeyModel[] _keys;
     private string[] _allScopes = [];
+    private IReadOnlyDictionary<string, string> _scopeDescriptions = new Dictionary<string, string>();
     private readonly string _apiKeyMask = "**********";
 
     private string _newName = "";
@@ -132,8 +158,9 @@
         _apiKeyServiceMissing = _apiKeyManagementService == null;
         if (_apiKeyServiceMissing) { await base.OnInitializedAsync(); return; }
 
-        _scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
-        _allScopes = _scopeRegistry?.All.Select(s => s.Name).ToArray() ?? [];
+        _systemScopeRegistry = ServiceProvider.GetService<ISystemScopeRegistry>();
+        _allScopes = _systemScopeRegistry?.All.Select(s => s.Name).ToArray() ?? [];
+        _scopeDescriptions = _systemScopeRegistry?.All.ToDictionary(s => s.Name, s => s.Description) ?? new Dictionary<string, string>();
 
         await ReloadData();
         await base.OnInitializedAsync();

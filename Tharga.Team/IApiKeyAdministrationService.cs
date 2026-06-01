@@ -29,6 +29,12 @@ public interface IApiKeyAdministrationService
     /// </summary>
     Task SetScopeOverridesAsync(string teamKey, string key, string[] scopes);
 
+    /// <summary>
+    /// Sets the <c>Roles</c> (tenant roles) array on an existing team API key. Verifies team ownership.
+    /// Pass <c>null</c> or an empty array to clear all roles.
+    /// </summary>
+    Task SetRolesAsync(string teamKey, string key, string[] roles);
+
     /// <summary>Returns all system-level API keys (not bound to a team).</summary>
     IAsyncEnumerable<IApiKey> GetSystemKeysAsync();
 

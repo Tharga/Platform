@@ -47,12 +47,15 @@ else
                         @context.AccessLevel
                     </Template>
                 </RadzenDataGridColumn>
+                @* #76: Roles column hidden for the basic baseline — will become a Show* parameter later.
                 <RadzenDataGridColumn Title="Roles" Width="150px">
                     <Template>
                         @string.Join(", ", context?.Roles ?? Array.Empty<string>())
                     </Template>
                 </RadzenDataGridColumn>
+                *@
             }
+            @* #76: Expiry column hidden for the basic baseline — will become a Show* parameter later.
             @if (_options.AdvancedMode)
             {
                 <RadzenDataGridColumn Title="Expiry" Width="130px">
@@ -70,49 +73,36 @@ else
                     </Template>
                 </RadzenDataGridColumn>
             }
-            @if (_options.AdvancedMode && _scopeRegistry != null && ShowScopeOverrides)
-            {
-                <RadzenDataGridColumn Title="Scopes" Width="180px">
-                    <Template>
-                        @string.Join(", ", context.ScopeOverrides ?? Array.Empty<string>())
-                    </Template>
-                </RadzenDataGridColumn>
-            }
-            @if (_options.AdvancedMode && _scopeRegistry != null)
-            {
-                <RadzenDataGridColumn Title="" Width="40px">
-                    <Template>
-                        <span title="@GetKeyScopesText(context)">
-                            <RadzenIcon Icon="info" Style="cursor: help;" />
-                        </span>
-                    </Template>
-                </RadzenDataGridColumn>
-            }
-            <RadzenDataGridColumn Title="Created" Width="150px">
+            *@
+            @* #76: the scope-override *display* column was redundant — overrides already show in the scope (i)
+               tooltip (marked "(override)"). Editing is via the Edit-Scopes dialog (tune button) + create card. *@
+            <RadzenDataGridColumn Title="Scopes" Width="80px" Visible="@(_scopeRegistry != null && ShowScopeTooltip)">
                 <Template>
-                    @if (context.CreatedAt.HasValue)
+                    <span title="@GetKeyScopesText(context)">
+                        <RadzenIcon Icon="info" Style="cursor: help;" />
+                    </span>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Last used" Width="150px" Visible="@ShowLastUsed">
+                <Template>
+                    <span title="@GetKeyDatesText(context)">
+                        @if (context.LastUsedAt.HasValue)
+                        {
+                            <DateTimeView Date="@context.LastUsedAt" />
+                        }
+                        else
+                        {
+                            <RadzenText>Never</RadzenText>
+                        }
+                    </span>
+                    @if (IsExpiringSoon(context))
                     {
-                        <DateTimeView Date="@context.CreatedAt" />
-                    }
-                    else
-                    {
-                        <RadzenText>—</RadzenText>
+                        <RadzenIcon Icon="warning" Style="color: var(--rz-warning); margin-left: .25rem; cursor: help;"
+                                    title="@($"Expires {context.ExpiryDate:yyyy-MM-dd} — within 60 days")" />
                     }
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Title="Last used" Width="150px">
-                <Template>
-                    @if (context.LastUsedAt.HasValue)
-                    {
-                        <DateTimeView Date="@context.LastUsedAt" />
-                    }
-                    else
-                    {
-                        <RadzenText>Never</RadzenText>
-                    }
-                </Template>
-            </RadzenDataGridColumn>
-            <RadzenDataGridColumn Title="Tags" Width="180px">
+            <RadzenDataGridColumn Title="Tags" Width="180px" Visible="@(ShowTags ?? AnyKeyHasTags())">
                 <Template>
                     @foreach (var tag in context.Tags.Where(t => ChipTagKeys.Contains(t.Key)))
                     {
@@ -132,7 +122,7 @@ else
                     <RadzenButton Icon="visibility_off" Click="@(_ => context.VisibleKey = _apiKeyMask)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey != _apiKeyMask)" />
                     <RadzenButton Icon="content_copy" Click="@(_ => CopyToClipboard(context))" Visible="@(!string.IsNullOrEmpty(context.ApiKey))" />
                     <RadzenButton Icon="manage_search" Click="@(_ => OpenAuditLogAsync(context))" Visible="@ShowAuditLogButton" title="View audit log for this key" />
-                    <RadzenButton Icon="tune" Click="@(_ => OpenEditScopesAsync(context))" Visible="@(ShowScopeOverrides && _scopeRegistry != null)" title="Edit scope overrides" />
+                    <RadzenButton Icon="tune" Click="@(_ => OpenEditAsync(context))" Visible="@((ShowScopeOverrides && _scopeRegistry != null) || (ShowRoles && _tenantRoleRegistry != null))" title="Edit roles &amp; scopes" />
                     <RadzenButton Icon="lock" Click="@(_ => LockKeyAsync(context))" Visible="@(!string.IsNullOrEmpty(context.ApiKey))" />
                     <RadzenButton Icon="refresh" Click="@(_ => RefreshAsync(context))" />
                     <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Click="@(_ => DeleteAsync(context))" Visible="@(_options.AdvancedMode)" />
@@ -153,25 +143,34 @@ else
                     <RadzenLabel Text="Access Level" />
                     <RadzenDropDown TValue="AccessLevel" @bind-Value="_newAccessLevel" Data="@_accessLevels" />
                 </RadzenStack>
-                <RadzenStack Gap="0.25rem">
-                    <RadzenLabel Text="Expiry Date" />
-                    <RadzenDatePicker @bind-Value="_newExpiryDate" DateFormat="yyyy-MM-dd"
-                                      AllowClear="@(!_options.MaxExpiryDays.HasValue)"
-                                      Min="@DateTime.UtcNow.Date"
-                                      Max="@(_options.MaxExpiryDays.HasValue ? DateTime.UtcNow.AddDays(_options.MaxExpiryDays.Value).Date : DateTime.MaxValue)" />
-                </RadzenStack>
+                @if (ShowRoles && _tenantRoleRegistry != null)
+                {
+                    <RadzenStack Gap="0.25rem">
+                        <RadzenLabel Text="Roles" />
+                        <RoleEditor Roles="_roleDefinitions"
+                                    Selected="_newRoles"
+                                    SelectedChanged="@(r => _newRoles = r.ToList())" />
+                    </RadzenStack>
+                }
                 @if (ShowScopeOverrides && _scopeRegistry != null)
                 {
                     <RadzenStack Gap="0.25rem">
                         <RadzenLabel Text="Scopes" />
-                        <RadzenDropDown TValue="IEnumerable<string>"
-                                        Multiple="true"
-                                        Chips="true"
-                                        AllowClear="true"
-                                        Value="@_newScopeOverrides"
-                                        ValueChanged="@(v => _newScopeOverrides = (v ?? Enumerable.Empty<string>()).ToList())"
-                                        Data="@_scopeRegistry.All.Select(s => s.Name)"
-                                        Style="min-width: 200px;" />
+                        <ScopeOverrideEditor AllScopes="_allScopeNames"
+                                             Descriptions="_scopeDescriptions"
+                                             InheritedScopes="@_scopeRegistry.GetEffectiveScopes(_newAccessLevel, _newRoles, null)"
+                                             Overrides="_newScopeOverrides"
+                                             OverridesChanged="@(o => _newScopeOverrides = o.ToList())" />
+                    </RadzenStack>
+                }
+                @if (ShowExpiryDatePicker)
+                {
+                    <RadzenStack Gap="0.25rem">
+                        <RadzenLabel Text="Expiry Date" />
+                        <RadzenDatePicker @bind-Value="_newExpiryDate" DateFormat="yyyy-MM-dd"
+                                          AllowClear="@(!_options.MaxExpiryDays.HasValue)"
+                                          Min="@DateTime.UtcNow.Date"
+                                          Max="@(_options.MaxExpiryDays.HasValue ? DateTime.UtcNow.AddDays(_options.MaxExpiryDays.Value).Date : DateTime.MaxValue)" />
                     </RadzenStack>
                 }
                 <RadzenButton Text="Create" Icon="add" Click="@CreateAsync"
@@ -182,8 +181,6 @@ else
 }
 
 @code {
-    [Parameter] public string[] CrossTeamRoles { get; set; } = ["Developer"];
-    [Parameter] public string[] RequiredScopes { get; set; } = [];
 
     /// <summary>
     /// When true, each row gets a "View audit log" button that opens a dialog scoped to that key
@@ -207,6 +204,25 @@ else
     /// </summary>
     [Parameter] public string[] ChipTagKeys { get; set; } = Array.Empty<string>();
 
+    /// <summary>When true (and an <see cref="IScopeRegistry"/> is registered), shows the per-key effective-scope (i) tooltip. Default true.</summary>
+    [Parameter] public bool ShowScopeTooltip { get; set; } = true;
+
+    /// <summary>When true (and an <see cref="ITenantRoleRegistry"/> is registered), allows assigning tenant roles to keys (create card + edit dialog). Default false.</summary>
+    [Parameter] public bool ShowRoles { get; set; }
+
+    /// <summary>Shows the "Last used" column (tooltip lists Created + Expiry dates; a warning icon appears within 60 days of expiry). Default true.</summary>
+    [Parameter] public bool ShowLastUsed { get; set; } = true;
+
+    /// <summary>
+    /// Controls the Tags column (chips for keys listed in <see cref="ChipTagKeys"/>, plus an (i) tooltip of all
+    /// tags). <c>true</c> = always show, <c>false</c> = always hide, <c>null</c> = auto (show only when at least
+    /// one key has tags). Default null (auto).
+    /// </summary>
+    [Parameter] public bool? ShowTags { get; set; }
+
+    /// <summary>Shows the expiry-date picker on the create card (placed after Scopes). When hidden, new keys use the default expiry (capped by <c>ApiKeyOptions.MaxExpiryDays</c>). Expiry is still shown in the grid (Last used column tooltip + warning) regardless. Default false.</summary>
+    [Parameter] public bool ShowExpiryDatePicker { get; set; }
+
     private bool _apiKeyServiceMissing;
     private IApiKeyManagementService _apiKeyManagementService;
     private bool _hasAccess;
@@ -215,6 +231,8 @@ else
     private ApiKeyModel[] _keys;
     private ApiKeyOptions _options;
     private IScopeRegistry _scopeRegistry;
+    private string[] _allScopeNames = Array.Empty<string>();
+    private IReadOnlyDictionary<string, string> _scopeDescriptions = new Dictionary<string, string>();
     private readonly string _apiKeyMask = "**********";
     private readonly AccessLevel[] _accessLevels = Enum.GetValues<AccessLevel>().Where(x => x != AccessLevel.Owner).ToArray();
 
@@ -222,6 +240,9 @@ else
     private AccessLevel _newAccessLevel = AccessLevel.User;
     private DateTime? _newExpiryDate;
     private List<string> _newScopeOverrides = new();
+    private List<string> _newRoles = new();
+    private ITenantRoleRegistry _tenantRoleRegistry;
+    private IReadOnlyList<TenantRoleDefinition> _roleDefinitions = Array.Empty<TenantRoleDefinition>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -234,12 +255,16 @@ else
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
-        var hasCrossTeamRole = CrossTeamRoles.Any(role => user.IsInRole(role));
-        var hasRequiredScopes = RequiredScopes.Length == 0 || RequiredScopes.All(scope => user.HasClaim(TeamClaimTypes.Scope, scope));
-        _hasAccess = hasCrossTeamRole || (hasRequiredScopes && user.HasClaim(TeamClaimTypes.Scope, ApiKeyScopes.Manage));
+        // Access is granted by the apikey:manage scope. Cross-team/Developer access comes from the global
+        // role→system-scope mapping (o.ConfigureSystemRoles) granting apikey:manage, not a per-component role.
+        _hasAccess = user.HasClaim(TeamClaimTypes.Scope, ApiKeyScopes.Manage);
         if (!_hasAccess) { await base.OnInitializedAsync(); return; }
 
         _scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
+        _allScopeNames = _scopeRegistry?.All.Select(s => s.Name).ToArray() ?? Array.Empty<string>();
+        _scopeDescriptions = _scopeRegistry?.All.ToDictionary(s => s.Name, s => s.Description) ?? new Dictionary<string, string>();
+        _tenantRoleRegistry = ServiceProvider.GetService<ITenantRoleRegistry>();
+        _roleDefinitions = _tenantRoleRegistry?.All ?? Array.Empty<TenantRoleDefinition>();
         _options = ApiKeyOptionsAccessor.Value;
         _newExpiryDate = _options.MaxExpiryDays.HasValue
             ? DateTime.UtcNow.AddDays(_options.MaxExpiryDays.Value).Date
@@ -282,13 +307,15 @@ else
         try
         {
             var scopes = _newScopeOverrides.Count > 0 ? _newScopeOverrides.ToArray() : null;
-            var created = await _apiKeyManagementService.CreateKeyAsync(_selectedTeam.Key, _newName, _newAccessLevel, roles: null, scopeOverrides: scopes, expiryDate: _newExpiryDate);
+            var roles = _newRoles.Count > 0 ? _newRoles.ToArray() : null;
+            var created = await _apiKeyManagementService.CreateKeyAsync(_selectedTeam.Key, _newName, _newAccessLevel, roles: roles, scopeOverrides: scopes, expiryDate: _newExpiryDate);
             _newName = "";
             _newAccessLevel = AccessLevel.User;
             _newExpiryDate = _options.MaxExpiryDays.HasValue
                 ? DateTime.UtcNow.AddDays(_options.MaxExpiryDays.Value).Date
                 : null;
             _newScopeOverrides = new List<string>();
+            _newRoles = new List<string>();
             await ReloadData();
             ShowKeyOnce(created);
             NotificationService.Notify(NotificationSeverity.Success, "API key created");
@@ -329,7 +356,7 @@ else
         var allScopes = _scopeRegistry.GetEffectiveScopes(context.AccessLevel, context.Roles, context.ScopeOverrides);
 
         var lines = new List<string>();
-        foreach (var scope in allScopes)
+        foreach (var scope in allScopes.OrderBy(s => s, StringComparer.Ordinal))
         {
             var origin = overrides.Contains(scope) ? "override"
                 : accessLevelScopes.Contains(scope) ? "access level"
@@ -341,6 +368,18 @@ else
 
     private static string GetKeyTagsText(ApiKeyModel context)
         => string.Join("\n", context.Tags.Select(t => $"{t.Key} = {t.Value}"));
+
+    private static string GetKeyDatesText(ApiKeyModel context)
+    {
+        var created = context.CreatedAt.HasValue ? context.CreatedAt.Value.ToString("yyyy-MM-dd") : "—";
+        var expires = context.ExpiryDate.HasValue ? context.ExpiryDate.Value.ToString("yyyy-MM-dd") : "No expiry";
+        return $"Created: {created}\nExpires: {expires}";
+    }
+
+    private static bool IsExpiringSoon(ApiKeyModel context)
+        => context.ExpiryDate.HasValue && context.ExpiryDate.Value <= DateTime.UtcNow.AddDays(60);
+
+    private bool AnyKeyHasTags() => _keys?.Any(k => k.Tags.Count > 0) ?? false;
 
     private bool IsKeyVisible(ApiKeyModel context)
     {
@@ -396,55 +435,67 @@ else
             new DialogOptions { Width = "90vw", Height = "85vh", Resizable = true, Draggable = true });
     }
 
-    private async Task OpenEditScopesAsync(ApiKeyModel context)
+    private async Task OpenEditAsync(ApiKeyModel context)
     {
-        if (_scopeRegistry == null) return;
+        var showRoles = ShowRoles && _tenantRoleRegistry != null;
+        var showScopes = ShowScopeOverrides && _scopeRegistry != null;
+        if (!showRoles && !showScopes) return;
 
-        var selected = (context.ScopeOverrides ?? Array.Empty<string>()).ToList();
-        var scopeOptions = _scopeRegistry.All.Select(s => s.Name).ToArray();
+        var selectedRoles = (context.Roles ?? Array.Empty<string>()).ToList();
+        var selectedScopes = (context.ScopeOverrides ?? Array.Empty<string>()).ToList();
 
-        await DialogService.OpenAsync($"Edit Scopes — {context.Name}", ds =>
+        await DialogService.OpenAsync($"Edit — {context.Name}", ds =>
             @<RadzenStack Gap="1rem" Style="padding: 1rem; min-width: 400px;">
-                <RadzenLabel Text="Scope Overrides" />
-                <RadzenDropDown TValue="IEnumerable<string>"
-                                Multiple="true"
-                                Chips="true"
-                                AllowClear="true"
-                                Value="@selected"
-                                ValueChanged="@(v => selected = (v ?? Enumerable.Empty<string>()).ToList())"
-                                Data="@scopeOptions"
+                @if (showRoles)
+                {
+                    <RadzenLabel Text="Roles" />
+                    <RoleEditor Roles="_roleDefinitions"
+                                Selected="@(context.Roles ?? Array.Empty<string>())"
+                                SelectedChanged="@(r => selectedRoles = r.ToList())"
                                 Style="width: 100%;" />
+                }
+                @if (showScopes)
+                {
+                    <RadzenLabel Text="Scope Overrides" />
+                    <ScopeOverrideEditor AllScopes="_allScopeNames"
+                                         Descriptions="_scopeDescriptions"
+                                         InheritedScopes="@_scopeRegistry.GetEffectiveScopes(context.AccessLevel, context.Roles, null)"
+                                         Overrides="@(context.ScopeOverrides ?? Array.Empty<string>())"
+                                         OverridesChanged="@(o => selectedScopes = o.ToList())"
+                                         Style="width: 100%;" />
+                }
                 <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
                     <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(() => ds.Close())" />
                     <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary"
-                                  Click="@(async () => { await SaveScopeOverridesAsync(context, selected.ToArray()); ds.Close(); })" />
+                                  Click="@(async () => { await SaveEditAsync(context, showRoles ? selectedRoles.ToArray() : null, showScopes ? selectedScopes.ToArray() : null); ds.Close(); })" />
                 </RadzenStack>
             </RadzenStack>,
             new DialogOptions { ShowClose = false });
     }
 
-    private async Task SaveScopeOverridesAsync(ApiKeyModel context, string[] scopes)
+    private async Task SaveEditAsync(ApiKeyModel context, string[] roles, string[] scopes)
     {
         try
         {
-            await _apiKeyManagementService.SetScopeOverridesAsync(_selectedTeam.Key, context.Key, scopes);
+            if (roles != null) await _apiKeyManagementService.SetRolesAsync(_selectedTeam.Key, context.Key, roles);
+            if (scopes != null) await _apiKeyManagementService.SetScopeOverridesAsync(_selectedTeam.Key, context.Key, scopes);
             await ReloadData();
-            NotificationService.Notify(NotificationSeverity.Success, "Scope overrides updated");
+            NotificationService.Notify(NotificationSeverity.Success, "API key updated");
         }
         catch (Exception ex)
         {
-            NotificationService.Notify(NotificationSeverity.Error, "Failed to update scopes", ex.Message);
+            NotificationService.Notify(NotificationSeverity.Error, "Failed to update key", ex.Message);
         }
     }
 
     private string GetActionsColumnWidth()
     {
         // Base 180px (matches the original simple-mode width), +40 for delete in advanced mode,
-        // +40 when the audit log button is shown, +40 when the edit-scopes button is shown.
+        // +40 when the audit log button is shown, +40 when the edit (roles/scopes) button is shown.
         var width = 180;
         if (_options?.AdvancedMode == true) width += 40;
         if (ShowAuditLogButton) width += 40;
-        if (ShowScopeOverrides && _scopeRegistry != null) width += 40;
+        if ((ShowScopeOverrides && _scopeRegistry != null) || (ShowRoles && _tenantRoleRegistry != null)) width += 40;
         return $"{width}px";
     }
 }

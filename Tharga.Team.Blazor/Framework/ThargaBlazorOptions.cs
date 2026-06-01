@@ -18,18 +18,6 @@ public record ThargaBlazorOptions : BlazorOptions
     public bool AutoCreateFirstTeam { get; set; } = false;
 
     /// <summary>
-    /// Show member role management in the team component.
-    /// Default is false.
-    /// </summary>
-    public bool ShowMemberRoles { get; set; } = false;
-
-    /// <summary>
-    /// Show individual scope overrides in the team component.
-    /// Default is false.
-    /// </summary>
-    public bool ShowScopeOverrides { get; set; } = false;
-
-    /// <summary>
     /// Allow users to create and delete teams via the UI.
     /// When false, the "Create team" and "Delete team" buttons are hidden.
     /// Independent of AutoCreateFirstTeam (system behavior).
@@ -38,29 +26,9 @@ public record ThargaBlazorOptions : BlazorOptions
     public bool AllowTeamCreation { get; set; } = true;
 
     /// <summary>
-    /// Global roles that can be granted viewer access to teams via consent.
-    /// The consent toggle in TeamComponent shows these roles.
-    /// Default is ["Developer"].
+    /// Data-access consent options (cross-team access granted by a team to global roles).
     /// </summary>
-    public string[] ConsentRoles { get; set; } = ["Developer"];
-
-    /// <summary>
-    /// Show the consent toggle in TeamComponent for team administrators.
-    /// Default is false.
-    /// </summary>
-    public bool ShowConsentToggle { get; set; } = false;
-
-    /// <summary>
-    /// Whether new teams start with consent enabled.
-    /// Default is true.
-    /// </summary>
-    public bool DefaultConsent { get; set; } = true;
-
-    /// <summary>
-    /// Access level granted to users via team consent.
-    /// Default is Viewer.
-    /// </summary>
-    public AccessLevel ConsentAccessLevel { get; set; } = AccessLevel.Viewer;
+    public ConsentOptions Consent { get; set; } = new();
 
     /// <summary>
     /// Controls how team/scope claims are enriched on the principal.

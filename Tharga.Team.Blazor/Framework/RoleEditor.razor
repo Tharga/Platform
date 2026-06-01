@@ -1,0 +1,61 @@
+@namespace Tharga.Team.Blazor.Framework
+
+@*
+    Tenant-role picker. Each option's tooltip shows the role's description (if any) plus the scopes the role
+    grants — so the operator always sees what a role does, even without a description.
+*@
+<RadzenDropDown TValue="IEnumerable<string>"
+                Multiple="true"
+                AllowClear="true"
+                Data="@_options"
+                TextProperty="Name"
+                ValueProperty="Name"
+                Value="@_value"
+                ValueChanged="@OnValueChanged"
+                Placeholder="Select roles..."
+                Style="@Style">
+    <Template>
+        <span title="@(((RoleOption)context).Tooltip)">@(((RoleOption)context).Name)</span>
+    </Template>
+</RadzenDropDown>
+
+@code {
+    /// <summary>The registered tenant roles to offer (typically <c>ITenantRoleRegistry.All</c>).</summary>
+    [Parameter] public IReadOnlyList<TenantRoleDefinition> Roles { get; set; } = Array.Empty<TenantRoleDefinition>();
+
+    /// <summary>Currently assigned role names.</summary>
+    [Parameter] public IReadOnlyCollection<string> Selected { get; set; } = Array.Empty<string>();
+
+    /// <summary>Invoked with the new set of assigned role names.</summary>
+    [Parameter] public EventCallback<string[]> SelectedChanged { get; set; }
+
+    [Parameter] public string Style { get; set; } = "min-width: 220px;";
+
+    private List<RoleOption> _options = new();
+    private IEnumerable<string> _value = Array.Empty<string>();
+
+    protected override void OnParametersSet()
+    {
+        _options = (Roles ?? Array.Empty<TenantRoleDefinition>())
+            .Select(r => new RoleOption(r.Name, BuildTooltip(r)))
+            .ToList();
+        _value = (Selected ?? Array.Empty<string>()).ToList();
+    }
+
+    private static string BuildTooltip(TenantRoleDefinition role)
+    {
+        var scopes = role.Scopes is { Count: > 0 }
+            ? "Grants: " + string.Join(", ", role.Scopes.OrderBy(s => s, StringComparer.Ordinal))
+            : "Grants no scopes";
+        return string.IsNullOrWhiteSpace(role.Description) ? scopes : $"{role.Description}\n{scopes}";
+    }
+
+    private async Task OnValueChanged(IEnumerable<string> value)
+    {
+        var selected = (value ?? Enumerable.Empty<string>()).ToList();
+        _value = selected;
+        await SelectedChanged.InvokeAsync(selected.ToArray());
+    }
+
+    public sealed record RoleOption(string Name, string Tooltip);
+}

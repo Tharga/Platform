@@ -22,6 +22,6 @@ public interface ITeamService
     Task SetInvitationResponseAsync(string teamKey, string userKey, string inviteCode, bool accept);
     Task SetMemberLastSeenAsync(string teamKey);
     Task TransferOwnershipAsync<TMember>(string teamKey, string newOwnerUserKey) where TMember : ITeamMember;
-    Task SetTeamConsentAsync(string teamKey, string[] consentedRoles);
+    Task SetTeamConsentAsync(string teamKey, string[] consentedRoles, AccessLevel? accessLevel = null);
     IAsyncEnumerable<ITeam> GetConsentedTeamsAsync(string[] userRoles);
 }

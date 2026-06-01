@@ -759,23 +759,81 @@ builder.Services.AddThargaTenantRoles(roles =>
 
 ### Team UI
 
-Set `ShowMemberRoles = true` in `AddThargaTeamBlazor` options to show role assignment controls in the team management UI:
+Role assignment is a **component parameter**, not a global option. Set `ShowRoles="true"` on `<TeamComponent>`
+(and on `<ApiKeyView>` to assign roles to keys):
 
-```csharp
-builder.Services.AddThargaTeamBlazor(o =>
-{
-    // ... existing config ...
-    o.ShowMemberRoles = true;
-});
+```razor
+<TeamComponent TMember="MyMember" ShowRoles="true" ShowScopeOverrides="true" />
 ```
 
 ### How it works
 
-When a team member is assigned the "Editor" role, they automatically receive the `feature:read` and `feature:write` scopes in addition to their access-level scopes. Roles are combined — a member with both "Editor" and "Auditor" gets all scopes from both.
+When a team member is assigned the "Editor" role, they automatically receive the `feature:read` and `feature:write` scopes in addition to their access-level scopes. Roles are combined — a member with both "Editor" and "Auditor" gets all scopes from both. Members/keys store the role **names**; the scopes are resolved live from the registry (change a role's scopes and it applies to all assignees).
 
 ### Verification
 
 Assign a role to a team member, then verify they can access methods protected by the role's scopes.
+
+---
+
+## Step 7b: Managing roles & scopes (reference)
+
+A principal's effective scopes are the **union** of four sources:
+
+| Source | Applies to | Configured via |
+|--------|-----------|----------------|
+| **Access level** → scopes | team members, team API keys | `o.ConfigureScopes` (scope's default min level); `AccessLevel.Custom` grants no base scopes |
+| **Tenant roles** → scopes | team members, team API keys | `o.ConfigureTenantRoles` (role → scopes) |
+| **Scope overrides** (explicit) | team members, team API keys | per-principal, edited in the UI |
+| **System scopes** (global, flat) | **system API keys**, and **users** via role mapping | `o.ConfigureSystemScopes`; `o.ConfigureSystemRoles` (app role → system scopes) |
+
+All four surface as `Scope` claims, so service methods gate uniformly with `[RequireScope("…")]` regardless of whether the caller is a team member, a team key, a system key, or a privileged user.
+
+### System scopes & privileged users
+
+System scopes are global capabilities (no access-level hierarchy):
+
+```csharp
+o.ConfigureSystemScopes = s =>
+{
+    s.Register("system:teams:read", "Read any team's data (cross-tenant).");
+    s.Register("system:metrics:read", "Read infrastructure metrics.");
+};
+
+// Map app/global roles to system scopes so privileged USERS gain them (team-independent).
+o.ConfigureSystemRoles = r =>
+{
+    r.Map("Developer", "system:teams:read", "system:metrics:read", "apikey:manage", "audit:read");
+};
+```
+
+- **System API keys** are minted with an explicit system-scope list (`SystemApiKeyView` picker reads `ConfigureSystemScopes`).
+- **Users** with a mapped app role (e.g. `Developer`) receive the mapped scopes as claims via `TeamServerClaimsTransformation` — even with no team selected. Map `apikey:manage` / `audit:read` to a role to grant that role cross-team key/audit management.
+- Map external IdP role claims to internal role names with an `ITeamClaimsEnricher` (runs first), e.g. `Dev → Developer`.
+
+### Consent (cross-team access)
+
+A team can **consent** to grant a global role access to its data, at a chosen access level:
+
+```csharp
+o.Blazor.Consent.Roles = ["Developer"];      // which roles a team may consent to
+o.Blazor.Consent.ShowToggle = true;          // show the consent picker in TeamComponent
+o.Blazor.Consent.AccessLevel = AccessLevel.Viewer; // default level when the consent doesn't carry one
+```
+
+The team admin picks the access level when consenting (Viewer/User/Administrator); a consented user gains that team's scopes at that level. The granted level is `team.ConsentAccessLevel ?? Consent.AccessLevel`.
+
+### Component parameter reference
+
+| Component | Parameters |
+|-----------|-----------|
+| `<TeamComponent>` | `ShowScopeTooltip` (default true), `ShowScopeOverrides`, `ShowRoles` |
+| `<ApiKeyView>` | `ShowScopeTooltip` (true), `ShowScopeOverrides`, `ShowRoles`, `ShowLastUsed` (true), `ShowExpiryDatePicker`, `ShowTags` (`bool?`, null=auto), `ChipTagKeys`, `ShowAuditLogButton` |
+| `<SystemApiKeyView>` | `ShowScopeTooltip` (true), `ShowScopeOverrides` (true), `ShowLastUsed` (true), `ShowExpiryDatePicker`, `ShowAuditLogButton` |
+
+Access to manage keys is gated on `apikey:manage`; the audit log on `audit:read`. (The former per-component
+`CrossTeamRoles` / `RequiredScopes` parameters were removed — grant cross-team access via the role→system-scope
+mapping instead.)
 
 ---
 

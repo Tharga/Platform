@@ -81,7 +81,7 @@ internal class TestTeamService : TeamServiceBase
         return Task.CompletedTask;
     }
 
-    protected override Task SetTeamConsentInternalAsync(string teamKey, string[] consentedRoles) => Task.CompletedTask;
+    protected override Task SetTeamConsentInternalAsync(string teamKey, string[] consentedRoles, AccessLevel? accessLevel) => Task.CompletedTask;
     protected override IAsyncEnumerable<ITeam> GetConsentedTeamsInternalAsync(string[] userRoles) => AsyncEnumerable.Empty<ITeam>();
 }
 

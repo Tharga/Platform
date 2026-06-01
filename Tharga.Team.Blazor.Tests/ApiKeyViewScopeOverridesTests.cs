@@ -35,6 +35,20 @@ public class ApiKeyViewScopeOverridesTests
         Assert.NotNull(prop.GetCustomAttribute<ParameterAttribute>());
     }
 
+    [Fact]
+    public void ApiKeyView_HasShowRolesParameter_DefaultFalse()
+    {
+        var componentType = ResolveApiKeyView();
+        var prop = componentType.GetProperty("ShowRoles");
+
+        Assert.NotNull(prop);
+        Assert.Equal(typeof(bool), prop.PropertyType);
+        Assert.NotNull(prop.GetCustomAttribute<ParameterAttribute>());
+
+        var instance = Activator.CreateInstance(componentType);
+        Assert.False((bool)prop.GetValue(instance));
+    }
+
     private static Type ResolveApiKeyView()
     {
         var blazorAssembly = typeof(Tharga.Team.Blazor.Framework.ThargaBlazorRegistration).Assembly;

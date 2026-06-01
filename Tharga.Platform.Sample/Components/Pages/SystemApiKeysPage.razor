@@ -2,8 +2,31 @@
 @rendermode InteractiveServer
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
-@using Tharga.Team.Blazor.Features.Api
 
 <PageTitle>System API Keys</PageTitle>
 
-<SystemApiKeyView ShowAuditLogButton="true" />
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1.5rem" class="rz-mb-3">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+        <RadzenSwitch @bind-Value="_showScopeTooltip" /> <RadzenLabel Text="Show scope tooltip" />
+    </RadzenStack>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+        <RadzenSwitch @bind-Value="_showScopeOverrides" /> <RadzenLabel Text="Show scope overrides" />
+    </RadzenStack>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+        <RadzenSwitch @bind-Value="_showLastUsed" /> <RadzenLabel Text="Show last used" />
+    </RadzenStack>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+        <RadzenSwitch @bind-Value="_showExpiryDatePicker" /> <RadzenLabel Text="Show Expiry date picker" />
+    </RadzenStack>
+</RadzenStack>
+
+<SystemApiKeyView ShowAuditLogButton="true" ShowScopeTooltip="_showScopeTooltip"
+                  ShowScopeOverrides="_showScopeOverrides" ShowLastUsed="_showLastUsed"
+                  ShowExpiryDatePicker="_showExpiryDatePicker" />
+
+@code {
+    private bool _showScopeTooltip = true;
+    private bool _showScopeOverrides = true;
+    private bool _showLastUsed = true;
+    private bool _showExpiryDatePicker;
+}

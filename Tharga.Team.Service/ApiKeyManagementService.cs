@@ -25,6 +25,7 @@ public class ApiKeyManagementService : IApiKeyManagementService
     public Task LockKeyAsync(string teamKey, string key) => _inner.LockKeyAsync(teamKey, key);
     public Task DeleteKeyAsync(string teamKey, string key) => _inner.DeleteKeyAsync(teamKey, key);
     public Task SetScopeOverridesAsync(string teamKey, string key, string[] scopes) => _inner.SetScopeOverridesAsync(teamKey, key, scopes);
+    public Task SetRolesAsync(string teamKey, string key, string[] roles) => _inner.SetRolesAsync(teamKey, key, roles);
 
     public IAsyncEnumerable<IApiKey> GetSystemKeysAsync() => _inner.GetSystemKeysAsync();
     public Task<IApiKey> CreateSystemKeyAsync(string name, string[] scopes, DateTime? expiryDate = null)
