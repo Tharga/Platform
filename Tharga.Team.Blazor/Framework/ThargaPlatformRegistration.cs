@@ -87,6 +87,18 @@ public static class ThargaPlatformRegistration
             builder.Services.AddThargaTenantRoles(options.ConfigureTenantRoles);
         }
 
+        // System scopes (opt-in) — global capabilities for system keys / privileged roles
+        if (options.ConfigureSystemScopes != null)
+        {
+            builder.Services.AddThargaSystemScopes(options.ConfigureSystemScopes);
+        }
+
+        // System roles (opt-in) — map app/global roles to system scopes for privileged users
+        if (options.ConfigureSystemRoles != null)
+        {
+            builder.Services.AddThargaSystemRoles(options.ConfigureSystemRoles);
+        }
+
         // Audit logging (opt-in)
         if (options.Audit != null)
         {

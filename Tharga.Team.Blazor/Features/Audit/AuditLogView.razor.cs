@@ -18,8 +18,6 @@ public partial class AuditLogView : ComponentBase
 
     [Parameter] public string TeamKey { get; set; }
     [Parameter] public AuditCallerType? RestrictCallerType { get; set; }
-    [Parameter] public string[] CrossTeamRoles { get; set; } = ["Developer"];
-    [Parameter] public string[] RequiredScopes { get; set; } = [];
 
     /// <summary>
     /// Optional fixed filter dimensions. When set, the matching top-bar controls render
@@ -66,10 +64,9 @@ public partial class AuditLogView : ComponentBase
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
-        var hasCrossTeamRole = CrossTeamRoles.Any(role => user.IsInRole(role));
-        var hasTeam = !string.IsNullOrEmpty(TeamKey) || user.HasClaim(c => c.Type == "team_id");
-        var hasRequiredScopes = RequiredScopes.Length == 0 || RequiredScopes.All(scope => user.HasClaim(TeamClaimTypes.Scope, scope));
-        _hasAccess = hasCrossTeamRole || (hasTeam && hasRequiredScopes);
+        // Access is granted by the audit:read scope. Team admins get it via their access level; cross-team
+        // (Developer) access comes from the global role→system-scope mapping (o.ConfigureSystemRoles).
+        _hasAccess = user.HasClaim(TeamClaimTypes.Scope, AuditScopes.Read);
         if (!_hasAccess) return;
 
         _auditLogger = ServiceProvider.GetService<CompositeAuditLogger>();

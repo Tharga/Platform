@@ -102,8 +102,7 @@ else
                     }
                 </Template>
             </RadzenDataGridColumn>
-            @* #76: Tags column hidden for the basic baseline — will become a ShowTags parameter later.
-            <RadzenDataGridColumn Title="Tags" Width="180px">
+            <RadzenDataGridColumn Title="Tags" Width="180px" Visible="@(ShowTags ?? AnyKeyHasTags())">
                 <Template>
                     @foreach (var tag in context.Tags.Where(t => ChipTagKeys.Contains(t.Key)))
                     {
@@ -117,7 +116,6 @@ else
                     }
                 </Template>
             </RadzenDataGridColumn>
-            *@
             <RadzenDataGridColumn Width="@GetActionsColumnWidth()">
                 <Template>
                     <RadzenButton Icon="visibility" Click="@(_ => context.VisibleKey = context.ApiKey)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey == _apiKeyMask)" />
@@ -183,8 +181,6 @@ else
 }
 
 @code {
-    [Parameter] public string[] CrossTeamRoles { get; set; } = ["Developer"];
-    [Parameter] public string[] RequiredScopes { get; set; } = [];
 
     /// <summary>
     /// When true, each row gets a "View audit log" button that opens a dialog scoped to that key
@@ -216,6 +212,13 @@ else
 
     /// <summary>Shows the "Last used" column (tooltip lists Created + Expiry dates; a warning icon appears within 60 days of expiry). Default true.</summary>
     [Parameter] public bool ShowLastUsed { get; set; } = true;
+
+    /// <summary>
+    /// Controls the Tags column (chips for keys listed in <see cref="ChipTagKeys"/>, plus an (i) tooltip of all
+    /// tags). <c>true</c> = always show, <c>false</c> = always hide, <c>null</c> = auto (show only when at least
+    /// one key has tags). Default null (auto).
+    /// </summary>
+    [Parameter] public bool? ShowTags { get; set; }
 
     /// <summary>Shows the expiry-date picker on the create card (placed after Scopes). When hidden, new keys use the default expiry (capped by <c>ApiKeyOptions.MaxExpiryDays</c>). Expiry is still shown in the grid (Last used column tooltip + warning) regardless. Default false.</summary>
     [Parameter] public bool ShowExpiryDatePicker { get; set; }
@@ -252,9 +255,9 @@ else
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
-        var hasCrossTeamRole = CrossTeamRoles.Any(role => user.IsInRole(role));
-        var hasRequiredScopes = RequiredScopes.Length == 0 || RequiredScopes.All(scope => user.HasClaim(TeamClaimTypes.Scope, scope));
-        _hasAccess = hasCrossTeamRole || (hasRequiredScopes && user.HasClaim(TeamClaimTypes.Scope, ApiKeyScopes.Manage));
+        // Access is granted by the apikey:manage scope. Cross-team/Developer access comes from the global
+        // role→system-scope mapping (o.ConfigureSystemRoles) granting apikey:manage, not a per-component role.
+        _hasAccess = user.HasClaim(TeamClaimTypes.Scope, ApiKeyScopes.Manage);
         if (!_hasAccess) { await base.OnInitializedAsync(); return; }
 
         _scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
@@ -375,6 +378,8 @@ else
 
     private static bool IsExpiringSoon(ApiKeyModel context)
         => context.ExpiryDate.HasValue && context.ExpiryDate.Value <= DateTime.UtcNow.AddDays(60);
+
+    private bool AnyKeyHasTags() => _keys?.Any(k => k.Tags.Count > 0) ?? false;
 
     private bool IsKeyVisible(ApiKeyModel context)
     {

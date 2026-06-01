@@ -23,9 +23,10 @@
     </RadzenStack>
 </RadzenStack>
 
+@* ShowTags omitted → auto: the Tags column appears only when at least one key has tags. *@
 <ApiKeyView ShowAuditLogButton="true" ShowScopeTooltip="_showScopeTooltip"
             ShowScopeOverrides="_showScopeOverrides" ShowRoles="_showRoles" ShowLastUsed="_showLastUsed"
-            ShowExpiryDatePicker="_showExpiryDatePicker" />
+            ShowExpiryDatePicker="_showExpiryDatePicker" ChipTagKeys="@(new[] { "Type" })" />
 
 @code {
     private bool _showScopeTooltip = true;

@@ -35,6 +35,38 @@ public static class ScopeServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Registers the system-scope registry (global scopes for system API keys / privileged roles) and configures it.
+    /// </summary>
+    public static IServiceCollection AddThargaSystemScopes(this IServiceCollection services, Action<SystemScopeRegistry> configure)
+    {
+        var registry = services.BuildServiceProvider().GetService<ISystemScopeRegistry>() as SystemScopeRegistry;
+        if (registry == null)
+        {
+            registry = new SystemScopeRegistry();
+            services.AddSingleton<ISystemScopeRegistry>(registry);
+        }
+
+        configure(registry);
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the system-role registry (maps app/global roles to system scopes) and configures it.
+    /// </summary>
+    public static IServiceCollection AddThargaSystemRoles(this IServiceCollection services, Action<SystemRoleRegistry> configure)
+    {
+        var registry = services.BuildServiceProvider().GetService<ISystemRoleRegistry>() as SystemRoleRegistry;
+        if (registry == null)
+        {
+            registry = new SystemRoleRegistry();
+            services.AddSingleton<ISystemRoleRegistry>(registry);
+        }
+
+        configure(registry);
+        return services;
+    }
+
+    /// <summary>
     /// Registers a scoped service wrapped in a <see cref="ScopeProxy{T}"/>
     /// that enforces <see cref="RequireScopeAttribute"/> on every method call.
     /// </summary>

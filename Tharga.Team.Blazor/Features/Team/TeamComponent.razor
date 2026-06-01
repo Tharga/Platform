@@ -169,7 +169,18 @@ else
                                             </span>
                                         </Template>
                                     </RadzenDataGridColumn>
-                                    <RadzenDataGridColumn Title="Status" Property="@nameof(ITeamMember.State)"/>
+                                    <RadzenDataGridColumn Title="Status" Property="@nameof(ITeamMember.State)">
+                                        <Template>
+                                            @if (context.State == MembershipState.Invited && context.Invitation != null)
+                                            {
+                                                <span title="@($"Invited {context.Invitation.InviteTime:yyyy-MM-dd HH:mm} UTC")" style="cursor: help;">@context.State</span>
+                                            }
+                                            else
+                                            {
+                                                <span>@context.State</span>
+                                            }
+                                        </Template>
+                                    </RadzenDataGridColumn>
                                     <RadzenDataGridColumn Title="Last Seen" Property="@nameof(ITeamMember.LastSeen)">
                                         <Template>
                                             <DateTimeView Date="@context.LastSeen"/>

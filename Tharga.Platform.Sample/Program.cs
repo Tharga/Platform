@@ -53,6 +53,20 @@ builder.AddThargaPlatform(o =>
         roles.Register("Support", ["orders:read", "valuegroup:read"]); // no description — tooltip shows scopes only
     };
 
+    // Demo system scopes (global capabilities for system API keys; separate from team scopes).
+    o.ConfigureSystemScopes = scopes =>
+    {
+        scopes.Register("system:teams:read", "Read any team's data (cross-tenant).");
+        scopes.Register("system:metrics:read", "Read infrastructure metrics.");
+        scopes.Register("mcp:discover", "Discover MCP tools and resources.");
+    };
+
+    // Map app/global roles to system scopes — a Developer user gains these as claims (team-independent).
+    o.ConfigureSystemRoles = roles =>
+    {
+        roles.Map("Developer", "system:teams:read", "system:metrics:read", "mcp:discover", "apikey:manage", "audit:read");
+    };
+
     o.Audit = new AuditOptions();
 });
 builder.Services.AddThargaMcp(mcp =>

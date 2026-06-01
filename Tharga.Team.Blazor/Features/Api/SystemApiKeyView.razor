@@ -80,7 +80,11 @@
                                             Data="@_allScopes"
                                             Multiple="true"
                                             AllowClear="true"
-                                            Placeholder="Select scopes..." />
+                                            Placeholder="Select scopes...">
+                                <Template>
+                                    <span title="@(_scopeDescriptions.TryGetValue((string)context, out var d) ? d : null)">@context</span>
+                                </Template>
+                            </RadzenDropDown>
                         </RadzenStack>
                     }
                     @if (ShowExpiryDatePicker)
@@ -138,9 +142,10 @@
 
     private bool _apiKeyServiceMissing;
     private IApiKeyManagementService _apiKeyManagementService;
-    private IScopeRegistry _scopeRegistry;
+    private ISystemScopeRegistry _systemScopeRegistry;
     private SystemApiKeyModel[] _keys;
     private string[] _allScopes = [];
+    private IReadOnlyDictionary<string, string> _scopeDescriptions = new Dictionary<string, string>();
     private readonly string _apiKeyMask = "**********";
 
     private string _newName = "";
@@ -153,8 +158,9 @@
         _apiKeyServiceMissing = _apiKeyManagementService == null;
         if (_apiKeyServiceMissing) { await base.OnInitializedAsync(); return; }
 
-        _scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
-        _allScopes = _scopeRegistry?.All.Select(s => s.Name).ToArray() ?? [];
+        _systemScopeRegistry = ServiceProvider.GetService<ISystemScopeRegistry>();
+        _allScopes = _systemScopeRegistry?.All.Select(s => s.Name).ToArray() ?? [];
+        _scopeDescriptions = _systemScopeRegistry?.All.ToDictionary(s => s.Name, s => s.Description) ?? new Dictionary<string, string>();
 
         await ReloadData();
         await base.OnInitializedAsync();

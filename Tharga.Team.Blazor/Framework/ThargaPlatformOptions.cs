@@ -48,6 +48,18 @@ public class ThargaPlatformOptions
     public Action<TenantRoleRegistry> ConfigureTenantRoles { get; set; }
 
     /// <summary>
+    /// Configure system-level (global) scopes — the capabilities offered to system API keys (and, via role
+    /// mapping, to privileged users). When null, system-scope registration is skipped.
+    /// </summary>
+    public Action<SystemScopeRegistry> ConfigureSystemScopes { get; set; }
+
+    /// <summary>
+    /// Map app/global roles (e.g. "Developer") to system scopes, so privileged users gain those scopes as
+    /// claims (team-independent). When null, no role→system-scope mapping is applied.
+    /// </summary>
+    public Action<SystemRoleRegistry> ConfigureSystemRoles { get; set; }
+
+    /// <summary>
     /// Options for audit logging. Set to null to skip audit registration.
     /// </summary>
     public AuditOptions Audit { get; set; }
