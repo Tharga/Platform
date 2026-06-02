@@ -9,6 +9,7 @@
 @inject IJSRuntime Js
 @inject DialogService DialogService
 @inject NotificationService NotificationService
+@inject ContextMenuService ContextMenuService
 
 @if (_apiKeyServiceMissing)
 {
@@ -114,47 +115,10 @@ else
                     }
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Width="170px" TextAlign="TextAlign.Right">
+            <RadzenDataGridColumn Width="56px" TextAlign="TextAlign.Right">
                 <Template>
-                    @{
-                        var hasValue = !string.IsNullOrEmpty(context.ApiKey);
-                        var showEdit = (ShowScopeOverrides && _scopeRegistry != null) || (ShowRoles && _tenantRoleRegistry != null);
-                    }
-                    <RadzenSplitButton Text="@(hasValue ? "Copy" : "")"
-                                       Icon="@(hasValue ? "content_copy" : "more_vert")"
-                                       Click="@(args => OnRowActionAsync(context, args))">
-                        <ChildContent>
-                            @* @if (hasValue)
-                            {
-                                <RadzenSplitButtonItem Text="Copy" Icon="content_copy" Value="copy" />
-                            } *@
-                            @if (hasValue && context.VisibleKey == _apiKeyMask)
-                            {
-                                <RadzenSplitButtonItem Text="Show value" Icon="visibility" Value="show" />
-                            }
-                            @if (hasValue && context.VisibleKey != _apiKeyMask)
-                            {
-                                <RadzenSplitButtonItem Text="Hide value" Icon="visibility_off" Value="hide" />
-                            }
-                            @if (ShowAuditLogButton)
-                            {
-                                <RadzenSplitButtonItem Text="Audit log" Icon="manage_search" Value="audit" />
-                            }
-                            @if (showEdit)
-                            {
-                                <RadzenSplitButtonItem Text="Edit roles & scopes" Icon="tune" Value="edit" />
-                            }
-                            @if (hasValue)
-                            {
-                                <RadzenSplitButtonItem Text="Lock" Icon="lock" Value="lock" />
-                            }
-                            <RadzenSplitButtonItem Text="Refresh" Icon="refresh" Value="refresh" />
-                            @if (_options.AdvancedMode)
-                            {
-                                <RadzenSplitButtonItem Text="Delete" Icon="delete" Value="delete" />
-                            }
-                        </ChildContent>
-                    </RadzenSplitButton>
+                    <RadzenButton Icon="more_vert" Variant="Variant.Flat" ButtonStyle="ButtonStyle.Base"
+                                  Click="@(args => OpenRowMenu(args, context))" title="Actions" />
                 </Template>
             </RadzenDataGridColumn>
         </Columns>
@@ -417,10 +381,30 @@ else
         return !string.IsNullOrEmpty(context.VisibleKey) && context.VisibleKey != _apiKeyMask;
     }
 
-    private async Task OnRowActionAsync(ApiKeyModel context, RadzenSplitButtonItem item)
+    private void OpenRowMenu(MouseEventArgs args, ApiKeyModel context)
     {
-        // item is null when the primary button is clicked: copy when there's a value, otherwise no-op.
-        var action = item?.Value ?? (string.IsNullOrEmpty(context.ApiKey) ? null : "copy");
+        var hasValue = !string.IsNullOrEmpty(context.ApiKey);
+        var showEdit = (ShowScopeOverrides && _scopeRegistry != null) || (ShowRoles && _tenantRoleRegistry != null);
+
+        var items = new List<ContextMenuItem>();
+        if (hasValue) items.Add(new ContextMenuItem { Text = "Copy", Icon = "content_copy", Value = "copy" });
+        if (hasValue && context.VisibleKey == _apiKeyMask) items.Add(new ContextMenuItem { Text = "Show value", Icon = "visibility", Value = "show" });
+        if (hasValue && context.VisibleKey != _apiKeyMask) items.Add(new ContextMenuItem { Text = "Hide value", Icon = "visibility_off", Value = "hide" });
+        if (ShowAuditLogButton) items.Add(new ContextMenuItem { Text = "Audit log", Icon = "manage_search", Value = "audit" });
+        if (showEdit) items.Add(new ContextMenuItem { Text = "Edit roles & scopes", Icon = "tune", Value = "edit" });
+        if (hasValue) items.Add(new ContextMenuItem { Text = "Lock", Icon = "lock", Value = "lock" });
+        items.Add(new ContextMenuItem { Text = "Refresh", Icon = "refresh", Value = "refresh" });
+        if (_options.AdvancedMode) items.Add(new ContextMenuItem { Text = "Delete", Icon = "delete", Value = "delete" });
+
+        ContextMenuService.Open(args, items, async e =>
+        {
+            ContextMenuService.Close();
+            await OnRowActionAsync(context, e.Value as string);
+        });
+    }
+
+    private async Task OnRowActionAsync(ApiKeyModel context, string action)
+    {
         switch (action)
         {
             case "show": context.VisibleKey = context.ApiKey; break;
@@ -432,6 +416,7 @@ else
             case "refresh": await RefreshAsync(context); break;
             case "delete": await DeleteAsync(context); break;
         }
+        StateHasChanged();
     }
 
     private async Task CopyToClipboard(ApiKeyModel context)
