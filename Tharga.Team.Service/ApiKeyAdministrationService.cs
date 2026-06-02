@@ -96,7 +96,7 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
         {
             var name = IntegerExtensions.GetNameForNumber(i + 1);
             var expiryDate = GetDefaultExpiryDate();
-            var entity = BuildKey(teamKey, name, [], AccessLevel.User, null, null, expiryDate);
+            var entity = BuildKey(teamKey, name, [], AccessLevel.User, null, null, expiryDate, createdBy: null);
             var created = await _repository.AddAsync(entity);
 
             if (_options.AutoLockKeys)
@@ -110,7 +110,7 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
     }
 
     /// <inheritdoc />
-    public async Task<IApiKey> CreateKeyAsync(string teamKey, string name, AccessLevel accessLevel, string[] roles = null, string[] scopeOverrides = null, DateTime? expiryDate = null, IReadOnlyList<Tag> tags = null)
+    public async Task<IApiKey> CreateKeyAsync(string teamKey, string name, AccessLevel accessLevel, string[] roles = null, string[] scopeOverrides = null, DateTime? expiryDate = null, IReadOnlyList<Tag> tags = null, string createdBy = null)
     {
         expiryDate ??= GetDefaultExpiryDate();
 
@@ -121,7 +121,7 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
                 throw new InvalidOperationException($"Expiry date cannot exceed {_options.MaxExpiryDays} days from now.");
         }
 
-        var entity = BuildKey(teamKey, name, tags, accessLevel, roles, scopeOverrides, expiryDate);
+        var entity = BuildKey(teamKey, name, tags, accessLevel, roles, scopeOverrides, expiryDate, createdBy);
         var created = await _repository.AddAsync(entity);
 
         if (_options.AutoLockKeys)
@@ -135,7 +135,7 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
     {
         var item = await _repository.GetAsync(key);
         VerifyTeamOwnership(item, teamKey);
-        var refreshed = BuildKey(teamKey, item.Name, item.Tags, item.AccessLevel ?? AccessLevel.Administrator, item.Roles, item.ScopeOverrides, item.ExpiryDate);
+        var refreshed = BuildKey(teamKey, item.Name, item.Tags, item.AccessLevel ?? AccessLevel.Administrator, item.Roles, item.ScopeOverrides, item.ExpiryDate, item.CreatedBy);
         await _repository.UpdateAsync(key, refreshed);
 
         if (_options.AutoLockKeys)
@@ -263,7 +263,7 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
             : null;
     }
 
-    private ApiKeyEntity BuildKey(string teamKey, string name, IReadOnlyList<Tag> tags, AccessLevel accessLevel, string[] roles, string[] scopeOverrides, DateTime? expiryDate)
+    private ApiKeyEntity BuildKey(string teamKey, string name, IReadOnlyList<Tag> tags, AccessLevel accessLevel, string[] roles, string[] scopeOverrides, DateTime? expiryDate, string createdBy)
     {
         var apiKey = _apiKeyService.BuildApiKey(teamKey, () => StringExtension.GetRandomString(24, 32));
         var encryptedApiKey = _apiKeyService.Encrypt(apiKey);
@@ -282,6 +282,7 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
             ScopeOverrides = scopeOverrides,
             ExpiryDate = expiryDate,
             CreatedAt = DateTime.UtcNow,
+            CreatedBy = createdBy,
         };
     }
 

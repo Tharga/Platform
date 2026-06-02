@@ -210,7 +210,7 @@ else
     /// <summary>When true (and an <see cref="ITenantRoleRegistry"/> is registered), allows assigning tenant roles to keys (create card + edit dialog). Default false.</summary>
     [Parameter] public bool ShowRoles { get; set; }
 
-    /// <summary>Shows the "Last used" column (tooltip lists Created + Expiry dates; a warning icon appears within 60 days of expiry). Default true.</summary>
+    /// <summary>Shows the "Last used" column (tooltip lists Created + Expiry + Created by; a warning icon appears within 60 days of expiry). Default true.</summary>
     [Parameter] public bool ShowLastUsed { get; set; } = true;
 
     /// <summary>
@@ -294,6 +294,7 @@ else
                     ScopeOverrides = x.ScopeOverrides,
                     ExpiryDate = x.ExpiryDate,
                     CreatedAt = x.CreatedAt,
+                    CreatedBy = x.CreatedBy,
                     LastUsedAt = x.LastUsedAt,
                     Tags = x.Tags ?? Array.Empty<Tag>(),
                 };
@@ -373,7 +374,8 @@ else
     {
         var created = context.CreatedAt.HasValue ? context.CreatedAt.Value.ToString("yyyy-MM-dd") : "—";
         var expires = context.ExpiryDate.HasValue ? context.ExpiryDate.Value.ToString("yyyy-MM-dd") : "No expiry";
-        return $"Created: {created}\nExpires: {expires}";
+        var by = string.IsNullOrWhiteSpace(context.CreatedBy) ? "System" : context.CreatedBy;
+        return $"Created: {created}\nExpires: {expires}\nCreated by: {by}";
     }
 
     private static bool IsExpiringSoon(ApiKeyModel context)
