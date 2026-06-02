@@ -6,6 +6,7 @@
 @inject IJSRuntime Js
 @inject DialogService DialogService
 @inject NotificationService NotificationService
+@inject ContextMenuService ContextMenuService
 
 <AuthorizeView Roles="@Roles.Developer" Context="authState">
     <Authorized>
@@ -51,15 +52,10 @@
                             }
                         </Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn Width="@(ShowAuditLogButton ? "260px" : "220px")">
+                    <RadzenDataGridColumn Width="56px" TextAlign="TextAlign.Right">
                         <Template>
-                            <RadzenButton Icon="visibility" Click="@(_ => context.VisibleKey = context.ApiKey)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey == _apiKeyMask)" />
-                            <RadzenButton Icon="visibility_off" Click="@(_ => context.VisibleKey = _apiKeyMask)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey != _apiKeyMask)" />
-                            <RadzenButton Icon="content_copy" Click="@(_ => CopyToClipboard(context))" Visible="@(!string.IsNullOrEmpty(context.ApiKey))" />
-                            <RadzenButton Icon="manage_search" Click="@(_ => OpenAuditLogAsync(context))" Visible="@ShowAuditLogButton" title="View audit log for this key" />
-                            <RadzenButton Icon="lock" Click="@(_ => LockKeyAsync(context))" Visible="@(!string.IsNullOrEmpty(context.ApiKey))" />
-                            <RadzenButton Icon="refresh" Click="@(_ => RefreshAsync(context))" />
-                            <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Click="@(_ => DeleteAsync(context))" />
+                            <RadzenButton Icon="more_vert" Variant="Variant.Flat" ButtonStyle="ButtonStyle.Base"
+                                          Click="@(args => OpenRowMenu(args, context))" title="Actions" />
                         </Template>
                     </RadzenDataGridColumn>
                 </Columns>
@@ -219,6 +215,41 @@
         if (key == null || string.IsNullOrEmpty(key.ApiKey)) return;
         var model = _keys?.FirstOrDefault(k => k.Key == key.Key);
         if (model != null) model.VisibleKey = key.ApiKey;
+        StateHasChanged();
+    }
+
+    private void OpenRowMenu(MouseEventArgs args, SystemApiKeyModel context)
+    {
+        var hasValue = !string.IsNullOrEmpty(context.ApiKey);
+
+        var items = new List<ContextMenuItem>();
+        if (hasValue) items.Add(new ContextMenuItem { Text = "Copy", Icon = "content_copy", Value = "copy" });
+        if (hasValue && context.VisibleKey == _apiKeyMask) items.Add(new ContextMenuItem { Text = "Show value", Icon = "visibility", Value = "show" });
+        if (hasValue && context.VisibleKey != _apiKeyMask) items.Add(new ContextMenuItem { Text = "Hide value", Icon = "visibility_off", Value = "hide" });
+        if (ShowAuditLogButton) items.Add(new ContextMenuItem { Text = "Audit log", Icon = "manage_search", Value = "audit" });
+        if (hasValue) items.Add(new ContextMenuItem { Text = "Lock", Icon = "lock", Value = "lock" });
+        items.Add(new ContextMenuItem { Text = "Refresh", Icon = "refresh", Value = "refresh" });
+        items.Add(new ContextMenuItem { Text = "Delete", Icon = "delete", Value = "delete" });
+
+        ContextMenuService.Open(args, items, async e =>
+        {
+            ContextMenuService.Close();
+            await OnRowActionAsync(context, e.Value as string);
+        });
+    }
+
+    private async Task OnRowActionAsync(SystemApiKeyModel context, string action)
+    {
+        switch (action)
+        {
+            case "show": context.VisibleKey = context.ApiKey; break;
+            case "hide": context.VisibleKey = _apiKeyMask; break;
+            case "copy": await CopyToClipboard(context); break;
+            case "audit": await OpenAuditLogAsync(context); break;
+            case "lock": await LockKeyAsync(context); break;
+            case "refresh": await RefreshAsync(context); break;
+            case "delete": await DeleteAsync(context); break;
+        }
         StateHasChanged();
     }
 
