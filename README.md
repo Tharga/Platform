@@ -97,9 +97,10 @@ builder.AddThargaPlatform(o =>
 
 ## Advanced Usage
 
-Individual `Add*` methods remain available for partial/custom setups. See the **[Implementation Guide](docs/implementation-guide.md)** for step-by-step instructions.
+Individual `Add*` methods remain available for partial/custom setups. See the **[Implementation Guide](docs/articles/implementation-guide.md)** for step-by-step instructions.
 
 ## Links
 
-- [Implementation Guide](docs/implementation-guide.md)
+- [Implementation Guide](docs/articles/implementation-guide.md)
+- [Documentation site](https://platform.tharga.net)
 - [Report an issue](https://github.com/Tharga/Platform/issues)
