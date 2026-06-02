@@ -23,6 +23,7 @@ builder.AddThargaPlatform(o =>
     o.Blazor.AutoCreateFirstTeam = false;
     o.Blazor.AllowTeamCreation = true;
     o.Blazor.AddClaimsEnricher<DeveloperRoleEnricher>();
+    o.Blazor.Consent.ShowToggle = true;
 
     // Advanced mode unlocks the full API key UI (access level, roles, scope overrides, tags).
     o.ApiKey.AdvancedMode = true;

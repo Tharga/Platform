@@ -2,6 +2,11 @@
 @rendermode InteractiveServer
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.DependencyInjection
+@using Tharga.Team
+@inject ITeamStateService TeamStateService
+@inject IServiceProvider ServiceProvider
+@inject NotificationService NotificationService
 
 <PageTitle>API Keys</PageTitle>
 
@@ -23,8 +28,20 @@
     </RadzenStack>
 </RadzenStack>
 
+@* One-click demo: mints a team API key carrying a system-set Tag ("Type"), which renders as a chip below. *@
+<RadzenButton Text="Create tagged key" Icon="vpn_key" ButtonStyle="ButtonStyle.Secondary"
+              Click="@CreateTaggedKeyAsync" Disabled="@(_apiKeyManagementService == null)" class="rz-mb-3" />
+
+@if (_createdKey != null)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Success" ShowIcon="true" Variant="Variant.Flat" class="rz-mb-3">
+        Created <b>@_createdKey.Name</b> (tag <code>Type=demo</code>) — copy the value now (shown once):
+        <pre style="white-space:pre-wrap; margin:.5rem 0 0">@_createdKey.ApiKey</pre>
+    </RadzenAlert>
+}
+
 @* ShowTags omitted → auto: the Tags column appears only when at least one key has tags. *@
-<ApiKeyView ShowAuditLogButton="true" ShowScopeTooltip="_showScopeTooltip"
+<ApiKeyView @key="_reloadToken" ShowAuditLogButton="true" ShowScopeTooltip="_showScopeTooltip"
             ShowScopeOverrides="_showScopeOverrides" ShowRoles="_showRoles" ShowLastUsed="_showLastUsed"
             ShowExpiryDatePicker="_showExpiryDatePicker" ChipTagKeys="@(new[] { "Type" })" />
 
@@ -34,4 +51,28 @@
     private bool _showRoles;
     private bool _showLastUsed = true;
     private bool _showExpiryDatePicker;
+
+    private IApiKeyManagementService _apiKeyManagementService;
+    private IApiKey _createdKey;
+    private Guid _reloadToken = Guid.NewGuid();
+
+    protected override void OnInitialized()
+        => _apiKeyManagementService = ServiceProvider.GetService<IApiKeyManagementService>();
+
+    private async Task CreateTaggedKeyAsync()
+    {
+        var team = await TeamStateService.GetSelectedTeamAsync();
+        if (team?.Key == null)
+        {
+            NotificationService.Notify(NotificationSeverity.Warning, "No team selected.");
+            return;
+        }
+
+        var name = $"Tagged key {Guid.NewGuid().ToString("N")[..6]}";
+        _createdKey = await _apiKeyManagementService.CreateKeyAsync(
+            team.Key, name, AccessLevel.User, tags: new[] { new Tag("Type", "demo") });
+
+        _reloadToken = Guid.NewGuid(); // force ApiKeyView to reload so the new key shows in the list
+        NotificationService.Notify(NotificationSeverity.Success, $"Created '{name}' with tag Type=demo.");
+    }
 }
