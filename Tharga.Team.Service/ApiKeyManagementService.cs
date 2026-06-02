@@ -20,7 +20,7 @@ public class ApiKeyManagementService : IApiKeyManagementService
     }
 
     public IAsyncEnumerable<IApiKey> GetKeysAsync(string teamKey) => _inner.GetKeysAsync(teamKey);
-    public Task<IApiKey> CreateKeyAsync(string teamKey, string name, AccessLevel accessLevel, string[] roles = null, string[] scopeOverrides = null, DateTime? expiryDate = null, IReadOnlyList<Tag> tags = null) => _inner.CreateKeyAsync(teamKey, name, accessLevel, roles, scopeOverrides, expiryDate, tags);
+    public Task<IApiKey> CreateKeyAsync(string teamKey, string name, AccessLevel accessLevel, string[] roles = null, string[] scopeOverrides = null, DateTime? expiryDate = null, IReadOnlyList<Tag> tags = null) => _inner.CreateKeyAsync(teamKey, name, accessLevel, roles, scopeOverrides, expiryDate, tags, GetCurrentUserIdentity());
     public Task<IApiKey> RefreshKeyAsync(string teamKey, string key) => _inner.RefreshKeyAsync(teamKey, key);
     public Task LockKeyAsync(string teamKey, string key) => _inner.LockKeyAsync(teamKey, key);
     public Task DeleteKeyAsync(string teamKey, string key) => _inner.DeleteKeyAsync(teamKey, key);

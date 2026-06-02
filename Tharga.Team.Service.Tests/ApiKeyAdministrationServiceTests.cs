@@ -342,6 +342,43 @@ public class ApiKeyAdministrationServiceTests
     }
 
     [Fact]
+    public async Task CreateKeyAsync_Persists_CreatedBy()
+    {
+        _apiKeyService.BuildApiKey(Arg.Any<string>(), Arg.Any<Func<string>>()).Returns("new-key");
+        _apiKeyService.Encrypt("new-key").Returns("new-hash");
+        _repository.AddAsync(Arg.Any<ApiKeyEntity>()).Returns(ci => Task.FromResult(ci.Arg<ApiKeyEntity>()));
+
+        await _sut.CreateKeyAsync("team-1", "My Key", AccessLevel.User, createdBy: "alice@example.com");
+
+        await _repository.Received(1).AddAsync(Arg.Is<ApiKeyEntity>(e => e.CreatedBy == "alice@example.com"));
+    }
+
+    [Fact]
+    public async Task CreateKeyAsync_Without_CreatedBy_LeavesFieldNull()
+    {
+        _apiKeyService.BuildApiKey(Arg.Any<string>(), Arg.Any<Func<string>>()).Returns("new-key");
+        _apiKeyService.Encrypt("new-key").Returns("new-hash");
+        _repository.AddAsync(Arg.Any<ApiKeyEntity>()).Returns(ci => Task.FromResult(ci.Arg<ApiKeyEntity>()));
+
+        await _sut.CreateKeyAsync("team-1", "My Key", AccessLevel.User);
+
+        await _repository.Received(1).AddAsync(Arg.Is<ApiKeyEntity>(e => e.CreatedBy == null));
+    }
+
+    [Fact]
+    public async Task RefreshKeyAsync_Preserves_CreatedBy()
+    {
+        var existing = CreateEntity("key-1", "old-hash", "team-1") with { CreatedBy = "alice@example.com" };
+        _repository.GetAsync("key-1").Returns(Task.FromResult(existing));
+        _apiKeyService.BuildApiKey(Arg.Any<string>(), Arg.Any<Func<string>>()).Returns("refreshed-key");
+        _apiKeyService.Encrypt("refreshed-key").Returns("refreshed-hash");
+
+        await _sut.RefreshKeyAsync("team-1", "key-1");
+
+        await _repository.Received(1).UpdateAsync("key-1", Arg.Is<ApiKeyEntity>(e => e.CreatedBy == "alice@example.com"));
+    }
+
+    [Fact]
     public async Task CreateKeyAsync_With_Custom_AccessLevel_Persists_Custom_And_Overrides()
     {
         // The headline #74 use case: a least-privilege machine key minted with Custom + a single

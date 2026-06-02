@@ -11,8 +11,8 @@ public interface IApiKeyAdministrationService
     /// <summary>Returns all API keys for the specified team, creating default keys if fewer than AutoKeyCount exist.</summary>
     IAsyncEnumerable<IApiKey> GetKeysAsync(string teamKey);
 
-    /// <summary>Creates a new API key with the specified settings (advanced mode). <paramref name="tags"/> are system-set key-value tags, settable only here (not from the UI) and immutable thereafter.</summary>
-    Task<IApiKey> CreateKeyAsync(string teamKey, string name, AccessLevel accessLevel, string[] roles = null, string[] scopeOverrides = null, DateTime? expiryDate = null, IReadOnlyList<Tag> tags = null);
+    /// <summary>Creates a new API key with the specified settings (advanced mode). <paramref name="tags"/> are system-set key-value tags, settable only here (not from the UI) and immutable thereafter. <paramref name="createdBy"/> records who created the key; <c>null</c> for keys created without a user context (e.g. auto-generated), surfaced as "System" in the UI.</summary>
+    Task<IApiKey> CreateKeyAsync(string teamKey, string name, AccessLevel accessLevel, string[] roles = null, string[] scopeOverrides = null, DateTime? expiryDate = null, IReadOnlyList<Tag> tags = null, string createdBy = null);
 
     /// <summary>Generates a new API key value for an existing key entry. Returns the entity with the raw key visible once.</summary>
     Task<IApiKey> RefreshKeyAsync(string teamKey, string key);
