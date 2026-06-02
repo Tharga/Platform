@@ -1,0 +1,55 @@
+{
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "..",
+          "files": [
+            "Tharga.Team/Tharga.Team.csproj",
+            "Tharga.Team.Service/Tharga.Team.Service.csproj",
+            "Tharga.Team.MongoDB/Tharga.Team.MongoDB.csproj"
+          ]
+        }
+      ],
+      "dest": "api",
+      "includePrivateMembers": false,
+      "disableGitFeatures": false,
+      "disableDefaultFilter": false,
+      "noRestore": false,
+      "namespaceLayout": "flattened",
+      "memberLayout": "samePage",
+      "EnumSortOrder": "alphabetic",
+      "allowCompilationErrors": false
+    }
+  ],
+  "build": {
+    "content": [
+      {
+        "files": ["**/*.{md,yml}"],
+        "exclude": ["_site/**", "obj/**"]
+      }
+    ],
+    "resource": [
+      {
+        "files": ["images/**", "CNAME"]
+      }
+    ],
+    "output": "_site",
+    "globalMetadata": {
+      "_appName": "Tharga.Platform",
+      "_appTitle": "Tharga.Platform",
+      "_appLogoPath": "images/logo.png",
+      "_appFaviconPath": "images/logo.png",
+      "_enableSearch": true,
+      "_disableContribution": false,
+      "_gitContribute": {
+        "repo": "https://github.com/Tharga/Platform",
+        "branch": "master"
+      }
+    },
+    "template": ["default", "modern", "templates/thg"],
+    "postProcessors": ["ExtractSearchIndex"],
+    "keepFileLink": false,
+    "disableGitFeatures": false
+  }
+}

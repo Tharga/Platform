@@ -401,3 +401,7 @@ FodyWeavers.xsd
 *.sln.iml
 /**/*.orig
 /.claude/settings.local.json
+
+# DocFX generated documentation site
+docs/_site/
+docs/api/
