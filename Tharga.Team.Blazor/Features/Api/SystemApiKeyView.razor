@@ -129,7 +129,7 @@
     {
         var created = context.CreatedAt.HasValue ? context.CreatedAt.Value.ToString("yyyy-MM-dd") : "—";
         var expires = context.ExpiryDate.HasValue ? context.ExpiryDate.Value.ToString("yyyy-MM-dd") : "No expiry";
-        var by = string.IsNullOrWhiteSpace(context.CreatedBy) ? "—" : context.CreatedBy;
+        var by = string.IsNullOrWhiteSpace(context.CreatedBy) ? "System" : context.CreatedBy;
         return $"Created: {created}\nExpires: {expires}\nCreated by: {by}";
     }
 
