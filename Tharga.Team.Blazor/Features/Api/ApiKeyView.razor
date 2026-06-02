@@ -1,9 +1,7 @@
 @using Microsoft.Extensions.DependencyInjection
 @using Microsoft.Extensions.Options
 @using Microsoft.JSInterop
-@using Tharga.Team
 @using Tharga.Team.Blazor.Features.Team
-@using Microsoft.AspNetCore.Components.Authorization
 @inject ITeamStateService TeamStateService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IOptions<ApiKeyOptions> ApiKeyOptionsAccessor
@@ -116,16 +114,47 @@ else
                     }
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Width="@GetActionsColumnWidth()">
+            <RadzenDataGridColumn Width="170px" TextAlign="TextAlign.Right">
                 <Template>
-                    <RadzenButton Icon="visibility" Click="@(_ => context.VisibleKey = context.ApiKey)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey == _apiKeyMask)" />
-                    <RadzenButton Icon="visibility_off" Click="@(_ => context.VisibleKey = _apiKeyMask)" Visible="@(!string.IsNullOrEmpty(context.ApiKey) && context.VisibleKey != _apiKeyMask)" />
-                    <RadzenButton Icon="content_copy" Click="@(_ => CopyToClipboard(context))" Visible="@(!string.IsNullOrEmpty(context.ApiKey))" />
-                    <RadzenButton Icon="manage_search" Click="@(_ => OpenAuditLogAsync(context))" Visible="@ShowAuditLogButton" title="View audit log for this key" />
-                    <RadzenButton Icon="tune" Click="@(_ => OpenEditAsync(context))" Visible="@((ShowScopeOverrides && _scopeRegistry != null) || (ShowRoles && _tenantRoleRegistry != null))" title="Edit roles &amp; scopes" />
-                    <RadzenButton Icon="lock" Click="@(_ => LockKeyAsync(context))" Visible="@(!string.IsNullOrEmpty(context.ApiKey))" />
-                    <RadzenButton Icon="refresh" Click="@(_ => RefreshAsync(context))" />
-                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Click="@(_ => DeleteAsync(context))" Visible="@(_options.AdvancedMode)" />
+                    @{
+                        var hasValue = !string.IsNullOrEmpty(context.ApiKey);
+                        var showEdit = (ShowScopeOverrides && _scopeRegistry != null) || (ShowRoles && _tenantRoleRegistry != null);
+                    }
+                    <RadzenSplitButton Text="@(hasValue ? "Copy" : "")"
+                                       Icon="@(hasValue ? "content_copy" : "more_vert")"
+                                       Click="@(args => OnRowActionAsync(context, args))">
+                        <ChildContent>
+                            @* @if (hasValue)
+                            {
+                                <RadzenSplitButtonItem Text="Copy" Icon="content_copy" Value="copy" />
+                            } *@
+                            @if (hasValue && context.VisibleKey == _apiKeyMask)
+                            {
+                                <RadzenSplitButtonItem Text="Show value" Icon="visibility" Value="show" />
+                            }
+                            @if (hasValue && context.VisibleKey != _apiKeyMask)
+                            {
+                                <RadzenSplitButtonItem Text="Hide value" Icon="visibility_off" Value="hide" />
+                            }
+                            @if (ShowAuditLogButton)
+                            {
+                                <RadzenSplitButtonItem Text="Audit log" Icon="manage_search" Value="audit" />
+                            }
+                            @if (showEdit)
+                            {
+                                <RadzenSplitButtonItem Text="Edit roles & scopes" Icon="tune" Value="edit" />
+                            }
+                            @if (hasValue)
+                            {
+                                <RadzenSplitButtonItem Text="Lock" Icon="lock" Value="lock" />
+                            }
+                            <RadzenSplitButtonItem Text="Refresh" Icon="refresh" Value="refresh" />
+                            @if (_options.AdvancedMode)
+                            {
+                                <RadzenSplitButtonItem Text="Delete" Icon="delete" Value="delete" />
+                            }
+                        </ChildContent>
+                    </RadzenSplitButton>
                 </Template>
             </RadzenDataGridColumn>
         </Columns>
@@ -388,6 +417,23 @@ else
         return !string.IsNullOrEmpty(context.VisibleKey) && context.VisibleKey != _apiKeyMask;
     }
 
+    private async Task OnRowActionAsync(ApiKeyModel context, RadzenSplitButtonItem item)
+    {
+        // item is null when the primary button is clicked: copy when there's a value, otherwise no-op.
+        var action = item?.Value ?? (string.IsNullOrEmpty(context.ApiKey) ? null : "copy");
+        switch (action)
+        {
+            case "show": context.VisibleKey = context.ApiKey; break;
+            case "hide": context.VisibleKey = _apiKeyMask; break;
+            case "copy": await CopyToClipboard(context); break;
+            case "audit": await OpenAuditLogAsync(context); break;
+            case "edit": await OpenEditAsync(context); break;
+            case "lock": await LockKeyAsync(context); break;
+            case "refresh": await RefreshAsync(context); break;
+            case "delete": await DeleteAsync(context); break;
+        }
+    }
+
     private async Task CopyToClipboard(ApiKeyModel context)
     {
         var keyToCopy = IsKeyVisible(context) ? context.VisibleKey : context.ApiKey;
@@ -426,10 +472,10 @@ else
 
     private async Task OpenAuditLogAsync(ApiKeyModel context)
     {
-        var pinned = new Tharga.Team.Blazor.Features.Audit.AuditPinnedFilter
+        var pinned = new Audit.AuditPinnedFilter
         {
             CallerKeyId = context.Key,
-            CallerType = Tharga.Team.Service.Audit.AuditCallerType.ApiKey,
+            CallerType = Service.Audit.AuditCallerType.ApiKey,
         };
 
         await DialogService.OpenAsync($"Audit log — {context.Name}", _ =>
@@ -490,14 +536,4 @@ else
         }
     }
 
-    private string GetActionsColumnWidth()
-    {
-        // Base 180px (matches the original simple-mode width), +40 for delete in advanced mode,
-        // +40 when the audit log button is shown, +40 when the edit (roles/scopes) button is shown.
-        var width = 180;
-        if (_options?.AdvancedMode == true) width += 40;
-        if (ShowAuditLogButton) width += 40;
-        if ((ShowScopeOverrides && _scopeRegistry != null) || (ShowRoles && _tenantRoleRegistry != null)) width += 40;
-        return $"{width}px";
-    }
 }
