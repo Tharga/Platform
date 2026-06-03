@@ -38,10 +38,14 @@ public static class ThargaPlatformRegistration
                 .AddAuthentication()
                 .AddThargaApiKeyAuthentication(o =>
                 {
+                    // Keep in sync with ApiKeyOptions — forward every setting the consumer set on o.ApiKey.
                     o.AdvancedMode = options.ApiKey.AdvancedMode;
                     o.AutoKeyCount = options.ApiKey.AutoKeyCount;
                     o.AutoLockKeys = options.ApiKey.AutoLockKeys;
                     o.MaxExpiryDays = options.ApiKey.MaxExpiryDays;
+                    o.LastUsedThrottle = options.ApiKey.LastUsedThrottle;
+                    o.MinKeyLength = options.ApiKey.MinKeyLength;
+                    o.MaxKeyLength = options.ApiKey.MaxKeyLength;
                 });
 
             builder.Services.AddThargaApiKeys();
