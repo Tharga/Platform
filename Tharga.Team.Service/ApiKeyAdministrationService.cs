@@ -263,9 +263,18 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
             : null;
     }
 
+    private string GenerateSecret()
+    {
+        var min = _options.MinKeyLength;
+        var max = _options.MaxKeyLength ?? min; // null = fixed length at MinKeyLength
+        if (max < min)
+            throw new InvalidOperationException($"ApiKeyOptions.MaxKeyLength ({max}) must be greater than or equal to MinKeyLength ({min}).");
+        return StringExtension.GetRandomString(min, max);
+    }
+
     private ApiKeyEntity BuildKey(string teamKey, string name, IReadOnlyList<Tag> tags, AccessLevel accessLevel, string[] roles, string[] scopeOverrides, DateTime? expiryDate, string createdBy)
     {
-        var apiKey = _apiKeyService.BuildApiKey(teamKey, () => StringExtension.GetRandomString(24, 32));
+        var apiKey = _apiKeyService.BuildApiKey(teamKey, GenerateSecret);
         var encryptedApiKey = _apiKeyService.Encrypt(apiKey);
         return new ApiKeyEntity
         {
@@ -288,7 +297,7 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
 
     private ApiKeyEntity BuildSystemKey(string name, string[] scopes, DateTime? expiryDate, string createdBy)
     {
-        var apiKey = _apiKeyService.BuildApiKey("system", () => StringExtension.GetRandomString(24, 32));
+        var apiKey = _apiKeyService.BuildApiKey("system", GenerateSecret);
         var encryptedApiKey = _apiKeyService.Encrypt(apiKey);
         return new ApiKeyEntity
         {

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using Tharga.Toolkit.Password;
 
 namespace Tharga.Team.Service.Tests;
@@ -376,6 +377,107 @@ public class ApiKeyAdministrationServiceTests
         await _sut.RefreshKeyAsync("team-1", "key-1");
 
         await _repository.Received(1).UpdateAsync("key-1", Arg.Is<ApiKeyEntity>(e => e.CreatedBy == "alice@example.com"));
+    }
+
+    [Fact]
+    public async Task CreateKeyAsync_Uses_Default_Fixed_Length_Of_32()
+    {
+        Func<string> generator = null;
+        _apiKeyService.BuildApiKey(Arg.Any<string>(), Arg.Do<Func<string>>(f => generator = f)).Returns("new-key");
+        _apiKeyService.Encrypt("new-key").Returns("new-hash");
+        _repository.AddAsync(Arg.Any<ApiKeyEntity>()).Returns(ci => Task.FromResult(ci.Arg<ApiKeyEntity>()));
+
+        await _sut.CreateKeyAsync("team-1", "My Key", AccessLevel.User);
+
+        // MaxKeyLength is null by default → fixed length at MinKeyLength (32).
+        Assert.NotNull(generator);
+        Assert.Equal(32, generator().Length);
+    }
+
+    [Fact]
+    public async Task CreateKeyAsync_Null_Max_Uses_Min_As_Fixed_Length()
+    {
+        var sut = new ApiKeyAdministrationService(_repository, _apiKeyService, Options.Create(new ApiKeyOptions { MinKeyLength = 48 }));
+        Func<string> generator = null;
+        _apiKeyService.BuildApiKey(Arg.Any<string>(), Arg.Do<Func<string>>(f => generator = f)).Returns("new-key");
+        _apiKeyService.Encrypt("new-key").Returns("new-hash");
+        _repository.AddAsync(Arg.Any<ApiKeyEntity>()).Returns(ci => Task.FromResult(ci.Arg<ApiKeyEntity>()));
+
+        await sut.CreateKeyAsync("team-1", "My Key", AccessLevel.User);
+
+        Assert.NotNull(generator);
+        Assert.Equal(48, generator().Length);
+    }
+
+    [Fact]
+    public async Task CreateKeyAsync_With_Max_Uses_Random_Range()
+    {
+        var sut = new ApiKeyAdministrationService(_repository, _apiKeyService, Options.Create(new ApiKeyOptions { MinKeyLength = 40, MaxKeyLength = 64 }));
+        Func<string> generator = null;
+        _apiKeyService.BuildApiKey(Arg.Any<string>(), Arg.Do<Func<string>>(f => generator = f)).Returns("new-key");
+        _apiKeyService.Encrypt("new-key").Returns("new-hash");
+        _repository.AddAsync(Arg.Any<ApiKeyEntity>()).Returns(ci => Task.FromResult(ci.Arg<ApiKeyEntity>()));
+
+        await sut.CreateKeyAsync("team-1", "My Key", AccessLevel.User);
+
+        Assert.NotNull(generator);
+        Assert.InRange(generator().Length, 40, 64);
+    }
+
+    [Fact]
+    public async Task CreateSystemKeyAsync_Uses_Configured_Length()
+    {
+        var sut = new ApiKeyAdministrationService(_repository, _apiKeyService, Options.Create(new ApiKeyOptions { MinKeyLength = 40 }));
+        Func<string> generator = null;
+        _apiKeyService.BuildApiKey(Arg.Any<string>(), Arg.Do<Func<string>>(f => generator = f)).Returns("new-key");
+        _apiKeyService.Encrypt("new-key").Returns("new-hash");
+        _repository.AddAsync(Arg.Any<ApiKeyEntity>()).Returns(ci => Task.FromResult(ci.Arg<ApiKeyEntity>()));
+
+        await sut.CreateSystemKeyAsync("Sys Key", new[] { "sys:read" });
+
+        Assert.NotNull(generator);
+        Assert.Equal(40, generator().Length);
+    }
+
+    [Fact]
+    public async Task CreateKeyAsync_Throws_When_Max_Below_Min()
+    {
+        var sut = new ApiKeyAdministrationService(_repository, _apiKeyService, Options.Create(new ApiKeyOptions { MinKeyLength = 40, MaxKeyLength = 32 }));
+        Func<string> generator = null;
+        _apiKeyService.BuildApiKey(Arg.Any<string>(), Arg.Do<Func<string>>(f => generator = f)).Returns("new-key");
+        _apiKeyService.Encrypt("new-key").Returns("new-hash");
+        _repository.AddAsync(Arg.Any<ApiKeyEntity>()).Returns(ci => Task.FromResult(ci.Arg<ApiKeyEntity>()));
+
+        await sut.CreateKeyAsync("team-1", "My Key", AccessLevel.User);
+
+        // Max 32 < Min 40 — the generator throws when invoked.
+        Assert.NotNull(generator);
+        Assert.Throws<InvalidOperationException>(() => generator());
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(23)]
+    public void MinKeyLength_Below_Floor_Throws(int value)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ApiKeyOptions { MinKeyLength = value });
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(23)]
+    public void MaxKeyLength_Below_Floor_Throws(int value)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ApiKeyOptions { MaxKeyLength = value });
+    }
+
+    [Fact]
+    public void KeyLength_Defaults_And_Floor()
+    {
+        var options = new ApiKeyOptions();
+        Assert.Equal(32, options.MinKeyLength);
+        Assert.Null(options.MaxKeyLength);
+        Assert.Equal(24, ApiKeyOptions.KeyLengthFloor);
     }
 
     [Fact]

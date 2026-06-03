@@ -621,8 +621,10 @@ builder.Services.AddAuthentication()
     o.AdvancedMode = false;                // default: false — simple mode auto-generates keys
     o.AutoKeyCount = 2;                    // default: 2 — number of auto-generated keys in simple mode
     o.AutoLockKeys = false;               // default: false — auto-lock keys after creation
-    o.MaxExpiryDays = 365;                // default: null — maximum key expiry in days
+    o.MaxExpiryDays = 365;                // default: 365 — maximum key expiry in days (null = no cap)
     o.LastUsedThrottle = TimeSpan.FromMinutes(1); // default: 1 min — min interval between "last used" timestamp writes per key (TimeSpan.Zero = stamp every request)
+    o.MinKeyLength = 32;            // default: 32 — alphanumeric chars in the key secret; fixed length unless MaxKeyLength is set (floor 24 ≈143-bit; team + system keys)
+    o.MaxKeyLength = null;          // default: null — when set, the length is random in [MinKeyLength, MaxKeyLength] per key instead of fixed
 });
 ```
 
