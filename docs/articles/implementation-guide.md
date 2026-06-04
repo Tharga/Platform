@@ -656,6 +656,38 @@ await apiKeyManagementService.CreateKeyAsync(
 - **Displayed read-only.** `ApiKeyView` shows all tags in an `(i)` tooltip; pass `ChipTagKeys` to render selected keys as chips (e.g. `ChipTagKeys="@(new[] { "Type" })"`).
 - **Legacy data.** Pre-tags keys stored an empty `Tags` document; reads tolerate this automatically (it deserializes as no tags). To purge the legacy field, call `IApiKeyRepository.CleanLegacyTagsAsync()` once (server-side, safe to repeat).
 
+### Lifecycle hook (capturing the private token)
+
+The private API token is shown once at creation and is otherwise unrecoverable — it's never persisted, logged, or exposed programmatically. If a host needs to **capture and re-deliver** a key (e.g. minting a scoped key to hand out repeatedly), register an `IApiKeyLifecycleHandler`. It receives the token at the moment it exists — on **create** and **recycle/regenerate** — plus a tokenless **delete** signal so the host can purge its own copy.
+
+```csharp
+public class MyApiKeyHandler(ISecretProtector protector, IMyKeyStore store) : IApiKeyLifecycleHandler
+{
+    public async Task OnApiKeyLifecycleAsync(ApiKeyLifecycleContext ctx)
+    {
+        switch (ctx.Reason)
+        {
+            case ApiKeyLifecycleReason.Created:
+            case ApiKeyLifecycleReason.Recycled:
+                await store.SaveAsync(ctx.ApiKeyId, protector.Protect(ctx.PrivateToken), ctx.TeamKey, ctx.Tags);
+                break;
+            case ApiKeyLifecycleReason.Deleted:
+                await store.RemoveAsync(ctx.ApiKeyId);
+                break;
+        }
+    }
+}
+
+// after AddThargaPlatform / AddThargaApiKeys:
+builder.Services.AddThargaApiKeyLifecycleHandler<MyApiKeyHandler>();
+```
+
+- **What you get** — `ApiKeyLifecycleContext`: `Reason`, `ApiKeyId` (the stable public id), `PrivateToken` (non-null on Created/Recycled, null on Deleted), `TeamKey` (null for system keys), `IsSystemKey`, `Name`, `Tags`. Applies to both team and system keys.
+- **Error policy** — if the handler throws, the originating `CreateKey`/`RefreshKey`/`DeleteKey` throws too (capture failures are not swallowed). Note this does **not** roll back: a thrown create still leaves the key in storage and a thrown recycle has already rotated the secret — treat a failure as "operation failed" and reconcile (re-recycle, or delete the orphan).
+- **Scope** — fires only on explicit create/recycle/delete. Simple-mode *auto-generated* keys (created lazily by `GetKeysAsync`) and lock/scope/role edits do **not** fire it.
+- **Security** — the token is handed only to in-process handlers you registered; it is still never persisted or logged by the platform. You own whatever you capture (encrypt it at rest).
+- Multiple handlers can be registered; all are invoked.
+
 ### Verification
 
 Create an API key via the UI, then call your API with `X-API-KEY: <key>` header. The request should authenticate successfully.
