@@ -160,6 +160,28 @@ public class AddThargaPlatformTests
     }
 
     [Fact]
+    public void ForwardsApiKeyOptions_To_ApiKeyOptions()
+    {
+        var builder = CreateBuilder();
+        builder.AddThargaPlatform(o =>
+        {
+            o.ApiKey.MinKeyLength = 40;
+            o.ApiKey.MaxKeyLength = 48;
+            o.ApiKey.MaxExpiryDays = 30;
+            o.ApiKey.LastUsedThrottle = TimeSpan.FromMinutes(5);
+            o.ApiKey.AutoLockKeys = true;
+        });
+        var provider = builder.Services.BuildServiceProvider();
+
+        var options = provider.GetRequiredService<IOptions<ApiKeyOptions>>().Value;
+        Assert.Equal(40, options.MinKeyLength);
+        Assert.Equal(48, options.MaxKeyLength);
+        Assert.Equal(30, options.MaxExpiryDays);
+        Assert.Equal(TimeSpan.FromMinutes(5), options.LastUsedThrottle);
+        Assert.True(options.AutoLockKeys);
+    }
+
+    [Fact]
     public void SkipsApiKeyAuth_WhenNull()
     {
         var builder = CreateBuilder();

@@ -36,4 +36,61 @@ public class ApiKeyOptions
     /// stamp on every successful authentication. Default: 1 minute.
     /// </summary>
     public TimeSpan LastUsedThrottle { get; set; } = TimeSpan.FromMinutes(1);
+
+    /// <summary>
+    /// Absolute floor for both <see cref="MinKeyLength"/> and <see cref="MaxKeyLength"/>. 24 alphanumeric
+    /// characters is ≈143 bits of entropy (well above 128-bit) and matches the historical minimum, so the
+    /// secret can never be configured weaker than keys minted before these options existed.
+    /// </summary>
+    public const int KeyLengthFloor = 24;
+
+    private int _minKeyLength = 32;
+    private int? _maxKeyLength;
+
+    /// <summary>
+    /// Number of random alphanumeric characters in the secret portion of a generated API key (the part
+    /// after the team/system prefix). When <see cref="MaxKeyLength"/> is null this is the exact, fixed
+    /// length; when it is set, this is the lower bound of a random range. Applies to every
+    /// <c>CreateKeyAsync</c> — team and system keys — on both create and recycle/regenerate. Default: 32
+    /// (≈190-bit). Must be ≥ <see cref="KeyLengthFloor"/> so it cannot be accidentally weakened; a smaller
+    /// value throws <see cref="ArgumentOutOfRangeException"/>.
+    /// </summary>
+    /// <remarks>
+    /// Secret entropy with the base62 alphabet (~5.95 bits per character):
+    /// <list type="table">
+    /// <item><term>22</term><description>≈128-bit</description></item>
+    /// <item><term>32</term><description>≈190-bit (default)</description></item>
+    /// <item><term>43</term><description>≈256-bit</description></item>
+    /// <item><term>65</term><description>≈384-bit</description></item>
+    /// <item><term>86</term><description>≈512-bit</description></item>
+    /// </list>
+    /// </remarks>
+    public int MinKeyLength
+    {
+        get => _minKeyLength;
+        set
+        {
+            if (value < KeyLengthFloor)
+                throw new ArgumentOutOfRangeException(nameof(value), value, $"{nameof(MinKeyLength)} must be at least {KeyLengthFloor}.");
+            _minKeyLength = value;
+        }
+    }
+
+    /// <summary>
+    /// Optional upper bound for the random secret length. When null (the default), every key uses a fixed
+    /// length of <see cref="MinKeyLength"/>; when set, each key's length is chosen at random in
+    /// [<see cref="MinKeyLength"/>, <see cref="MaxKeyLength"/>] via a cryptographic RNG. Must be ≥
+    /// <see cref="KeyLengthFloor"/>; the ≥ <see cref="MinKeyLength"/> relationship is enforced when a key
+    /// is generated.
+    /// </summary>
+    public int? MaxKeyLength
+    {
+        get => _maxKeyLength;
+        set
+        {
+            if (value.HasValue && value.Value < KeyLengthFloor)
+                throw new ArgumentOutOfRangeException(nameof(value), value, $"{nameof(MaxKeyLength)} must be at least {KeyLengthFloor}.");
+            _maxKeyLength = value;
+        }
+    }
 }
