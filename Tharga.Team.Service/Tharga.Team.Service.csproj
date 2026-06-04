@@ -42,4 +42,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Tharga.Team\Tharga.Team.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- API-key lifecycle registration is internal; AddThargaPlatform (Blazor) wires it and tests exercise it. -->
+    <InternalsVisibleTo Include="Tharga.Team.Blazor" />
+    <InternalsVisibleTo Include="Tharga.Team.Service.Tests" />
+  </ItemGroup>
 </Project>

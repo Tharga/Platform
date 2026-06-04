@@ -13,6 +13,7 @@ namespace Tharga.Team.Blazor.Framework;
 public class ThargaPlatformOptions
 {
     internal Type _emailSenderType;
+    internal readonly List<Type> _apiKeyLifecycleHandlers = [];
 
     /// <summary>
     /// Options for the Blazor UI layer (title, team service types, auth state decoration).
@@ -77,5 +78,15 @@ public class ThargaPlatformOptions
     public void AddEmailService<T>() where T : class, ITeamEmailSender
     {
         _emailSenderType = typeof(T);
+    }
+
+    /// <summary>
+    /// Register a handler that receives an API key's private token on create and recycle/regenerate,
+    /// plus a tokenless signal on delete (see <see cref="IApiKeyLifecycleHandler"/>). May be called
+    /// multiple times to register several handlers. Requires <see cref="ApiKey"/> to be set.
+    /// </summary>
+    public void AddApiKeyLifecycleHandler<THandler>() where THandler : class, IApiKeyLifecycleHandler
+    {
+        _apiKeyLifecycleHandlers.Add(typeof(THandler));
     }
 }
