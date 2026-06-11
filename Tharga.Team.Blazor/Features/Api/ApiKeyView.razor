@@ -311,7 +311,7 @@ else
             _newScopeOverrides = new List<string>();
             _newRoles = new List<string>();
             await ReloadData();
-            ShowKeyOnce(created);
+            await ShowKeyDialogAsync(created);
             NotificationService.Notify(NotificationSeverity.Success, "API key created");
         }
         catch (Exception ex)
@@ -327,18 +327,19 @@ else
 
         var refreshed = await _apiKeyManagementService.RefreshKeyAsync(_selectedTeam.Key, context.Key);
         await ReloadData();
-        ShowKeyOnce(refreshed);
+        await ShowKeyDialogAsync(refreshed);
     }
 
-    private void ShowKeyOnce(IApiKey key)
+    // Reveal the raw key once, immediately after create/regenerate. A dialog (rather than an inline grid
+    // reveal) is required because with AutoLockKeys the key is locked on creation, so the reloaded row
+    // carries no value to reveal — and this is the only moment the secret exists.
+    private async Task ShowKeyDialogAsync(IApiKey key)
     {
         if (key == null || string.IsNullOrEmpty(key.ApiKey)) return;
-        var model = _keys?.FirstOrDefault(k => k.Key == key.Key);
-        if (model != null)
-        {
-            model.VisibleKey = key.ApiKey;
-        }
-        StateHasChanged();
+        await DialogService.OpenAsync<ApiKeyRevealDialog>(
+            $"API key — {key.Name}",
+            new Dictionary<string, object> { [nameof(ApiKeyRevealDialog.ApiKey)] = key.ApiKey },
+            new DialogOptions { Width = "640px", CloseDialogOnOverlayClick = false });
     }
 
     private string GetKeyScopesText(ApiKeyModel context)
