@@ -90,10 +90,15 @@ builder.AddThargaPlatform(o =>
         roles.Register("Editor", new[] { "orders:read", "orders:write" });
     };
 
-    // Audit logging
+    // Audit logging (StorageMode defaults to Logger only — set MongoDB to populate AuditLogView)
     o.Audit = new AuditOptions { StorageMode = AuditStorageMode.MongoDB };
+
+    // Capture an API key's private token on create/recycle (e.g. to re-deliver a minted key)
+    o.AddApiKeyLifecycleHandler<MyApiKeyHandler>();
 });
 ```
+
+API-key behaviour (auto-lock, expiry, and the random secret length via `MinKeyLength`/`MaxKeyLength`) is configured on `o.ApiKey`. See the [Tharga.Team.Service README](Tharga.Team.Service/README.md#api-key-options) and the [Implementation Guide](docs/articles/implementation-guide.md).
 
 ## Advanced Usage
 

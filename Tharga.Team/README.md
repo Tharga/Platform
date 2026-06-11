@@ -18,6 +18,7 @@ Domain models, service abstractions, and authorization primitives for multi-tena
 - `ITeamManagementService` - Scope-enforced mutations (create, rename, delete, invite, etc.).
 - `IUserService` - Current user resolution.
 - `IApiKeyAdministrationService` / `IApiKeyManagementService` - API key management.
+- `IApiKeyLifecycleHandler` - Opt-in hook receiving an API key's private token on create/recycle (and a tokenless delete signal) via `ApiKeyLifecycleContext` / `ApiKeyLifecycleReason`. Registered through `ThargaPlatformOptions.AddApiKeyLifecycleHandler<T>()`.
 
 ### Authorization
 - `AccessLevel` enum - Owner, Administrator, User, Viewer, Custom. `Custom` grants no inherited base scopes (effective scopes = roles ∪ scope overrides only) for least-privilege keys/members.
