@@ -887,23 +887,55 @@ Adds audit logging for service calls, authorization events, and data changes. Lo
 builder.Services.AddThargaAuditLogging();
 ```
 
+> **⚠️ Most common gotcha:** `StorageMode` defaults to **`Logger` only**. The `AuditLogView` component
+> reads from **MongoDB**, so with the default it stays **empty** — entries only go to `ILogger`. To
+> populate the UI you must opt into Mongo storage:
+> ```csharp
+> builder.Services.AddThargaAuditLogging(o => o.StorageMode = AuditStorageMode.MongoDB);
+> // or keep both: AuditStorageMode.Logger | AuditStorageMode.MongoDB
+> ```
+> `AuditStorageMode` is a `[Flags]` enum, so the values combine. MongoDB storage requires MongoDB
+> configured (Step 4).
+
 ### Options
 
 ```csharp
 builder.Services.AddThargaAuditLogging(o =>
 {
-    o.StorageMode = AuditStorageMode.Logger;           // default: Logger — options: Logger, MongoDB, Logger | MongoDB
-    o.CallerFilter = AuditCallerFilter.Api | AuditCallerFilter.Web;  // default: Api | Web
-    o.EventFilter = AuditEventFilter.All;              // default: All
+    o.StorageMode = AuditStorageMode.Logger | AuditStorageMode.MongoDB; // default: Logger only — see gotcha above
+    o.CallerFilter = AuditCallerFilter.Api | AuditCallerFilter.Web;  // default: Api | Web ([Flags])
+    o.EventFilter = AuditEventFilter.All;              // default: All ([Flags])
     o.ExcludedActions = new[] { "read", "list" };      // default: empty — skip noisy read operations
     o.ExcludedEndpoints = Array.Empty<string>();       // default: empty
-    o.RetentionDays = 90;                              // default: 90
-    o.BatchSize = 100;                                 // default: 100 — for MongoDB batch writes
-    o.FlushIntervalSeconds = 5;                        // default: 5 — for MongoDB flush interval
+    o.RetentionDays = 90;                              // default: 90 — null (or <= 0) = keep forever (no TTL)
+    o.BatchSize = 100;                                 // default: 100 — MongoDB background-writer batch size
+    o.FlushIntervalSeconds = 5;                        // default: 5 — MongoDB background-writer flush interval
 });
 ```
 
-> **Note:** To use `AuditStorageMode.MongoDB`, you need MongoDB configured (from Step 4).
+| Option | Default | Notes |
+|---|---|---|
+| `StorageMode` | `Logger` | `[Flags]`: `Logger`, `MongoDB`, or both. **Set `MongoDB` to populate `AuditLogView`.** |
+| `CallerFilter` | `Api \| Web` | `[Flags]` — which caller sources to record. |
+| `EventFilter` | `All` | `[Flags]` — which event types to record. |
+| `ExcludedActions` | empty | Action names to skip (e.g. `"read"`, `"list"`). |
+| `ExcludedEndpoints` | empty | Endpoints to skip (e.g. `"/health"`). |
+| `RetentionDays` | `90` | `int?` mapped to a MongoDB TTL index (`Timestamp_TTL`). **`null` or `<= 0` = keep forever** (no TTL index). |
+| `BatchSize` | `100` | Background MongoDB writer batch size. |
+| `FlushIntervalSeconds` | `5` | Background MongoDB writer flush interval. |
+
+> **Retention / TTL.** `RetentionDays` creates a MongoDB TTL index that auto-deletes entries older than
+> the given age. Set it to **`null`** (or any value `<= 0`) to keep entries **indefinitely** — no TTL
+> index is created. Caveat: MongoDB does not drop an existing TTL index automatically, so changing the
+> retention on a collection that already has a `Timestamp_TTL` index (including switching to "forever")
+> may require dropping that index manually.
+
+### What gets audited
+
+Mutations flow through auditing decorators: **team-service** operations (create/rename/delete team,
+invite/remove member, set consent, …) and **API-key management** (create/recycle/lock/delete, for team
+and system keys). Read operations pass through unaudited; use `ExcludedActions` to drop any others you
+consider noise.
 
 ### What becomes available
 

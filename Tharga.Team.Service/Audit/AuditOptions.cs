@@ -20,8 +20,13 @@ public class AuditOptions
     /// <summary>Endpoints to exclude from logging (e.g. "/health"). Default: empty.</summary>
     public string[] ExcludedEndpoints { get; set; } = Array.Empty<string>();
 
-    /// <summary>Days to retain audit entries in MongoDB. Default: 90.</summary>
-    public int RetentionDays { get; set; } = 90;
+    /// <summary>
+    /// Days to retain audit entries in MongoDB, applied as a TTL index (<c>Timestamp_TTL</c>). Default: 90.
+    /// <c>null</c> (or any value &lt;= 0) means **keep forever** — no TTL index is created. Note: removing
+    /// or changing the TTL on an existing collection may require dropping the old <c>Timestamp_TTL</c>
+    /// index manually, as MongoDB does not drop it automatically.
+    /// </summary>
+    public int? RetentionDays { get; set; } = 90;
 
     /// <summary>Batch size for background MongoDB writer. Default: 100.</summary>
     public int BatchSize { get; set; } = 100;
