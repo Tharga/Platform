@@ -35,10 +35,14 @@ else if (_keys == null)
 }
 else
 {
-    <RadzenDataGrid Data="@_keys" TItem="ApiKeyModel">
+    <RadzenDataGrid Data="@_keys" TItem="ApiKeyModel"
+                    AllowSorting="@AllowGridSorting"
+                    AllowFiltering="@AllowGridFiltering"
+                    FilterMode="FilterMode.Simple"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
         <Columns>
-            <RadzenDataGridColumn Title="Name" Property="@nameof(ApiKeyModel.Name)" Width="180px" />
-            <RadzenDataGridColumn Title="Key" Property="@nameof(ApiKeyModel.VisibleKey)" />
+            <RadzenDataGridColumn Title="Name" Property="@nameof(ApiKeyModel.Name)" Width="180px" SortOrder="SortOrder.Ascending" />
+            <RadzenDataGridColumn Title="Key" Property="@nameof(ApiKeyModel.VisibleKey)" Sortable="false" Filterable="false" />
             @if (_options.AdvancedMode)
             {
                 <RadzenDataGridColumn Title="Access Level" Width="130px">
@@ -82,7 +86,7 @@ else
                     </span>
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Title="Last used" Width="150px" Visible="@ShowLastUsed">
+            <RadzenDataGridColumn Title="Last used" Width="150px" Visible="@ShowLastUsed" SortProperty="@nameof(ApiKeyModel.LastUsedAt)" Filterable="false">
                 <Template>
                     <span title="@GetKeyDatesText(context)">
                         @if (context.LastUsedAt.HasValue)
@@ -205,6 +209,12 @@ else
 
     /// <summary>Shows the "Last used" column (tooltip lists Created + Expiry + Created by; a warning icon appears within 60 days of expiry). Default true.</summary>
     [Parameter] public bool ShowLastUsed { get; set; } = true;
+
+    /// <summary>Enables column sorting on the grid (Name + Last used), defaulting to Name ascending. Default true.</summary>
+    [Parameter] public bool AllowGridSorting { get; set; } = true;
+
+    /// <summary>Enables the simple, case-insensitive text filter on the Name column. Adds filter controls to the header, so it's opt-in. Default false.</summary>
+    [Parameter] public bool AllowGridFiltering { get; set; }
 
     /// <summary>
     /// Controls the Tags column (chips for keys listed in <see cref="ChipTagKeys"/>, plus an (i) tooltip of all
