@@ -5,20 +5,31 @@ using Tharga.Team;
 namespace Tharga.Team.Service;
 
 /// <summary>
-/// Registration for opt-in API key lifecycle hooks (<see cref="IApiKeyLifecycleHandler"/>).
+/// Internal registration for opt-in API key lifecycle hooks (<see cref="IApiKeyLifecycleHandler"/>).
+/// Consumers register handlers through <c>ThargaPlatformOptions.AddApiKeyLifecycleHandler&lt;T&gt;()</c>,
+/// not by calling these methods directly.
 /// </summary>
-public static class ApiKeyLifecycleRegistration
+internal static class ApiKeyLifecycleRegistration
 {
     /// <summary>
     /// Registers an <see cref="IApiKeyLifecycleHandler"/> and decorates <see cref="IApiKeyAdministrationService"/>
-    /// so the handler is invoked on key create / recycle / delete. Call this <b>after</b> the API key services
-    /// are registered (e.g. after <c>AddThargaPlatform</c> / <c>AddThargaApiKeys</c>). May be called multiple
-    /// times to register several handlers; the decoration is applied once and all handlers are invoked.
+    /// so the handler is invoked on key create / recycle / delete. Called after the API key services are
+    /// registered. May be called multiple times; the decoration is applied once and all handlers are invoked.
     /// </summary>
-    public static IServiceCollection AddThargaApiKeyLifecycleHandler<THandler>(this IServiceCollection services)
+    internal static IServiceCollection AddThargaApiKeyLifecycleHandler<THandler>(this IServiceCollection services)
         where THandler : class, IApiKeyLifecycleHandler
+        => services.AddThargaApiKeyLifecycleHandler(typeof(THandler));
+
+    /// <summary>
+    /// Non-generic overload of <see cref="AddThargaApiKeyLifecycleHandler{THandler}"/>.
+    /// </summary>
+    internal static IServiceCollection AddThargaApiKeyLifecycleHandler(this IServiceCollection services, Type handlerType)
     {
-        services.AddScoped<IApiKeyLifecycleHandler, THandler>();
+        ArgumentNullException.ThrowIfNull(handlerType);
+        if (!typeof(IApiKeyLifecycleHandler).IsAssignableFrom(handlerType))
+            throw new ArgumentException($"{handlerType.Name} must implement {nameof(IApiKeyLifecycleHandler)}.", nameof(handlerType));
+
+        services.AddScoped(typeof(IApiKeyLifecycleHandler), handlerType);
         EnsureDecorated(services);
         return services;
     }

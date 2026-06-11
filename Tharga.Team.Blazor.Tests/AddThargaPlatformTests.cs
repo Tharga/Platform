@@ -182,6 +182,24 @@ public class AddThargaPlatformTests
     }
 
     [Fact]
+    public void AddApiKeyLifecycleHandler_RegistersHandler_And_Decorates()
+    {
+        var builder = CreateBuilder();
+        builder.AddThargaPlatform(o => o.AddApiKeyLifecycleHandler<TestLifecycleHandler>());
+
+        Assert.Contains(builder.Services, d =>
+            d.ServiceType == typeof(IApiKeyLifecycleHandler) && d.ImplementationType == typeof(TestLifecycleHandler));
+        // Decoration replaces the IApiKeyAdministrationService registration with a factory.
+        var admin = Assert.Single(builder.Services.Where(d => d.ServiceType == typeof(IApiKeyAdministrationService)));
+        Assert.NotNull(admin.ImplementationFactory);
+    }
+
+    private sealed class TestLifecycleHandler : IApiKeyLifecycleHandler
+    {
+        public Task OnApiKeyLifecycleAsync(ApiKeyLifecycleContext context) => Task.CompletedTask;
+    }
+
+    [Fact]
     public void SkipsApiKeyAuth_WhenNull()
     {
         var builder = CreateBuilder();

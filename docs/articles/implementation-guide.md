@@ -678,8 +678,12 @@ public class MyApiKeyHandler(ISecretProtector protector, IMyKeyStore store) : IA
     }
 }
 
-// after AddThargaPlatform / AddThargaApiKeys:
-builder.Services.AddThargaApiKeyLifecycleHandler<MyApiKeyHandler>();
+// register it inside AddThargaPlatform:
+builder.AddThargaPlatform(o =>
+{
+    // ...
+    o.AddApiKeyLifecycleHandler<MyApiKeyHandler>();   // may be called multiple times
+});
 ```
 
 - **What you get** — `ApiKeyLifecycleContext`: `Reason`, `ApiKeyId` (the stable public id), `PrivateToken` (non-null on Created/Recycled, null on Deleted), `TeamKey` (null for system keys), `IsSystemKey`, `Name`, `Tags`. Applies to both team and system keys.

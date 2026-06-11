@@ -66,6 +66,13 @@ public static class ThargaPlatformRegistration
             o._claimsEnricher = options.Blazor._claimsEnricher;
         }, builder.Configuration);
 
+        // API key lifecycle handlers (opt-in) — wrap IApiKeyAdministrationService once and register the
+        // handlers. Done after the API key + audit registration above so the decorator composes on top.
+        foreach (var handlerType in options._apiKeyLifecycleHandlers)
+        {
+            builder.Services.AddThargaApiKeyLifecycleHandler(handlerType);
+        }
+
         // Controllers + Swagger
         if (options.Controllers != null)
         {
