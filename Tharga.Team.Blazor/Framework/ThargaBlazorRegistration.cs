@@ -50,8 +50,7 @@ public static class ThargaBlazorRegistration
 
             if (o._apiKeyService != null)
             {
-                services.AddScoped(o._apiKeyService);
-                services.AddScoped(typeof(IApiKeyAdministrationService), sp => sp.GetRequiredService(o._apiKeyService));
+                services.AddAuditedApiKeyAdministrationService(o._apiKeyService);
             }
 
             // Register default team and API key scopes unless already registered
@@ -103,24 +102,14 @@ public static class ThargaBlazorRegistration
             }
         }
 
-        if (o._apiKeyService != null)
-        {
-            services.AddScoped(o._apiKeyService);
-            services.AddScoped(typeof(IApiKeyAdministrationService), sp => sp.GetRequiredService(o._apiKeyService));
-        }
-
-        // Audit decorators — wrap ITeamService and IApiKeyAdministrationService when audit logging is configured.
-        // Uses deferred resolution so AddThargaAuditLogging() can be called after AddThargaTeamBlazor().
+        // Audit decorator for ITeamService — wrap when audit logging is configured. Uses deferred
+        // resolution so AddThargaAuditLogging() can be called after AddThargaTeamBlazor().
+        // (IApiKeyAdministrationService audit is owned by AddAuditedApiKeyAdministrationService, applied
+        //  at resolve time, so it is order-independent and not clobbered by AddThargaApiKeyAuthentication.)
         if (o._teamService != null)
         {
             DecorateWithAudit<ITeamService>(services,
                 (inner, logger, http) => new AuditingTeamServiceDecorator(inner, logger, http));
-        }
-
-        if (o._apiKeyService != null)
-        {
-            DecorateWithAudit<IApiKeyAdministrationService>(services,
-                (inner, logger, http) => new AuditingApiKeyServiceDecorator(inner, logger, http));
         }
 
         services.AddSingleton(Options.Create(o));

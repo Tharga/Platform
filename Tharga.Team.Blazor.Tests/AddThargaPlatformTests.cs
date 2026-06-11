@@ -200,6 +200,20 @@ public class AddThargaPlatformTests
     }
 
     [Fact]
+    public void ApiKeyAdministrationService_RegisteredOnce_AsAuditedFactory()
+    {
+        // Regression for #87: AddThargaApiKeyAuthentication must not clobber the audit-decorated
+        // registration. The audited helper registers a single resolve-time factory (not a plain
+        // ImplementationType map), so audit can never be silently dropped by call order.
+        var builder = CreateBuilder();
+        builder.AddThargaPlatform(o => o.Audit = new AuditOptions());
+
+        var admin = Assert.Single(builder.Services.Where(d => d.ServiceType == typeof(IApiKeyAdministrationService)));
+        Assert.NotNull(admin.ImplementationFactory);
+        Assert.Null(admin.ImplementationType);
+    }
+
+    [Fact]
     public void SkipsApiKeyAuth_WhenNull()
     {
         var builder = CreateBuilder();
