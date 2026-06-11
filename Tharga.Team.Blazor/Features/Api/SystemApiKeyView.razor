@@ -22,10 +22,14 @@
         }
         else
         {
-            <RadzenDataGrid Data="@_keys" TItem="SystemApiKeyModel">
+            <RadzenDataGrid Data="@_keys" TItem="SystemApiKeyModel"
+                            AllowSorting="@AllowGridSorting"
+                            AllowFiltering="@AllowGridFiltering"
+                            FilterMode="FilterMode.Simple"
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
                 <Columns>
-                    <RadzenDataGridColumn Title="Name" Property="@nameof(SystemApiKeyModel.Name)" Width="180px" />
-                    <RadzenDataGridColumn Title="Key" Property="@nameof(SystemApiKeyModel.VisibleKey)" />
+                    <RadzenDataGridColumn Title="Name" Property="@nameof(SystemApiKeyModel.Name)" Width="180px" SortOrder="SortOrder.Ascending" />
+                    <RadzenDataGridColumn Title="Key" Property="@nameof(SystemApiKeyModel.VisibleKey)" Sortable="false" Filterable="false" />
                     <RadzenDataGridColumn Title="Scopes" Width="80px" Visible="@ShowScopeTooltip">
                         <Template>
                             <span title="@GetKeyScopesText(context)">
@@ -33,7 +37,7 @@
                             </span>
                         </Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn Title="Last used" Width="150px" Visible="@ShowLastUsed">
+                    <RadzenDataGridColumn Title="Last used" Width="150px" Visible="@ShowLastUsed" SortProperty="@nameof(SystemApiKeyModel.LastUsedAt)" Filterable="false">
                         <Template>
                             <span title="@GetKeyDatesText(context)">
                                 @if (context.LastUsedAt.HasValue)
@@ -118,6 +122,12 @@
 
     /// <summary>Shows the "Last used" column (tooltip lists Created + Expiry + Created By; a warning icon appears within 60 days of expiry). Default true.</summary>
     [Parameter] public bool ShowLastUsed { get; set; } = true;
+
+    /// <summary>Enables column sorting on the grid (Name + Last used), defaulting to Name ascending. Default true.</summary>
+    [Parameter] public bool AllowGridSorting { get; set; } = true;
+
+    /// <summary>Enables the simple, case-insensitive text filter on the Name column. Adds filter controls to the header, so it's opt-in. Default false.</summary>
+    [Parameter] public bool AllowGridFiltering { get; set; }
 
     /// <summary>Shows the expiry-date picker on the create card. When hidden, new keys use the default expiry (capped by <c>ApiKeyOptions.MaxExpiryDays</c>). Default false.</summary>
     [Parameter] public bool ShowExpiryDatePicker { get; set; }
