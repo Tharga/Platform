@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Tharga.Team;
+using Tharga.Team.Service.Audit;
 
 namespace Tharga.Team.Service;
 
@@ -50,8 +52,32 @@ public static class ApiKeyRegistration
             });
         });
 
-        builder.Services.AddScoped<IApiKeyAdministrationService, TService>();
+        builder.Services.AddAuditedApiKeyAdministrationService(typeof(TService));
 
         return builder;
+    }
+
+    /// <summary>
+    /// Registers <paramref name="implementationType"/> as the <see cref="IApiKeyAdministrationService"/>,
+    /// applying the <see cref="AuditingApiKeyServiceDecorator"/> at resolve time when audit logging is
+    /// configured (a <see cref="CompositeAuditLogger"/> is present). This is the single owner of the
+    /// <see cref="IApiKeyAdministrationService"/> registration: it drops any prior registration first, so
+    /// call order between Tharga entry points can no longer discard the audit decorator.
+    /// </summary>
+    internal static void AddAuditedApiKeyAdministrationService(this IServiceCollection services, Type implementationType)
+    {
+        foreach (var descriptor in services.Where(d => d.ServiceType == typeof(IApiKeyAdministrationService)).ToList())
+            services.Remove(descriptor);
+
+        services.AddScoped(implementationType);
+        services.AddScoped(typeof(IApiKeyAdministrationService), sp =>
+        {
+            var inner = (IApiKeyAdministrationService)sp.GetRequiredService(implementationType);
+            var auditLogger = sp.GetService<CompositeAuditLogger>(); // deferred — audit may be added after this registration
+            if (auditLogger == null) return inner;
+
+            var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+            return new AuditingApiKeyServiceDecorator(inner, auditLogger, httpContextAccessor);
+        });
     }
 }
