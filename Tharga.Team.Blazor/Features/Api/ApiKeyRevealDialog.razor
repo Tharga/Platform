@@ -1,0 +1,35 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime Js
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+@*
+    Shown once, immediately after an API key is created or regenerated. This is the only time the raw
+    key value is available — it is not stored and cannot be retrieved again (and when auto-lock is on
+    it is locked the moment it's created). Give the user a clear, copyable view with a warning.
+*@
+<RadzenStack Gap="1rem">
+    <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat" AllowClose="false">
+        Copy this key now. For security it is <b>shown only once</b> and is <b>not stored</b> — you will not be able to retrieve it again. If you lose it, regenerate the key to get a new one.
+    </RadzenAlert>
+
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+        <RadzenTextBox Value="@ApiKey" ReadOnly="true" Style="width: 100%; font-family: monospace;" />
+        <RadzenButton Icon="content_copy" Text="Copy" Click="@CopyAsync" />
+    </RadzenStack>
+
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End">
+        <RadzenButton Text="Done" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat" Click="@(() => DialogService.Close())" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    /// <summary>The raw API key value to reveal (shown once).</summary>
+    [Parameter] public string ApiKey { get; set; }
+
+    private async Task CopyAsync()
+    {
+        await Js.InvokeVoidAsync("clipboard.copyText", ApiKey);
+        NotificationService.Notify(NotificationSeverity.Success, "API key copied to the clipboard.");
+    }
+}
