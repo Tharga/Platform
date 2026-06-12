@@ -81,6 +81,8 @@ internal class TeamServerClaimsTransformation : IClaimsTransformation
             AddClaimSafe(identity, ClaimTypes.Role, Roles.TeamMember);
             AddClaimSafe(identity, ClaimTypes.Role, $"Team{member.AccessLevel}");
             AddClaimSafe(identity, TeamClaimTypes.AccessLevel, member.AccessLevel.ToString());
+            if (!string.IsNullOrEmpty(member.Key))
+                AddClaimSafe(identity, TeamClaimTypes.MemberKey, member.Key);
 
             if (_scopeRegistry != null)
             {

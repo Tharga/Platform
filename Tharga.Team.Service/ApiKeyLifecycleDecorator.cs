@@ -38,9 +38,9 @@ public class ApiKeyLifecycleDecorator : IApiKeyAdministrationService
 
     // Create / recycle — forward the private token
 
-    public async Task<IApiKey> CreateKeyAsync(string teamKey, string name, AccessLevel accessLevel, string[] roles = null, string[] scopeOverrides = null, DateTime? expiryDate = null, IReadOnlyList<Tag> tags = null, string createdBy = null)
+    public async Task<IApiKey> CreateKeyAsync(string teamKey, string name, AccessLevel accessLevel, string[] roles = null, string[] scopeOverrides = null, DateTime? expiryDate = null, IReadOnlyList<Tag> tags = null, string createdBy = null, string ownerMemberKey = null)
     {
-        var result = await _inner.CreateKeyAsync(teamKey, name, accessLevel, roles, scopeOverrides, expiryDate, tags, createdBy);
+        var result = await _inner.CreateKeyAsync(teamKey, name, accessLevel, roles, scopeOverrides, expiryDate, tags, createdBy, ownerMemberKey);
         await NotifyAsync(ApiKeyLifecycleReason.Created, result);
         return result;
     }

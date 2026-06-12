@@ -32,6 +32,10 @@ public record ApiKeyEntity : EntityBase, IApiKey
 
     /// <inheritdoc />
     [BsonIgnoreIfNull]
+    public string OwnerMemberKey { get; init; }
+
+    /// <inheritdoc />
+    [BsonIgnoreIfNull]
     [BsonSerializer(typeof(TagListBsonSerializer))]
     public IReadOnlyList<Tag> Tags { get; init; }
 

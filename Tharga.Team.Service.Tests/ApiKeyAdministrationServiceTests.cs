@@ -380,6 +380,31 @@ public class ApiKeyAdministrationServiceTests
     }
 
     [Fact]
+    public async Task CreateKeyAsync_Persists_OwnerMemberKey()
+    {
+        _apiKeyService.BuildApiKey(Arg.Any<string>(), Arg.Any<Func<string>>()).Returns("new-key");
+        _apiKeyService.Encrypt("new-key").Returns("new-hash");
+        _repository.AddAsync(Arg.Any<ApiKeyEntity>()).Returns(ci => Task.FromResult(ci.Arg<ApiKeyEntity>()));
+
+        await _sut.CreateKeyAsync("team-1", "My Key", AccessLevel.User, ownerMemberKey: "member-1");
+
+        await _repository.Received(1).AddAsync(Arg.Is<ApiKeyEntity>(e => e.OwnerMemberKey == "member-1"));
+    }
+
+    [Fact]
+    public async Task RefreshKeyAsync_Preserves_OwnerMemberKey()
+    {
+        var existing = CreateEntity("key-1", "old-hash", "team-1") with { OwnerMemberKey = "member-1" };
+        _repository.GetAsync("key-1").Returns(Task.FromResult(existing));
+        _apiKeyService.BuildApiKey(Arg.Any<string>(), Arg.Any<Func<string>>()).Returns("refreshed-key");
+        _apiKeyService.Encrypt("refreshed-key").Returns("refreshed-hash");
+
+        await _sut.RefreshKeyAsync("team-1", "key-1");
+
+        await _repository.Received(1).UpdateAsync("key-1", Arg.Is<ApiKeyEntity>(e => e.OwnerMemberKey == "member-1"));
+    }
+
+    [Fact]
     public async Task CreateKeyAsync_Uses_Default_Fixed_Length_Of_32()
     {
         Func<string> generator = null;

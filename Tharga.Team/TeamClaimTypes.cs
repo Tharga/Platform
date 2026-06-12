@@ -11,6 +11,9 @@ public static class TeamClaimTypes
     /// <summary>Claim type for the access level.</summary>
     public const string AccessLevel = "AccessLevel";
 
+    /// <summary>Claim type carrying the caller's team-member key (<c>ITeamMember.Key</c>) for the selected team. Used to scope owner-private API keys.</summary>
+    public const string MemberKey = "MemberKey";
+
     /// <summary>Claim type for scopes. Multiple scope claims may be present.</summary>
     public const string Scope = "Scope";
 

@@ -14,6 +14,8 @@ public record ApiKeyModel
     public DateTime? ExpiryDate { get; init; }
     public DateTime? CreatedAt { get; init; }
     public string CreatedBy { get; init; }
+    public string OwnerMemberKey { get; init; }
+    public bool IsPrivate => !string.IsNullOrEmpty(OwnerMemberKey);
     public DateTime? LastUsedAt { get; init; }
     public IReadOnlyList<Tag> Tags { get; init; } = Array.Empty<Tag>();
     public bool IsExpired => ExpiryDate.HasValue && ExpiryDate < DateTime.UtcNow;
