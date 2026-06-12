@@ -692,6 +692,18 @@ builder.AddThargaPlatform(o =>
 - **Security** — the token is handed only to in-process handlers you registered; it is still never persisted or logged by the platform. You own whatever you capture (encrypt it at rest).
 - Multiple handlers can be registered; all are invoked.
 
+### Private (owner-scoped) keys
+
+By default every team key is visible to all team admins and any Owner can recycle/lock/delete it. For keys that gate *personal* data, mint an **owner-scoped ("private")** key — bound to a team member, hidden from others, and mutable only by its owner.
+
+- **Mint** — server-side via `IApiKeyAdministrationService.CreateKeyAsync(..., ownerMemberKey: currentMember.Key)`, or from the UI via the "Private (only me)" toggle (which calls `IApiKeyManagementService.CreateKeyAsync(ownerScoped: true)`; the service forces the owner to the *caller's own* member key — a caller can't mint a key owned by someone else).
+- **Visibility / mutation** are enforced in `ApiKeyManagementService` from the authenticated principal (a `MemberKey` claim, added by the claims transformation):
+  - **Owner** sees and manages their own private keys.
+  - **Developer role** sees and manages all (audit/incident escape).
+  - **Privileged access levels** (Administrator/Owner) can *see* private keys **only when the host opts in** — and remain **view-only** (they cannot recycle/lock/delete others').
+- **`ApiKeyView` parameters** — `ShowPrivateKeys` (`None` default / `Mine` / `All`) and `AllowPrivilegedAccess` (default false; only meaningful with `All`). The actual visibility is always intersected with the caller's identity server-side, so the flags can never reveal a key the caller isn't entitled to.
+- Existing keys have a null `OwnerMemberKey` (team-wide) — behaviour is unchanged unless you opt in. Not to be confused with **system keys** (team-less infra keys via `SystemApiKeyView`); private keys are still team-scoped.
+
 ### Verification
 
 Create an API key via the UI, then call your API with `X-API-KEY: <key>` header. The request should authenticate successfully.

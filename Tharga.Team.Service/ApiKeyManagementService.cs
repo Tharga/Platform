@@ -5,11 +5,15 @@ using Tharga.Team;
 namespace Tharga.Team.Service;
 
 /// <summary>
-/// Delegates to <see cref="IApiKeyAdministrationService"/> for all operations.
-/// Scope enforcement is handled by <see cref="ScopeProxy{T}"/>.
+/// Delegates to <see cref="IApiKeyAdministrationService"/> and enforces caller-scoped authorization on
+/// top: scope enforcement via <see cref="ScopeProxy{T}"/>, plus owner-scoping for private API keys
+/// (resolved from the authenticated principal's claims — not trusting any caller-supplied value).
 /// </summary>
 public class ApiKeyManagementService : IApiKeyManagementService
 {
+    // Matches Tharga.Team.Blazor.Framework.Roles.Developer (not referenceable from this assembly).
+    private const string DeveloperRole = "Developer";
+
     private readonly IApiKeyAdministrationService _inner;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
@@ -19,13 +23,77 @@ public class ApiKeyManagementService : IApiKeyManagementService
         _httpContextAccessor = httpContextAccessor;
     }
 
-    public IAsyncEnumerable<IApiKey> GetKeysAsync(string teamKey) => _inner.GetKeysAsync(teamKey);
-    public Task<IApiKey> CreateKeyAsync(string teamKey, string name, AccessLevel accessLevel, string[] roles = null, string[] scopeOverrides = null, DateTime? expiryDate = null, IReadOnlyList<Tag> tags = null) => _inner.CreateKeyAsync(teamKey, name, accessLevel, roles, scopeOverrides, expiryDate, tags, GetCurrentUserIdentity());
-    public Task<IApiKey> RefreshKeyAsync(string teamKey, string key) => _inner.RefreshKeyAsync(teamKey, key);
-    public Task LockKeyAsync(string teamKey, string key) => _inner.LockKeyAsync(teamKey, key);
-    public Task DeleteKeyAsync(string teamKey, string key) => _inner.DeleteKeyAsync(teamKey, key);
-    public Task SetScopeOverridesAsync(string teamKey, string key, string[] scopes) => _inner.SetScopeOverridesAsync(teamKey, key, scopes);
-    public Task SetRolesAsync(string teamKey, string key, string[] roles) => _inner.SetRolesAsync(teamKey, key, roles);
+    public async IAsyncEnumerable<IApiKey> GetKeysAsync(string teamKey, PrivateKeyScope privateKeys = PrivateKeyScope.None, bool allowPrivileged = false)
+    {
+        var callerMemberKey = GetCallerMemberKey();
+        var isDeveloper = IsDeveloper();
+        var privilegedAllowed = allowPrivileged && IsPrivileged();
+
+        await foreach (var key in _inner.GetKeysAsync(teamKey))
+        {
+            // Team-wide keys are always visible (subject to the apikey:manage scope already enforced).
+            if (string.IsNullOrEmpty(key.OwnerMemberKey))
+            {
+                yield return key;
+                continue;
+            }
+
+            if (privateKeys == PrivateKeyScope.None) continue;
+
+            var isOwner = callerMemberKey != null && key.OwnerMemberKey == callerMemberKey;
+            if (privateKeys == PrivateKeyScope.Mine)
+            {
+                if (isOwner) yield return key;
+                continue;
+            }
+
+            // PrivateKeyScope.All — own + Developer (audit) + privileged (when the host opted in).
+            if (isOwner || isDeveloper || privilegedAllowed) yield return key;
+        }
+    }
+
+    public Task<IApiKey> CreateKeyAsync(string teamKey, string name, AccessLevel accessLevel, string[] roles = null, string[] scopeOverrides = null, DateTime? expiryDate = null, IReadOnlyList<Tag> tags = null, bool ownerScoped = false)
+    {
+        string ownerMemberKey = null;
+        if (ownerScoped)
+        {
+            // Anti-spoof: a caller can only ever mint a key owned by themselves.
+            ownerMemberKey = GetCallerMemberKey()
+                ?? throw new InvalidOperationException("Cannot create an owner-scoped API key: the caller has no team-member context.");
+        }
+
+        return _inner.CreateKeyAsync(teamKey, name, accessLevel, roles, scopeOverrides, expiryDate, tags, GetCurrentUserIdentity(), ownerMemberKey);
+    }
+
+    public async Task<IApiKey> RefreshKeyAsync(string teamKey, string key)
+    {
+        await EnsureCanMutateAsync(teamKey, key);
+        return await _inner.RefreshKeyAsync(teamKey, key);
+    }
+
+    public async Task LockKeyAsync(string teamKey, string key)
+    {
+        await EnsureCanMutateAsync(teamKey, key);
+        await _inner.LockKeyAsync(teamKey, key);
+    }
+
+    public async Task DeleteKeyAsync(string teamKey, string key)
+    {
+        await EnsureCanMutateAsync(teamKey, key);
+        await _inner.DeleteKeyAsync(teamKey, key);
+    }
+
+    public async Task SetScopeOverridesAsync(string teamKey, string key, string[] scopes)
+    {
+        await EnsureCanMutateAsync(teamKey, key);
+        await _inner.SetScopeOverridesAsync(teamKey, key, scopes);
+    }
+
+    public async Task SetRolesAsync(string teamKey, string key, string[] roles)
+    {
+        await EnsureCanMutateAsync(teamKey, key);
+        await _inner.SetRolesAsync(teamKey, key, roles);
+    }
 
     public IAsyncEnumerable<IApiKey> GetSystemKeysAsync() => _inner.GetSystemKeysAsync();
     public Task<IApiKey> CreateSystemKeyAsync(string name, string[] scopes, DateTime? expiryDate = null)
@@ -33,6 +101,39 @@ public class ApiKeyManagementService : IApiKeyManagementService
     public Task<IApiKey> RefreshSystemKeyAsync(string key) => _inner.RefreshSystemKeyAsync(key);
     public Task LockSystemKeyAsync(string key) => _inner.LockSystemKeyAsync(key);
     public Task DeleteSystemKeyAsync(string key) => _inner.DeleteSystemKeyAsync(key);
+
+    /// <summary>
+    /// Guards mutation of an owner-scoped (private) key: only the owner, or a Developer-role caller (audit
+    /// escape), may recycle/lock/delete/edit it. Team-wide keys (and unknown keys) pass through.
+    /// </summary>
+    private async Task EnsureCanMutateAsync(string teamKey, string key)
+    {
+        IApiKey target = null;
+        await foreach (var k in _inner.GetKeysAsync(teamKey))
+        {
+            if (k.Key == key) { target = k; break; }
+        }
+
+        if (target == null || string.IsNullOrEmpty(target.OwnerMemberKey)) return; // not private — inner handles ownership/validity
+
+        var callerMemberKey = GetCallerMemberKey();
+        var isOwner = callerMemberKey != null && target.OwnerMemberKey == callerMemberKey;
+        if (isOwner || IsDeveloper()) return;
+
+        throw new UnauthorizedAccessException("This API key is private to another member and can only be managed by its owner.");
+    }
+
+    private string GetCallerMemberKey()
+        => _httpContextAccessor?.HttpContext?.User?.FindFirst(TeamClaimTypes.MemberKey)?.Value;
+
+    private bool IsDeveloper()
+        => _httpContextAccessor?.HttpContext?.User?.IsInRole(DeveloperRole) ?? false;
+
+    private bool IsPrivileged()
+    {
+        var value = _httpContextAccessor?.HttpContext?.User?.FindFirst(TeamClaimTypes.AccessLevel)?.Value;
+        return Enum.TryParse<AccessLevel>(value, out var level) && level is AccessLevel.Owner or AccessLevel.Administrator;
+    }
 
     private string GetCurrentUserIdentity()
     {

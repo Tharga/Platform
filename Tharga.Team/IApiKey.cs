@@ -24,6 +24,13 @@ public interface IApiKey
     string CreatedBy { get; }
 
     /// <summary>
+    /// Owning team member (<see cref="ITeamMember.Key"/>) for an owner-scoped ("private") key, or null
+    /// for a normal team-wide key. Private keys are hidden from other members in the UI and can only be
+    /// recycled/locked/deleted by their owner (a Developer-role caller may still manage them for audit).
+    /// </summary>
+    string OwnerMemberKey { get; }
+
+    /// <summary>
     /// System-set key-value tags on this API key. A list (not a map), so a key may repeat.
     /// Set only at creation via the service; immutable thereafter and not editable from the UI.
     /// Each tag is surfaced as a <c>tag.{Key}</c> claim on the authenticated principal.

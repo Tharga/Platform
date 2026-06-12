@@ -133,6 +133,30 @@ public class TeamServerClaimsTransformationTests
     }
 
     [Fact]
+    public async Task WithCookieAndMember_AddsMemberKeyClaim()
+    {
+        SetupCookie("team-1");
+        var principal = CreateAuthenticatedPrincipal();
+        var user = Mock.Of<IUser>(u => u.Key == "user-1");
+        _userService.Setup(u => u.GetCurrentUserAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(user);
+        _teamService.Setup(t => t.GetTeamMemberAsync("team-1", "user-1"))
+            .ReturnsAsync(Mock.Of<ITeamMember>(m =>
+                m.Key == "member-9" &&
+                m.AccessLevel == AccessLevel.Administrator &&
+                m.TenantRoles == Array.Empty<string>() &&
+                m.ScopeOverrides == Array.Empty<string>()));
+        _scopeRegistry.Setup(s => s.GetEffectiveScopes(
+                AccessLevel.Administrator, It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()))
+            .Returns(Array.Empty<string>());
+
+        var sut = CreateSut();
+        var result = await sut.TransformAsync(principal);
+
+        Assert.Contains(result.Claims, c => c.Type == TeamClaimTypes.MemberKey && c.Value == "member-9");
+    }
+
+    [Fact]
     public async Task WithCookieButNoMember_OnlyAddsMarkerClaim()
     {
         SetupCookie("team-1");
