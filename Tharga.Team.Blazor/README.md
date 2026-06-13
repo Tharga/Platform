@@ -12,6 +12,7 @@ Team management Blazor components for multi-tenant applications. Works with both
 - **User management** - `UserProfileView`, `UsersView`.
 - **Authentication** - `LoginDisplay` with login/logout and team navigation.
 - **Claims augmentation** - `TeamClaimsAuthenticationStateProvider` adds `TeamKey`, `AccessLevel`, role, and scope claims. Compatible with all hosting models.
+- **Scope enforcement in the circuit** - `AddThargaTeamBlazor` registers a circuit-aware `ITeamPrincipalAccessor`, so `[RequireScope]` / `[RequireAccessLevel]` on services (registered with `AddScopedWithScopes` / `AddScopedWithAccessLevel`) enforce when called from interactive Blazor Server components, not just from controllers/API.
 - **Audit** - `AuditLogView` for viewing audit logs with charts and filtering.
 
 ## Quick Start (recommended)

@@ -10,6 +10,7 @@ Server-side API-key authentication, authorization enforcement, controller regist
 - **API key authentication** - Reads the `X-API-KEY` header, validates against a store, and populates `TeamKey`, `AccessLevel`, and scope claims.
 - **Access level authorization** - `AccessLevelProxy<T>` enforces `[RequireAccessLevel]` on service methods via `DispatchProxy`.
 - **Scope authorization** - `ScopeProxy<T>` enforces `[RequireScope]` with audit logging.
+- **Works in API and interactive Blazor** - the proxies resolve the caller via `ITeamPrincipalAccessor` (default: `IHttpContextAccessor`). `AddThargaTeamBlazor` swaps in a circuit-aware accessor (HttpContext when present, else `AuthenticationStateProvider`), so one `[RequireScope]`/`[RequireAccessLevel]` enforces both surfaces. Register a custom `ITeamPrincipalAccessor` to plug in another principal source.
 - **Controller + Swagger registration** - Single-call setup for MVC controllers, OpenAPI document with API key security scheme, and Swagger UI.
 - **API key management** - Default MongoDB-backed `ApiKeyAdministrationService` with key hashing. Configurable via `ApiKeyOptions` — see [API key options](#api-key-options).
 - **Audit logging** - `CompositeAuditLogger` with `ILogger` and MongoDB backends. ⚠️ Stores to `ILogger` only by default — see [Audit logging](#audit-logging).
