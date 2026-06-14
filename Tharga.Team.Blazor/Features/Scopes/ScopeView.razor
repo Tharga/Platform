@@ -1,0 +1,89 @@
+@namespace Tharga.Team.Blazor.Features.Scopes
+@using Microsoft.Extensions.DependencyInjection
+@using Tharga.Team
+@inject IServiceProvider ServiceProvider
+
+@*
+    Read-only reference of the configured scopes: one row per scope showing its description, the access
+    levels that grant it, and the tenant roles that grant it. Built dynamically from IScopeRegistry /
+    ITenantRoleRegistry, so it always reflects the live configuration.
+*@
+@if (_rows.Count == 0)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" Variant="Variant.Flat">
+        No scopes are configured. Register them via <code>o.ConfigureScopes</code> in Program.cs.
+    </RadzenAlert>
+}
+else
+{
+    <RadzenDataGrid Data="@_rows" TItem="ScopeRow"
+                    AllowSorting="@AllowGridSorting"
+                    AllowFiltering="@AllowGridFiltering"
+                    FilterMode="FilterMode.Simple"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
+        <Columns>
+            <RadzenDataGridColumn Title="Scope" Property="@nameof(ScopeRow.Name)" Width="220px" SortOrder="SortOrder.Ascending">
+                <Template>
+                    <code>@context.Name</code>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Description" Property="@nameof(ScopeRow.Description)" Visible="@ShowDescription" Filterable="false" />
+            <RadzenDataGridColumn Title="Access levels" Width="220px" Sortable="false" Filterable="false">
+                <Template>
+                    @if (context.AccessLevels.Count == 0)
+                    {
+                        <RadzenText TextStyle="TextStyle.Body2">—</RadzenText>
+                    }
+                    else
+                    {
+                        @foreach (var level in context.AccessLevels)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Info" Variant="Variant.Flat" Text="@level.ToString()" class="rz-mr-1 rz-mb-1" />
+                        }
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Roles" Width="220px" Sortable="false" Filterable="false" Visible="@(ShowRoles && _hasRoles)">
+                <Template>
+                    @if (context.Roles.Count == 0)
+                    {
+                        <RadzenText TextStyle="TextStyle.Body2">—</RadzenText>
+                    }
+                    else
+                    {
+                        @foreach (var role in context.Roles)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Secondary" Variant="Variant.Flat" Text="@role" class="rz-mr-1 rz-mb-1" />
+                        }
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+    /// <summary>Show the scope Description column. Default true.</summary>
+    [Parameter] public bool ShowDescription { get; set; } = true;
+
+    /// <summary>Show the Roles column (auto-hidden when no tenant roles are configured). Default true.</summary>
+    [Parameter] public bool ShowRoles { get; set; } = true;
+
+    /// <summary>Allow sorting the grid (by scope name). Default true.</summary>
+    [Parameter] public bool AllowGridSorting { get; set; } = true;
+
+    /// <summary>Allow a case-insensitive text filter on the grid. Default false.</summary>
+    [Parameter] public bool AllowGridFiltering { get; set; } = false;
+
+    private IReadOnlyList<ScopeRow> _rows = Array.Empty<ScopeRow>();
+    private bool _hasRoles;
+
+    protected override void OnInitialized()
+    {
+        var scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
+        var roleRegistry = ServiceProvider.GetService<ITenantRoleRegistry>();
+
+        _rows = ScopeReference.Build(scopeRegistry, roleRegistry);
+        _hasRoles = roleRegistry?.All?.Count > 0;
+    }
+}

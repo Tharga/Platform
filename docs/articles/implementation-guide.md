@@ -841,6 +841,8 @@ A principal's effective scopes are the **union** of four sources:
 
 All four surface as `Scope` claims, so service methods gate uniformly with `[RequireScope("…")]` regardless of whether the caller is a team member, a team key, a system key, or a privileged user.
 
+> **Tip:** drop the `<ScopeView />` component (Tharga.Team.Blazor) on a page to render a live, read-only grid of the configured **team** scopes — each scope's description and the access levels and tenant roles that grant it. It builds itself from `IScopeRegistry` / `ITenantRoleRegistry`, so it always matches the running configuration.
+
 ### System scopes & privileged users
 
 System scopes are global capabilities (no access-level hierarchy):
