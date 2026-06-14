@@ -1,0 +1,212 @@
+@namespace Tharga.Team.Blazor.Features.Scopes
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.DependencyInjection
+@using Tharga.Team
+@using Tharga.Team.Blazor.Features.Team
+@inject IServiceProvider ServiceProvider
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+@*
+    Interactive scope explorer: pick an access level and roles to see which scopes a member would have.
+    Scopes not granted by the current selection are greyed out; the signed-in member's personal scope
+    overrides are highlighted. Built dynamically from IScopeRegistry / ITenantRoleRegistry, so it always
+    reflects the live configuration. Defaults to the current member's access level, roles and overrides.
+*@
+@if (_rows.Count == 0)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" Variant="Variant.Flat">
+        No scopes are configured. Register them via <code>o.ConfigureScopes</code> in Program.cs.
+    </RadzenAlert>
+}
+else
+{
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="1.5rem" AlignItems="AlignItems.End" Wrap="FlexWrap.Wrap" class="rz-mb-3">
+        @if (ShowAccessLevelSelector)
+        {
+            <RadzenStack Orientation="Orientation.Vertical" Gap="0">
+                <RadzenLabel Text="Access level" />
+                <RadzenSelectBar @bind-Value="_selectedLevel" TValue="AccessLevel?" Change="@(_ => RecomputeGrants())" Size="ButtonSize.Small">
+                    <Items>
+                        <RadzenSelectBarItem Text="Viewer" Value="AccessLevel.Viewer" />
+                        <RadzenSelectBarItem Text="User" Value="AccessLevel.User" />
+                        <RadzenSelectBarItem Text="Owner / Administrator" Value="AccessLevel.Administrator" />
+                    </Items>
+                </RadzenSelectBar>
+            </RadzenStack>
+        }
+        @if (ShowRoles && _allRoleNames.Count > 0)
+        {
+            <RadzenStack Orientation="Orientation.Vertical" Gap="0">
+                <RadzenLabel Text="Roles" />
+                <RadzenSelectBar @bind-Value="_selectedRolesValue" TValue="IEnumerable<string>" Multiple="true" Change="@(_ => RecomputeGrants())" Size="ButtonSize.Small">
+                    <Items>
+                        @foreach (var role in _allRoleNames)
+                        {
+                            <RadzenSelectBarItem Text="@role" Value="@role" />
+                        }
+                    </Items>
+                </RadzenSelectBar>
+            </RadzenStack>
+        }
+    </RadzenStack>
+
+    <RadzenText TextStyle="TextStyle.Body2" class="rz-mb-2">
+        Scopes granted by the selected access level and roles are shown in full; greyed rows are not granted.
+        @if (_loadedFromMember)
+        {
+            <text>Pre-selected to your current membership — <b>Override</b> marks your personal scope overrides.</text>
+        }
+    </RadzenText>
+
+    <RadzenDataGrid Data="@_rows" TItem="ScopeRow"
+                    AllowSorting="@AllowGridSorting"
+                    AllowFiltering="@AllowGridFiltering"
+                    FilterMode="FilterMode.Simple"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                    RowRender="@OnRowRender">
+        <Columns>
+            <RadzenDataGridColumn Title="Scope" Property="@nameof(ScopeRow.Name)" Width="260px" SortOrder="SortOrder.Ascending">
+                <Template>
+                    <code>@context.Name</code>
+                    @if (Grant(context.Name).ByOverride)
+                    {
+                        <RadzenIcon Icon="star" Style="color: var(--rz-warning); margin-left: .35rem; font-size: 1rem; cursor: help;"
+                                    title="You have a personal scope override for this scope." />
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Description" Property="@nameof(ScopeRow.Description)" Visible="@ShowDescription" Filterable="false" />
+            <RadzenDataGridColumn Title="Granted by" Sortable="false" Filterable="false">
+                <Template>
+                    @{ var grant = Grant(context.Name); }
+                    @if (!grant.Granted)
+                    {
+                        <RadzenText TextStyle="TextStyle.Body2">—</RadzenText>
+                    }
+                    else
+                    {
+                        @if (grant.ByLevel)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Info" Variant="Variant.Flat" Text="@LevelLabel(_selectedLevel)" class="rz-mr-1 rz-mb-1" />
+                        }
+                        @foreach (var role in grant.ByRoles)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Secondary" Variant="Variant.Flat" Text="@role" class="rz-mr-1 rz-mb-1" />
+                        }
+                        @if (grant.ByOverride)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Warning" Variant="Variant.Flat" Text="Override" class="rz-mr-1 rz-mb-1" />
+                        }
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+    /// <summary>Show the scope Description column. Default true.</summary>
+    [Parameter] public bool ShowDescription { get; set; } = true;
+
+    /// <summary>Show the Roles selector (auto-hidden when no tenant roles are configured). Default true.</summary>
+    [Parameter] public bool ShowRoles { get; set; } = true;
+
+    /// <summary>Show the access-level selector. Default true.</summary>
+    [Parameter] public bool ShowAccessLevelSelector { get; set; } = true;
+
+    /// <summary>Allow sorting the grid (by scope name). Default true.</summary>
+    [Parameter] public bool AllowGridSorting { get; set; } = true;
+
+    /// <summary>Allow a case-insensitive text filter on the grid. Default false.</summary>
+    [Parameter] public bool AllowGridFiltering { get; set; } = false;
+
+    private static readonly ScopeGrant NotGranted = new(false, false, Array.Empty<string>(), false);
+
+    private IReadOnlyList<ScopeRow> _rows = Array.Empty<ScopeRow>();
+    private IReadOnlyList<string> _allRoleNames = Array.Empty<string>();
+    private Dictionary<string, ScopeGrant> _grants = new();
+
+    private AccessLevel? _selectedLevel;
+    private IEnumerable<string> _selectedRolesValue = Array.Empty<string>();
+    private HashSet<string> _overrides = new();
+    private bool _loadedFromMember;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
+        var roleRegistry = ServiceProvider.GetService<ITenantRoleRegistry>();
+
+        _rows = ScopeReference.Build(scopeRegistry, roleRegistry);
+        _allRoleNames = roleRegistry?.All?.Select(r => r.Name).ToList() ?? (IReadOnlyList<string>)Array.Empty<string>();
+
+        RecomputeGrants(); // populate for the initial render before any await
+
+        if (_rows.Count > 0)
+            await ApplyCurrentUserDefaultsAsync();
+
+        RecomputeGrants(); // refine with the loaded defaults
+    }
+
+    // Tenant roles and scope overrides are not in the claims — they live on the member record — so default
+    // the selectors from the current member (best-effort; falls back to the AccessLevel claim).
+    private async Task ApplyCurrentUserDefaultsAsync()
+    {
+        ClaimsPrincipal principal = null;
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            principal = authState?.User;
+        }
+        catch { /* no auth context */ }
+
+        if (principal != null && Enum.TryParse<AccessLevel>(principal.FindFirst(TeamClaimTypes.AccessLevel)?.Value, out var claimLevel))
+            _selectedLevel = ScopeReference.ToSelectableLevel(claimLevel);
+
+        try
+        {
+            var teamState = ServiceProvider.GetService<ITeamStateService>();
+            var userService = ServiceProvider.GetService<IUserService>();
+            var teamService = ServiceProvider.GetService<ITeamService>();
+            if (teamState != null && userService != null && teamService != null && principal != null)
+            {
+                var team = await teamState.GetSelectedTeamAsync();
+                var user = await userService.GetCurrentUserAsync(principal);
+                if (!string.IsNullOrEmpty(team?.Key) && !string.IsNullOrEmpty(user?.Key))
+                {
+                    var member = await teamService.GetTeamMemberAsync(team.Key, user.Key);
+                    if (member != null)
+                    {
+                        _selectedLevel = ScopeReference.ToSelectableLevel(member.AccessLevel);
+                        var configured = new HashSet<string>(_allRoleNames);
+                        _selectedRolesValue = (member.TenantRoles ?? Array.Empty<string>()).Where(configured.Contains).ToList();
+                        _overrides = new HashSet<string>(member.ScopeOverrides ?? Array.Empty<string>());
+                        _loadedFromMember = true;
+                    }
+                }
+            }
+        }
+        catch { /* best-effort; keep the claim-based defaults */ }
+    }
+
+    private void RecomputeGrants()
+    {
+        var roleSet = new HashSet<string>(_selectedRolesValue ?? Enumerable.Empty<string>());
+        _grants = _rows.ToDictionary(r => r.Name, r => ScopeReference.Resolve(r, _selectedLevel, roleSet, _overrides));
+    }
+
+    private ScopeGrant Grant(string name) => _grants.TryGetValue(name, out var g) ? g : NotGranted;
+
+    private void OnRowRender(RowRenderEventArgs<ScopeRow> args)
+    {
+        if (!Grant(args.Data.Name).Granted)
+            args.Attributes["style"] = "opacity: 0.45;";
+    }
+
+    private static string LevelLabel(AccessLevel? level) => level switch
+    {
+        AccessLevel.Administrator => "Owner / Admin",
+        null => "Custom",
+        _ => level.Value.ToString(),
+    };
+}

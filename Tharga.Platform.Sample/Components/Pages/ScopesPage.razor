@@ -1,0 +1,38 @@
+@page "/scopes"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Tharga.Team.Blazor.Features.Scopes
+
+<PageTitle>Scopes</PageTitle>
+
+<RadzenText TextStyle="TextStyle.Body2" class="rz-mb-3">
+    Pick an access level and roles to see which scopes a member would have — scopes not granted by the
+    selection are greyed out, and your personal overrides are highlighted. The selectors default to your
+    own membership. Rebuilt dynamically from the configured registries.
+</RadzenText>
+
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1.5rem" class="rz-mb-3">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+        <RadzenSwitch @bind-Value="_showDescription" /> <RadzenLabel Text="Show description" />
+    </RadzenStack>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+        <RadzenSwitch @bind-Value="_showAccessLevel" /> <RadzenLabel Text="Show access-level selector" />
+    </RadzenStack>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+        <RadzenSwitch @bind-Value="_showRoles" /> <RadzenLabel Text="Show roles selector" />
+    </RadzenStack>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+        <RadzenSwitch @bind-Value="_allowFiltering" /> <RadzenLabel Text="Allow filtering" />
+    </RadzenStack>
+</RadzenStack>
+
+<ScopeView ShowDescription="_showDescription" ShowAccessLevelSelector="_showAccessLevel"
+           ShowRoles="_showRoles" AllowGridFiltering="_allowFiltering" />
+
+@code {
+    private bool _showDescription = true;
+    private bool _showAccessLevel = true;
+    private bool _showRoles = true;
+    private bool _allowFiltering;
+}
