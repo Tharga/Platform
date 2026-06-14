@@ -13,6 +13,13 @@ public sealed record ScopeRow(
     IReadOnlyList<string> Roles);
 
 /// <summary>
+/// How a single scope is granted under the current selection: by the selected access level, by one or
+/// more of the selected roles, and/or by the user's personal scope overrides. <see cref="Granted"/> is the
+/// union — true when the scope is granted by any source.
+/// </summary>
+public sealed record ScopeGrant(bool Granted, bool ByLevel, IReadOnlyList<string> ByRoles, bool ByOverride);
+
+/// <summary>
 /// Builds the read-only scope reference shown by <c>ScopeView</c> directly from the registries, so it
 /// always reflects the live configuration. Pure (no DI, no rendering) to keep it unit-testable.
 /// </summary>
@@ -44,5 +51,32 @@ public static class ScopeReference
                 Levels.Where(l => byLevel[l].Contains(s.Name)).ToList(),
                 roleList.Where(r => r.Scopes != null && r.Scopes.Contains(s.Name)).Select(r => r.Name).ToList()))
             .ToList();
+    }
+
+    /// <summary>
+    /// Maps an actual access level to the value selectable in the access-level bar: Owner collapses to
+    /// Administrator (they grant identical scopes), and Custom maps to null (no base scopes — its effective
+    /// scopes come solely from roles and overrides).
+    /// </summary>
+    public static AccessLevel? ToSelectableLevel(AccessLevel actual) => actual switch
+    {
+        AccessLevel.Owner => AccessLevel.Administrator,
+        AccessLevel.Custom => null,
+        _ => actual,
+    };
+
+    /// <summary>
+    /// Resolves how <paramref name="row"/> is granted under the current selection: by the selected access
+    /// <paramref name="level"/>, by any of the <paramref name="selectedRoles"/>, and/or by the user's
+    /// personal scope <paramref name="overrides"/>.
+    /// </summary>
+    public static ScopeGrant Resolve(ScopeRow row, AccessLevel? level, IReadOnlyCollection<string> selectedRoles, IReadOnlyCollection<string> overrides)
+    {
+        var byLevel = level.HasValue && row.AccessLevels.Contains(level.Value);
+        var byRoles = selectedRoles == null
+            ? (IReadOnlyList<string>)Array.Empty<string>()
+            : row.Roles.Where(selectedRoles.Contains).ToList();
+        var byOverride = overrides != null && overrides.Contains(row.Name);
+        return new ScopeGrant(byLevel || byRoles.Count > 0 || byOverride, byLevel, byRoles, byOverride);
     }
 }

@@ -12,6 +12,7 @@ public class ScopeViewTests
     [Theory]
     [InlineData("ShowDescription", true)]
     [InlineData("ShowRoles", true)]
+    [InlineData("ShowAccessLevelSelector", true)]
     [InlineData("AllowGridSorting", true)]
     [InlineData("AllowGridFiltering", false)]
     public void BoolParameter_HasExpectedDefault_AndParameterAttribute(string propertyName, bool expectedDefault)

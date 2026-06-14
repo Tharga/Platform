@@ -105,4 +105,68 @@ public class ScopeReferenceTests
         Assert.NotEmpty(rows);
         Assert.All(rows, r => Assert.Empty(r.Roles));
     }
+
+    [Theory]
+    [InlineData(AccessLevel.Owner, AccessLevel.Administrator)]   // Owner collapses to Administrator
+    [InlineData(AccessLevel.Administrator, AccessLevel.Administrator)]
+    [InlineData(AccessLevel.User, AccessLevel.User)]
+    [InlineData(AccessLevel.Viewer, AccessLevel.Viewer)]
+    public void ToSelectableLevel_MapsAsExpected(AccessLevel actual, AccessLevel expected)
+        => Assert.Equal(expected, ScopeReference.ToSelectableLevel(actual));
+
+    [Fact]
+    public void ToSelectableLevel_Custom_IsNull()
+        => Assert.Null(ScopeReference.ToSelectableLevel(AccessLevel.Custom));
+
+    [Fact]
+    public void Resolve_ByLevel_WhenSelectedLevelGrantsTheScope()
+    {
+        var (scopes, roles) = BuildRegistries();
+        var row = Row(ScopeReference.Build(scopes, roles), "orders:write"); // User-level scope
+
+        var grant = ScopeReference.Resolve(row, AccessLevel.User, new HashSet<string>(), new HashSet<string>());
+
+        Assert.True(grant.Granted);
+        Assert.True(grant.ByLevel);
+        Assert.Empty(grant.ByRoles);
+        Assert.False(grant.ByOverride);
+    }
+
+    [Fact]
+    public void Resolve_NotByLevel_ButByRole()
+    {
+        var (scopes, roles) = BuildRegistries();
+        var row = Row(ScopeReference.Build(scopes, roles), "orders:refund"); // Administrator-level scope
+
+        var grant = ScopeReference.Resolve(row, AccessLevel.User, new HashSet<string> { "Editor" }, new HashSet<string>());
+
+        Assert.True(grant.Granted);
+        Assert.False(grant.ByLevel);
+        Assert.Equal(new[] { "Editor" }, grant.ByRoles);
+    }
+
+    [Fact]
+    public void Resolve_ByOverride_Only()
+    {
+        var (scopes, roles) = BuildRegistries();
+        var row = Row(ScopeReference.Build(scopes, roles), "orders:refund");
+
+        var grant = ScopeReference.Resolve(row, AccessLevel.Viewer, new HashSet<string>(), new HashSet<string> { "orders:refund" });
+
+        Assert.True(grant.Granted);
+        Assert.False(grant.ByLevel);
+        Assert.Empty(grant.ByRoles);
+        Assert.True(grant.ByOverride);
+    }
+
+    [Fact]
+    public void Resolve_NotGranted_WhenNothingSelected()
+    {
+        var (scopes, roles) = BuildRegistries();
+        var row = Row(ScopeReference.Build(scopes, roles), "orders:refund");
+
+        var grant = ScopeReference.Resolve(row, null, new HashSet<string>(), new HashSet<string>());
+
+        Assert.False(grant.Granted);
+    }
 }
