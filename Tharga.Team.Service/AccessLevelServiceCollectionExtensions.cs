@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Tharga.Team;
 using Tharga.Team.Service.Audit;
 
@@ -19,13 +19,15 @@ public static class AccessLevelServiceCollectionExtensions
         where TService : class
         where TImplementation : class, TService
     {
+        services.AddHttpContextAccessor();
+        services.TryAddScoped<ITeamPrincipalAccessor, HttpContextTeamPrincipalAccessor>();
         services.AddScoped<TImplementation>();
         services.AddScoped<TService>(sp =>
         {
             var target = sp.GetRequiredService<TImplementation>();
-            var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+            var principalAccessor = sp.GetRequiredService<ITeamPrincipalAccessor>();
             var auditLogger = sp.GetService<IAuditLogger>();
-            return AccessLevelProxy<TService>.Create(target, httpContextAccessor, auditLogger);
+            return AccessLevelProxy<TService>.Create(target, principalAccessor, auditLogger);
         });
         return services;
     }

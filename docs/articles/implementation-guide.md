@@ -751,6 +751,8 @@ public class MyService : IMyService
 
 The `ScopeProxy<T>` automatically checks that the current user has the required scope before calling the method. If the scope is denied, an `UnauthorizedAccessException` is thrown.
 
+> **Works in interactive Blazor Server too.** The proxy resolves the caller via `ITeamPrincipalAccessor`. The default implementation reads `IHttpContextAccessor` (controllers/API). `AddThargaPlatform` / `AddThargaTeamBlazor` automatically swap in a circuit-aware accessor that uses `HttpContext` when present and falls back to `AuthenticationStateProvider` otherwise — so a single `[RequireScope]` / `[RequireAccessLevel]` enforces both your API and interactive Blazor callers (no `HttpContext` is needed in a circuit). To plug in a different principal source, register your own `ITeamPrincipalAccessor`.
+
 ### How scopes are resolved
 
 1. **Access level** — Owner and Administrator get all scopes. User gets scopes at User or Viewer level. Viewer gets only Viewer-level scopes. **`Custom` gets no base scopes** (and is exempt from the Owner/Administrator "all scopes" rule).

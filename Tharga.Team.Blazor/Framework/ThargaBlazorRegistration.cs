@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Tharga.Blazor.Framework;
@@ -71,6 +72,10 @@ public static class ThargaBlazorRegistration
             // Server-side claims enrichment — always registered, reads selected_team_id cookie
             services.AddHttpContextAccessor();
             services.AddTransient<IClaimsTransformation, TeamServerClaimsTransformation>();
+
+            // Make scope/access-level proxies resolve the caller from the circuit too (not just HttpContext),
+            // so [RequireScope]/[RequireAccessLevel] enforce in interactive Blazor Server as well as on the API.
+            services.Replace(ServiceDescriptor.Scoped<ITeamPrincipalAccessor, BlazorTeamPrincipalAccessor>());
 
             // Custom claims enricher — runs before member lookup and consent evaluation
             if (o._claimsEnricher != null)
