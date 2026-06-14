@@ -6,12 +6,19 @@ namespace Tharga.Team.Service;
 /// <summary>
 /// Shared invocation pipeline for the enforcement proxies (<see cref="ScopeProxy{T}"/>,
 /// <see cref="AccessLevelProxy{T}"/>): resolve the caller (possibly asynchronously, e.g. from a Blazor
-/// circuit), run <paramref name="enforce"/>, invoke the target, then <paramref name="audit"/> the outcome.
+/// circuit), run the <c>enforce</c> check, invoke the target, then <c>audit</c> the outcome.
 /// Handles sync, <see cref="Task"/> and <see cref="Task{TResult}"/> methods so the async principal source
 /// is awaited rather than blocked for the common (async) service methods.
 /// </summary>
 internal static class ProxyInvoker
 {
+    /// <summary>
+    /// Resolves the caller, runs the enforcement check, invokes the target method, then audits the outcome.
+    /// </summary>
+    /// <param name="method">The intercepted interface method to invoke on the target.</param>
+    /// <param name="args">The arguments passed to <paramref name="method"/>.</param>
+    /// <param name="target">The concrete service the proxy wraps.</param>
+    /// <param name="accessor">Resolves the current <see cref="ClaimsPrincipal"/> (sync or async).</param>
     /// <param name="enforce">Throws <see cref="UnauthorizedAccessException"/> if the principal is not allowed.</param>
     /// <param name="audit">Invoked with (principal, durationMs, success, exception-or-null) after the call.</param>
     public static object Invoke(

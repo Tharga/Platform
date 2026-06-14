@@ -46,7 +46,7 @@ public class BlazorTeamPrincipalAccessorTests
         var services = new ServiceCollection();
         services.AddThargaTeamBlazor(o => o.RegisterTeamService<FakeTeamService, FakeUserService>());
 
-        var descriptor = Assert.Single(services.Where(d => d.ServiceType == typeof(ITeamPrincipalAccessor)));
+        var descriptor = Assert.Single(services, d => d.ServiceType == typeof(ITeamPrincipalAccessor));
         Assert.Equal(typeof(BlazorTeamPrincipalAccessor), descriptor.ImplementationType);
     }
 
