@@ -29,9 +29,18 @@
 @code {
     private string _email;
     private bool _showTeamDefault;
+    private bool _hasTeamMenuRoleRestriction;
+    private bool _userInTeamMenuRole;
 
     [Parameter]
     public bool? ShowTeam { get; set; }
+
+    /// <summary>
+    /// Restricts the Team profile-menu item to users in at least one of the given roles. When null or
+    /// empty (the default) the item is shown to every authenticated user, exactly as before.
+    /// </summary>
+    [Parameter]
+    public string[] TeamMenuRoles { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -42,6 +51,10 @@
         {
             _email = authState.User.GetEmail();
         }
+
+        var teamMenuRoles = TeamMenuRoles?.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray() ?? [];
+        _hasTeamMenuRoleRestriction = teamMenuRoles.Length > 0;
+        _userInTeamMenuRole = teamMenuRoles.Any(authState.User.IsInRole);
 
         await base.OnInitializedAsync();
     }
@@ -76,5 +89,13 @@
         return Task.CompletedTask;
     }
 
-    private bool GetShowTeam() => ShowTeam ?? _showTeamDefault;
+    private bool GetShowTeam() => ShouldShowTeamMenuItem(ShowTeam, _showTeamDefault, _hasTeamMenuRoleRestriction, _userInTeamMenuRole);
+
+    internal static bool ShouldShowTeamMenuItem(bool? showTeam, bool showTeamDefault, bool hasRoleRestriction, bool userInAnyRole)
+    {
+        var visible = showTeam ?? showTeamDefault;
+        if (!visible) return false;
+        if (!hasRoleRestriction) return true;
+        return userInAnyRole;
+    }
 }
