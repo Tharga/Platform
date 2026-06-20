@@ -15,4 +15,4 @@ Team management infrastructure: Tharga.Team, Tharga.Team.Service, Tharga.Team.Mo
 - **Plan directory**: `$DOC_ROOT/Tharga/plans/Toolkit/Platform`
 - **Backlog**: `$DOC_ROOT/Tharga/Toolkit/Platform.md`
 - **Incoming requests**: `$DOC_ROOT/Tharga/Requests.md` — check sections "Tharga.Platform" and "Tharga.Platform — MCP" on startup
-- **Eplicta requests**: `$DEV_ROOT/Eplicta/plan/requests.md` — check for requests from Eplicta on startup
+- **Eplicta requests**: `$DOC_ROOT/Eplicta/requests.md` — check for requests from Eplicta on startup

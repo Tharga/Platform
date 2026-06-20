@@ -240,12 +240,20 @@ builder.AddThargaAuth(o =>
 
 | Component | Namespace | Description |
 |-----------|-----------|-------------|
-| `<LoginDisplay />` | `Tharga.Team.Blazor.Features.Authentication` | Profile menu with Gravatar when authenticated, login button when not. Navigates to `/login`, `/logout`, and profile/team pages. |
+| `<LoginDisplay />` | `Tharga.Team.Blazor.Features.Authentication` | Profile menu with Gravatar when authenticated, login button when not. Navigates to `/login`, `/logout`, and profile/team pages. The Team item can be restricted to specific roles via `TeamMenuRoles`. |
 | `<UserProfileView />` | `Tharga.Team.Blazor.Features.User` | Displays user's Gravatar, profile info, and authentication claims in an expandable card. |
 
 ### Usage
 
 Add `<LoginDisplay />` to `NavMenu.razor` header.
+
+By default the **Team** item in the profile menu is shown to every authenticated user (whenever a team service is registered). To restrict it to specific roles, set `TeamMenuRoles` — the item is then shown only to users in at least one of those roles, and hidden for everyone else:
+
+```razor
+<LoginDisplay TeamMenuRoles="@(new[] { "Administrator", "Developer" })" />
+```
+
+Leaving `TeamMenuRoles` unset keeps the original behavior (visible to all authenticated users). This gates the menu *link* only — protect the `/team` page itself with `[Authorize(Roles = ...)]` as well.
 
 Create a profile page:
 ```razor
