@@ -6,7 +6,8 @@
 - [x] 4. Wire `LoginDisplay` (4 strings) + `TeamSelector` (2 strings) via injected `TextProvider`
 - [x] 5. Tests: default impl, registration default+override (both orders), key catalog values (10 tests)
 - [x] 6. Docs: implementation-guide "Localizing menu strings" section + consumer bridge example
-- [~] 7. Build + full test run (461/461 green); commit; present for user testing
+- [x] 7. Build + full test run (461/461 green); commit (feat + docs)
+- [~] 8. Sample: SampleMenuTextProvider (Swedish menu demo, dict + English fallback) registered in Program.cs
 
 ## Notes
 - NuGet checked during #100 finalization — Tharga.Team.Blazor deps current; nothing to bundle.
