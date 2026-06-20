@@ -51,6 +51,11 @@ public class SimplifyRegistrationTests
         Assert.Contains(registry.All, s => s.Name == TeamScopes.MemberRemove);
         Assert.Contains(registry.All, s => s.Name == TeamScopes.MemberRole);
         Assert.Contains(registry.All, s => s.Name == ApiKeyScopes.Manage);
+
+        var memberManage = registry.All.Single(s => s.Name == TeamScopes.MemberManage);
+        Assert.Contains(TeamScopes.MemberInvite, memberManage.Implies!);
+        Assert.Contains(TeamScopes.MemberRemove, memberManage.Implies!);
+        Assert.Contains(TeamScopes.MemberRole, memberManage.Implies!);
     }
 
     [Fact]
