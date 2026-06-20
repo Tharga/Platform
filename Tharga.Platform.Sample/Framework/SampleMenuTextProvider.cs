@@ -20,6 +20,6 @@ public sealed class SampleMenuTextProvider : IThargaTextProvider
         [TeamMenuText.Loading.Key] = "Laddar…",
     };
 
-    public string Get(TextKey key) =>
-        Translations.TryGetValue(key.Key, out var value) ? value : key.Default;
+    public Task<string> GetAsync(TextKey key) =>
+        Task.FromResult(Translations.TryGetValue(key.Key, out var value) ? value : key.Default);
 }

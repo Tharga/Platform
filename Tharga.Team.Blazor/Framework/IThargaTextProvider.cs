@@ -9,7 +9,8 @@ public interface IThargaTextProvider
 {
     /// <summary>
     /// Returns the localized string for <paramref name="key"/>, or its English default
-    /// (<see cref="TextKey.Default"/>) when no translation is available.
+    /// (<see cref="TextKey.Default"/>) when no translation is available. Async so implementations can
+    /// resolve from an external content/localization source.
     /// </summary>
-    string Get(TextKey key);
+    Task<string> GetAsync(TextKey key);
 }

@@ -10,12 +10,12 @@ namespace Tharga.Team.Blazor.Tests;
 public class ThargaTextProviderTests
 {
     [Fact]
-    public void Default_Returns_KeyDefault()
+    public async Task Default_Returns_KeyDefault()
     {
         var sut = new DefaultThargaTextProvider();
 
-        Assert.Equal("Team", sut.Get(new TextKey("team.menu.team", "Team")));
-        Assert.Equal("Anything", sut.Get(new TextKey("some.unmapped.key", "Anything")));
+        Assert.Equal("Team", await sut.GetAsync(new TextKey("team.menu.team", "Team")));
+        Assert.Equal("Anything", await sut.GetAsync(new TextKey("some.unmapped.key", "Anything")));
     }
 
     [Fact]
@@ -30,7 +30,7 @@ public class ThargaTextProviderTests
     }
 
     [Fact]
-    public void Consumer_TextProvider_Overrides_Default_RegisteredAfter()
+    public async Task Consumer_TextProvider_Overrides_Default_RegisteredAfter()
     {
         var services = new ServiceCollection();
 
@@ -41,8 +41,8 @@ public class ThargaTextProviderTests
         var text = provider.GetRequiredService<IThargaTextProvider>();
 
         Assert.IsType<SwedishMenuText>(text);
-        Assert.Equal("Lag", text.Get(TeamMenuText.Team));
-        Assert.Equal("Logout", text.Get(TeamMenuText.Logout)); // untranslated keys fall back to the English default
+        Assert.Equal("Lag", await text.GetAsync(TeamMenuText.Team));
+        Assert.Equal("Logout", await text.GetAsync(TeamMenuText.Logout)); // untranslated keys fall back to the English default
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public class ThargaTextProviderTests
     }
 
     [Fact]
-    public void AddTextProvider_Option_Registers_Consumer_Provider()
+    public async Task AddTextProvider_Option_Registers_Consumer_Provider()
     {
         var services = new ServiceCollection();
 
@@ -68,7 +68,7 @@ public class ThargaTextProviderTests
         var text = provider.GetRequiredService<IThargaTextProvider>();
 
         Assert.IsType<SwedishMenuText>(text);
-        Assert.Equal("Lag", text.Get(TeamMenuText.Team));
+        Assert.Equal("Lag", await text.GetAsync(TeamMenuText.Team));
     }
 
     [Theory]
@@ -92,6 +92,6 @@ public class ThargaTextProviderTests
 
     private sealed class SwedishMenuText : IThargaTextProvider
     {
-        public string Get(TextKey key) => key.Key == TeamMenuText.Team.Key ? "Lag" : key.Default;
+        public Task<string> GetAsync(TextKey key) => Task.FromResult(key.Key == TeamMenuText.Team.Key ? "Lag" : key.Default);
     }
 }

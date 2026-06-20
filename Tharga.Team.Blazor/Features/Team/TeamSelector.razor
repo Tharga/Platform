@@ -9,12 +9,12 @@
         @if (_teams == null)
         {
             <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="true" Size="ProgressBarCircularSize.ExtraSmall">
-                <Template>@TextProvider.Get(TeamMenuText.Loading)</Template>
+                <Template>@_loadingText</Template>
             </RadzenProgressBarCircular>
         }
         else if (_teams.Length == 0)
         {
-            <RadzenLink Text="@TextProvider.Get(TeamMenuText.CreateTeam)" Path="/team" />
+            <RadzenLink Text="@_createTeamText" Path="/team" />
         }
         else if (_teams.Length == 1 && SelectedTeam != null)
         {
@@ -32,6 +32,8 @@
 @code {
     private ITeam[] _teams;
     private ITeam _selectedTeam;
+    private string _loadingText = TeamMenuText.Loading.Default;
+    private string _createTeamText = TeamMenuText.CreateTeam.Default;
 
     private ITeam SelectedTeam
     {
@@ -46,6 +48,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _loadingText = await TextProvider.GetAsync(TeamMenuText.Loading);
+        _createTeamText = await TextProvider.GetAsync(TeamMenuText.CreateTeam);
+
         TeamStateService.SelectedTeamChangedEvent += async (_, e) =>
         {
             _selectedTeam = e.SelectedTeam;

@@ -6,5 +6,5 @@ namespace Tharga.Team.Blazor.Framework;
 /// </summary>
 internal sealed class DefaultThargaTextProvider : IThargaTextProvider
 {
-    public string Get(TextKey key) => key.Default;
+    public Task<string> GetAsync(TextKey key) => Task.FromResult(key.Default);
 }

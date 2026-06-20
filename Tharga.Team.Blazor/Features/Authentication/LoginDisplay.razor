@@ -13,15 +13,15 @@
                     <RadzenGravatar Email="@_email" AlternateText="@_email" />
                 </Template>
                 <ChildContent>
-                    <RadzenProfileMenuItem Text="@TextProvider.Get(TeamMenuText.User)" Icon="account_circle" />
-                    <RadzenProfileMenuItem Text="@TextProvider.Get(TeamMenuText.Team)" Icon="group" Visible="@GetShowTeam()" />
+                    <RadzenProfileMenuItem Text="@_userText" Icon="account_circle" />
+                    <RadzenProfileMenuItem Text="@_teamText" Icon="group" Visible="@GetShowTeam()" />
                     <hr style="margin: 0;" />
-                    <RadzenProfileMenuItem Text="@TextProvider.Get(TeamMenuText.Logout)" Icon="logout" />
+                    <RadzenProfileMenuItem Text="@_logoutText" Icon="logout" />
                 </ChildContent>
             </RadzenProfileMenu>
         </Authorized>
         <NotAuthorized>
-            <RadzenButton Text="@TextProvider.Get(TeamMenuText.Login)" Icon="login" Click="Login" />
+            <RadzenButton Text="@_loginText" Icon="login" Click="Login" />
         </NotAuthorized>
     </AuthorizeView>
 </CascadingAuthenticationState>
@@ -32,6 +32,10 @@
     private bool _showTeamDefault;
     private bool _hasTeamMenuRoleRestriction;
     private bool _userInTeamMenuRole;
+    private string _userText = TeamMenuText.User.Default;
+    private string _teamText = TeamMenuText.Team.Default;
+    private string _logoutText = TeamMenuText.Logout.Default;
+    private string _loginText = TeamMenuText.Login.Default;
 
     [Parameter]
     public bool? ShowTeam { get; set; }
@@ -56,6 +60,11 @@
         var teamMenuRoles = TeamMenuRoles?.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray() ?? [];
         _hasTeamMenuRoleRestriction = teamMenuRoles.Length > 0;
         _userInTeamMenuRole = teamMenuRoles.Any(authState.User.IsInRole);
+
+        _userText = await TextProvider.GetAsync(TeamMenuText.User);
+        _teamText = await TextProvider.GetAsync(TeamMenuText.Team);
+        _logoutText = await TextProvider.GetAsync(TeamMenuText.Logout);
+        _loginText = await TextProvider.GetAsync(TeamMenuText.Login);
 
         await base.OnInitializedAsync();
     }
