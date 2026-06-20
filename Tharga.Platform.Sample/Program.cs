@@ -25,6 +25,9 @@ builder.AddThargaPlatform(o =>
     o.Blazor.AddClaimsEnricher<DeveloperRoleEnricher>();
     o.Blazor.Consent.ShowToggle = true;
 
+    // Demo: localize the team menu strings (here to Swedish). A real app would bridge to its content system.
+    o.Blazor.AddTextProvider<SampleMenuTextProvider>();
+
     // Advanced mode unlocks the full API key UI (access level, roles, scope overrides, tags).
     o.ApiKey.AdvancedMode = true;
 
@@ -70,6 +73,7 @@ builder.AddThargaPlatform(o =>
 
     o.Audit = new AuditOptions();
 });
+
 builder.Services.AddThargaMcp(mcp =>
 {
     mcp.AddPlatform();
