@@ -10,6 +10,7 @@ public record ThargaBlazorOptions : BlazorOptions
     internal Type _memberType;
     internal Type _apiKeyService;
     internal Type _claimsEnricher;
+    internal Type _textProvider;
 
     /// <summary>
     /// Automatically create the first team for users.
@@ -83,5 +84,16 @@ public record ThargaBlazorOptions : BlazorOptions
         where TEnricher : class, ITeamClaimsEnricher
     {
         _claimsEnricher = typeof(TEnricher);
+    }
+
+    /// <summary>
+    /// Register a custom <see cref="IThargaTextProvider"/> to localize Tharga.Team UI strings (e.g. the
+    /// profile menu and team selector). Overrides the built-in English default; when none is registered,
+    /// the English defaults are used.
+    /// </summary>
+    public void AddTextProvider<TProvider>()
+        where TProvider : class, IThargaTextProvider
+    {
+        _textProvider = typeof(TProvider);
     }
 }

@@ -275,10 +275,11 @@ public sealed class MyMenuText(IContentService content) : IThargaTextProvider
     public string Get(TextKey key) => content.GetOrDefault(key.Key, key.Default);
 }
 
-builder.Services.AddScoped<IThargaTextProvider, MyMenuText>();
+// Register it through the platform options (same pattern as AddClaimsEnricher):
+builder.AddThargaPlatform(o => o.Blazor.AddTextProvider<MyMenuText>());
 ```
 
-A registered provider overrides the default regardless of registration order; without one the English defaults are used, so this is non-breaking for existing apps.
+Without a provider the English defaults are used, so this is non-breaking for existing apps.
 
 ### Version notes
 

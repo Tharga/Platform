@@ -57,6 +57,20 @@ public class ThargaTextProviderTests
         Assert.IsType<SwedishMenuText>(provider.GetRequiredService<IThargaTextProvider>());
     }
 
+    [Fact]
+    public void AddTextProvider_Option_Registers_Consumer_Provider()
+    {
+        var services = new ServiceCollection();
+
+        services.AddThargaTeamBlazor(o => o.AddTextProvider<SwedishMenuText>());
+
+        var provider = services.BuildServiceProvider();
+        var text = provider.GetRequiredService<IThargaTextProvider>();
+
+        Assert.IsType<SwedishMenuText>(text);
+        Assert.Equal("Lag", text.Get(TeamMenuText.Team));
+    }
+
     [Theory]
     [InlineData("team.menu.user", "User")]
     [InlineData("team.menu.team", "Team")]

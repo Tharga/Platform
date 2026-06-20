@@ -7,7 +7,9 @@
 - [x] 5. Tests: default impl, registration default+override (both orders), key catalog values (10 tests)
 - [x] 6. Docs: implementation-guide "Localizing menu strings" section + consumer bridge example
 - [x] 7. Build + full test run (461/461 green); commit (feat + docs)
-- [~] 8. Sample: SampleMenuTextProvider (Swedish menu demo, dict + English fallback) registered in Program.cs
+- [x] 8. Sample: SampleMenuTextProvider (Swedish menu demo, dict + English fallback)
+- [x] 9. Options-based registration: `o.Blazor.AddTextProvider<T>()` (mirrors AddClaimsEnricher); sample +
+       docs use it; +1 test. Full suite 462/462.
 
 ## Notes
 - NuGet checked during #100 finalization — Tharga.Team.Blazor deps current; nothing to bundle.
