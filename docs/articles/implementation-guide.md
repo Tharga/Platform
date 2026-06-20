@@ -264,6 +264,22 @@ Create a profile page:
 <UserProfileView />
 ```
 
+### Localizing menu strings
+
+The profile menu (`LoginDisplay`) and `TeamSelector` strings — *User, Team, Logout, Login, Create Team, Loading…* — resolve through `IThargaTextProvider`. By default they return English; register your own provider to translate them, e.g. by bridging to your app's content/localization system. Each string is a `TextKey` that bundles a stable key with its English fallback, and the keys live in `TeamMenuText`:
+
+```csharp
+public sealed class MyMenuText(IContentService content) : IThargaTextProvider
+{
+    // Return a translation for the key, or fall back to the bundled English default.
+    public string Get(TextKey key) => content.GetOrDefault(key.Key, key.Default);
+}
+
+builder.Services.AddScoped<IThargaTextProvider, MyMenuText>();
+```
+
+A registered provider overrides the default regardless of registration order; without one the English defaults are used, so this is non-breaking for existing apps.
+
 ### Version notes
 
 - `UseThargaAuth()` requires **>= 2.0.1-pre.1** for correct async login behavior. Version 2.0.0 used `Results.Challenge` (synchronous) which caused DNS errors with some Azure AD configurations.
