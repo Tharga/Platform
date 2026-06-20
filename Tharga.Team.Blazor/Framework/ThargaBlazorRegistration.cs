@@ -33,6 +33,9 @@ public static class ThargaBlazorRegistration
 
         services.AddThargaBlazor(bo => bo.Title = o.Title, configuration);
 
+        // UI string provider — default returns English; a consumer registration overrides it to localize.
+        services.TryAddSingleton<IThargaTextProvider, DefaultThargaTextProvider>();
+
         if (o._teamService != null)
         {
             services.AddScoped<ITeamStateService, TeamStateService>();

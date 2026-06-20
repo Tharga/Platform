@@ -2,18 +2,19 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ITeamStateService TeamStateService
 @inject ITeamService TeamService
+@inject IThargaTextProvider TextProvider
 
 <AuthorizeView>
     <Authorized>
         @if (_teams == null)
         {
             <RadzenProgressBarCircular Value="100" Mode="ProgressBarMode.Indeterminate" ShowValue="true" Size="ProgressBarCircularSize.ExtraSmall">
-                <Template>Loading...</Template>
+                <Template>@TextProvider.Get(TeamMenuText.Loading)</Template>
             </RadzenProgressBarCircular>
         }
         else if (_teams.Length == 0)
         {
-            <RadzenLink Text="Create Team" Path="/team" />
+            <RadzenLink Text="@TextProvider.Get(TeamMenuText.CreateTeam)" Path="/team" />
         }
         else if (_teams.Length == 1 && SelectedTeam != null)
         {

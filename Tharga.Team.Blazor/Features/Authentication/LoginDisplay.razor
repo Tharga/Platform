@@ -3,6 +3,7 @@
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IOptions<ThargaBlazorOptions> ThargaBlazorOptions;
+@inject IThargaTextProvider TextProvider
 
 <CascadingAuthenticationState>
     <AuthorizeView>
@@ -12,15 +13,15 @@
                     <RadzenGravatar Email="@_email" AlternateText="@_email" />
                 </Template>
                 <ChildContent>
-                    <RadzenProfileMenuItem Text="User" Icon="account_circle" />
-                    <RadzenProfileMenuItem Text="Team" Icon="group" Visible="@GetShowTeam()" />
+                    <RadzenProfileMenuItem Text="@TextProvider.Get(TeamMenuText.User)" Icon="account_circle" />
+                    <RadzenProfileMenuItem Text="@TextProvider.Get(TeamMenuText.Team)" Icon="group" Visible="@GetShowTeam()" />
                     <hr style="margin: 0;" />
-                    <RadzenProfileMenuItem Text="Logout" Icon="logout" />
+                    <RadzenProfileMenuItem Text="@TextProvider.Get(TeamMenuText.Logout)" Icon="logout" />
                 </ChildContent>
             </RadzenProfileMenu>
         </Authorized>
         <NotAuthorized>
-            <RadzenButton Text="Login" Icon="login" Click="Login" />
+            <RadzenButton Text="@TextProvider.Get(TeamMenuText.Login)" Icon="login" Click="Login" />
         </NotAuthorized>
     </AuthorizeView>
 </CascadingAuthenticationState>
