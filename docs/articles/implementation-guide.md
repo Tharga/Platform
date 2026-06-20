@@ -272,7 +272,7 @@ The profile menu (`LoginDisplay`) and `TeamSelector` strings — *User, Team, Lo
 public sealed class MyMenuText(IContentService content) : IThargaTextProvider
 {
     // Return a translation for the key, or fall back to the bundled English default.
-    public string Get(TextKey key) => content.GetOrDefault(key.Key, key.Default);
+    public Task<string> GetAsync(TextKey key) => content.GetOrDefaultAsync(key.Key, key.Default);
 }
 
 // Register it through the platform options (same pattern as AddClaimsEnricher):
