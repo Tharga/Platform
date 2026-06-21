@@ -21,12 +21,12 @@ public class ScopeRegistry : IScopeRegistry
 
     public IReadOnlyList<ScopeDefinition> All => _scopes;
 
-    public void Register(string scopeName, AccessLevel defaultMinimumLevel, string description = null, IReadOnlyList<string> implies = null)
+    public void Register(string scopeName, AccessLevel defaultMinimumLevel, string description = null)
     {
         if (_scopes.Any(s => s.Name == scopeName))
             throw new InvalidOperationException($"Scope '{scopeName}' is already registered.");
 
-        _scopes.Add(new ScopeDefinition(scopeName, defaultMinimumLevel, description, implies));
+        _scopes.Add(new ScopeDefinition(scopeName, defaultMinimumLevel, description));
     }
 
     public IReadOnlyList<string> GetScopesForAccessLevel(AccessLevel accessLevel)
@@ -55,34 +55,10 @@ public class ScopeRegistry : IScopeRegistry
 
         var overrides = scopeOverrides ?? Array.Empty<string>();
 
-        var granted = accessLevelScopes
+        return accessLevelScopes
             .Union(roleScopes)
-            .Union(overrides);
-
-        return ExpandImplied(granted);
-    }
-
-    /// <summary>
-    /// Expands a set of granted scopes to include everything they imply, transitively. Cycle-safe:
-    /// each scope is visited once.
-    /// </summary>
-    private IReadOnlyList<string> ExpandImplied(IEnumerable<string> scopeNames)
-    {
-        var result = new HashSet<string>();
-        var queue = new Queue<string>(scopeNames);
-
-        while (queue.Count > 0)
-        {
-            var name = queue.Dequeue();
-            if (!result.Add(name)) continue;
-
-            var implied = _scopes.FirstOrDefault(s => s.Name == name)?.Implies;
-            if (implied == null) continue;
-
-            foreach (var s in implied)
-                queue.Enqueue(s);
-        }
-
-        return result.ToList();
+            .Union(overrides)
+            .Distinct()
+            .ToList();
     }
 }

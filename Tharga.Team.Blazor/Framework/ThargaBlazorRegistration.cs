@@ -69,10 +69,7 @@ public static class ThargaBlazorRegistration
                 {
                     scopes.Register(TeamScopes.Read, AccessLevel.Viewer, "View team details and members.");
                     scopes.Register(TeamScopes.Manage, AccessLevel.Administrator, "Create, rename, and delete teams.");
-                    scopes.Register(TeamScopes.MemberInvite, AccessLevel.Administrator, "Invite new members to the team.");
-                    scopes.Register(TeamScopes.MemberRemove, AccessLevel.Administrator, "Remove members from the team.");
-                    scopes.Register(TeamScopes.MemberRole, AccessLevel.Administrator, "Change members' access level, roles, and scope overrides.");
-                    scopes.Register(TeamScopes.MemberManage, AccessLevel.Administrator, "Manage team members — subsumes invite, remove, and role changes.", implies: [TeamScopes.MemberInvite, TeamScopes.MemberRemove, TeamScopes.MemberRole]);
+                    scopes.Register(TeamScopes.MemberManage, AccessLevel.Administrator, "Manage team members — invite, remove, and change access level, roles, and scope overrides.");
                     scopes.Register(ApiKeyScopes.Manage, AccessLevel.Administrator, "Create, refresh, lock, and delete API keys.");
                     scopes.Register(AuditScopes.Read, AccessLevel.Administrator, "View the audit log.");
                 });
