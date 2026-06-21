@@ -792,30 +792,10 @@ The `ScopeProxy<T>` automatically checks that the current user has the required 
 |-------|---------------|--------|
 | `team:read` | — | `TeamScopes.Read` |
 | `team:manage` | — | `TeamScopes.Manage` |
-| `member:invite` | — | `TeamScopes.MemberInvite` |
-| `member:remove` | — | `TeamScopes.MemberRemove` |
-| `member:role` | — | `TeamScopes.MemberRole` |
-| `member:manage` | Administrator | `TeamScopes.MemberManage` — umbrella over `member:invite` + `member:remove` + `member:role` |
+| `member:manage` | Administrator | `TeamScopes.MemberManage` |
 | `apikey:manage` | — | `ApiKeyScopes.Manage` |
 
-`member:manage` lets you gate a single "manage members" surface with one scope (e.g. `[RequireScope(TeamScopes.MemberManage)]`) instead of composing the three granular scopes; the granular scopes remain for fine-grained cases.
-
-### Umbrella (implied) scopes
-
-Any scope can subsume others. Pass `implies` when registering, and a principal granted the umbrella effectively holds the implied scopes too — resolved transitively by `GetEffectiveScopes`, so it works for members, API keys, and `[RequireScope]` checks alike:
-
-```csharp
-o.ConfigureScopes = scopes =>
-{
-    scopes.Register("orders:read", AccessLevel.Viewer);
-    scopes.Register("orders:write", AccessLevel.User);
-    scopes.Register("orders:manage", AccessLevel.Administrator,
-        "Full order management.",
-        implies: ["orders:read", "orders:write"]);
-};
-```
-
-A caller granted `orders:manage` (via role, scope override, or the Owner/Administrator all-scopes rule) passes `[RequireScope("orders:read")]` and `[RequireScope("orders:write")]` as well. `member:manage` is defined exactly this way.
+`member:manage` authorizes all member management — inviting, removing, and changing members' access level, roles, and scope overrides. Gate a member-management surface with `[RequireScope(TeamScopes.MemberManage)]`.
 
 ### Alternative: Access level enforcement
 

@@ -47,15 +47,8 @@ public class SimplifyRegistrationTests
         var registry = provider.GetRequiredService<IScopeRegistry>();
         Assert.Contains(registry.All, s => s.Name == TeamScopes.Read);
         Assert.Contains(registry.All, s => s.Name == TeamScopes.Manage);
-        Assert.Contains(registry.All, s => s.Name == TeamScopes.MemberInvite);
-        Assert.Contains(registry.All, s => s.Name == TeamScopes.MemberRemove);
-        Assert.Contains(registry.All, s => s.Name == TeamScopes.MemberRole);
+        Assert.Contains(registry.All, s => s.Name == TeamScopes.MemberManage);
         Assert.Contains(registry.All, s => s.Name == ApiKeyScopes.Manage);
-
-        var memberManage = registry.All.Single(s => s.Name == TeamScopes.MemberManage);
-        Assert.Contains(TeamScopes.MemberInvite, memberManage.Implies!);
-        Assert.Contains(TeamScopes.MemberRemove, memberManage.Implies!);
-        Assert.Contains(TeamScopes.MemberRole, memberManage.Implies!);
     }
 
     [Fact]

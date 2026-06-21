@@ -15,19 +15,19 @@ public interface ITeamManagementService
     [RequireScope(TeamScopes.Manage)]
     Task DeleteTeamAsync(string teamKey);
 
-    [RequireScope(TeamScopes.MemberInvite)]
+    [RequireScope(TeamScopes.MemberManage)]
     Task AddMemberAsync(string teamKey, InviteUserModel model);
 
-    [RequireScope(TeamScopes.MemberRemove)]
+    [RequireScope(TeamScopes.MemberManage)]
     Task RemoveMemberAsync(string teamKey, string userKey);
 
-    [RequireScope(TeamScopes.MemberRole)]
+    [RequireScope(TeamScopes.MemberManage)]
     Task SetMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel);
 
-    [RequireScope(TeamScopes.MemberRole)]
+    [RequireScope(TeamScopes.MemberManage)]
     Task SetMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles);
 
-    [RequireScope(TeamScopes.MemberRole)]
+    [RequireScope(TeamScopes.MemberManage)]
     Task SetMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides);
 
     [RequireScope(TeamScopes.Manage)]

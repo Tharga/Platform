@@ -124,7 +124,7 @@ else
                                             {
                                                 <RadzenText>@context.AccessLevel</RadzenText>
                                             }
-                                            else if (_canChangeRole)
+                                            else if (_canManageMembers)
                                             {
                                                 // Custom hidden until #76 adds member scope/role editing (see InviteUserDialog).
                                                 var accessLevels = Enum.GetValues<AccessLevel>().Where(x => x != AccessLevel.Owner && x != AccessLevel.Custom);
@@ -138,7 +138,7 @@ else
                                     </RadzenDataGridColumn>
                                     <RadzenDataGridColumn Title="Roles" Width="200px" Visible="@(ShowRoles && _tenantRoleRegistry != null)">
                                         <Template>
-                                            @if (_canChangeRole && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
+                                            @if (_canManageMembers && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
                                             {
                                                 <RoleEditor Roles="_roleDefinitions"
                                                             Selected="@(context.TenantRoles ?? Array.Empty<string>())"
@@ -152,7 +152,7 @@ else
                                     </RadzenDataGridColumn>
                                     <RadzenDataGridColumn Title="Scope Overrides" Width="200px" Visible="@(ShowScopeOverrides && _scopeRegistry != null)">
                                         <Template>
-                                            @if (_canChangeRole && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
+                                            @if (_canManageMembers && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
                                             {
                                                 <ScopeOverrideEditor AllScopes="_allScopeNames"
                                                                      Descriptions="_scopeDescriptions"
@@ -193,13 +193,13 @@ else
                                     <RadzenDataGridColumn>
                                         <Template>
                                             <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem">
-                                                @if (_canInvite && context.Invitation != null)
+                                                @if (_canManageMembers && context.Invitation != null)
                                                 {
                                                     <span title="Copy invitation link">
                                                         <StandardButton Icon="link" Click="@(() => CopyInvitationLink(team, context.Key))"/>
                                                     </span>
                                                 }
-                                                @if (_canRemove && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
+                                                @if (_canManageMembers && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
                                                 {
                                                     <span title="Remove member">
                                                         <StandardButton Icon="remove" Click="@(() => RemoveUserFromTeam(team, context.Key))"/>
@@ -213,7 +213,7 @@ else
                         </RadzenColumn>
                     </RadzenRow>
                     <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right">
-                        <RadzenButton Icon="add" Text="Invite User" Click="@(() => AddUser(team))" Visible="@(_canInvite)"/>
+                        <RadzenButton Icon="add" Text="Invite User" Click="@(() => AddUser(team))" Visible="@(_canManageMembers)"/>
                     </RadzenStack>
                 </ExpandableCard>
             }
@@ -263,9 +263,7 @@ else
     private IUser _user;
     private IReadOnlyList<TenantRoleDefinition> _roleDefinitions = Array.Empty<TenantRoleDefinition>();
     private bool _canManage;
-    private bool _canInvite;
-    private bool _canRemove;
-    private bool _canChangeRole;
+    private bool _canManageMembers;
     private bool _allowTeamCreation;
     private bool _showConsentToggle;
     private string[] _consentRoles;
@@ -279,9 +277,7 @@ else
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var claims = authState.User;
         _canManage = claims.HasClaim(TeamClaimTypes.Scope, TeamScopes.Manage);
-        _canInvite = claims.HasClaim(TeamClaimTypes.Scope, TeamScopes.MemberInvite);
-        _canRemove = claims.HasClaim(TeamClaimTypes.Scope, TeamScopes.MemberRemove);
-        _canChangeRole = claims.HasClaim(TeamClaimTypes.Scope, TeamScopes.MemberRole);
+        _canManageMembers = claims.HasClaim(TeamClaimTypes.Scope, TeamScopes.MemberManage);
 
         _scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
         _tenantRoleRegistry = ServiceProvider.GetService<ITenantRoleRegistry>();
