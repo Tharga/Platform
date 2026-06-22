@@ -116,29 +116,20 @@
     <RadzenText TextStyle="TextStyle.Body2" class="rz-mb-2">
         Global capabilities you currently hold — granted to system API keys and via privileged roles.
     </RadzenText>
-    @if (_systemScopes.Count == 0)
-    {
-        <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" Variant="Variant.Flat">
-            You have no system scopes assigned.
-        </RadzenAlert>
-    }
-    else
-    {
-        <RadzenDataGrid Data="@_systemScopes" TItem="SystemScopeDefinition"
-                        AllowSorting="@AllowGridSorting"
-                        AllowFiltering="@AllowGridFiltering"
-                        FilterMode="FilterMode.Simple"
-                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
-            <Columns>
-                <RadzenDataGridColumn Title="Scope" Property="@nameof(SystemScopeDefinition.Name)" Width="260px" SortOrder="SortOrder.Ascending">
-                    <Template>
-                        <code>@context.Name</code>
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn Title="Description" Property="@nameof(SystemScopeDefinition.Description)" Visible="@ShowDescription" Filterable="false" />
-            </Columns>
-        </RadzenDataGrid>
-    }
+    <RadzenDataGrid Data="@_systemScopes" TItem="SystemScopeDefinition"
+                    AllowSorting="@AllowGridSorting"
+                    AllowFiltering="@AllowGridFiltering"
+                    FilterMode="FilterMode.Simple"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
+        <Columns>
+            <RadzenDataGridColumn Title="Scope" Property="@nameof(SystemScopeDefinition.Name)" Width="260px" SortOrder="SortOrder.Ascending">
+                <Template>
+                    <code>@context.Name</code>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Description" Property="@nameof(SystemScopeDefinition.Description)" Visible="@ShowDescription" Filterable="false" />
+        </Columns>
+    </RadzenDataGrid>
 }
 
 @code {
@@ -169,9 +160,9 @@
     private IReadOnlyList<string> _allRoleNames = Array.Empty<string>();
     private Dictionary<string, ScopeGrant> _grants = new();
     private IReadOnlyList<SystemScopeDefinition> _systemScopes = Array.Empty<SystemScopeDefinition>();
-    private bool _systemRegistryHasScopes;
 
-    private bool ShowSystemSection => ShowSystemScopes && _systemRegistryHasScopes;
+    // Show the System scopes section only when the user actually holds system scopes.
+    private bool ShowSystemSection => ShowSystemScopes && _systemScopes.Count > 0;
 
     private AccessLevel? _selectedLevel;
     private IEnumerable<string> _selectedRolesValue = Array.Empty<string>();
@@ -183,7 +174,6 @@
         var scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
         var roleRegistry = ServiceProvider.GetService<ITenantRoleRegistry>();
         var systemRegistry = ServiceProvider.GetService<ISystemScopeRegistry>();
-        _systemRegistryHasScopes = systemRegistry?.All?.Count > 0;
 
         _rows = ScopeReference.Build(scopeRegistry, roleRegistry);
         _allRoleNames = roleRegistry?.All?.Select(r => r.Name).ToList() ?? (IReadOnlyList<string>)Array.Empty<string>();
