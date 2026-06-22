@@ -54,6 +54,23 @@ public static class ScopeReference
     }
 
     /// <summary>
+    /// Returns the system scopes the current principal actually holds: the registered system scopes
+    /// (<paramref name="system"/>) whose name appears in the principal's granted <paramref name="userScopes"/>
+    /// (its <c>Scope</c> claims). Not a full catalog — only what the user has. Ordered by name.
+    /// </summary>
+    public static IReadOnlyList<SystemScopeDefinition> UserSystemScopes(ISystemScopeRegistry system, IEnumerable<string> userScopes)
+    {
+        if (system == null) return Array.Empty<SystemScopeDefinition>();
+
+        var held = userScopes as IReadOnlySet<string> ?? new HashSet<string>(userScopes ?? Enumerable.Empty<string>());
+
+        return system.All
+            .Where(s => held.Contains(s.Name))
+            .OrderBy(s => s.Name, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    /// <summary>
     /// Maps an actual access level to the value selectable in the access-level bar: Owner collapses to
     /// Administrator (they grant identical scopes), and Custom maps to null (no base scopes — its effective
     /// scopes come solely from roles and overrides).
