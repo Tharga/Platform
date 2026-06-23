@@ -14,8 +14,8 @@
        - Transfer ownership: Owner-only (unchanged).
        - Replace the membership-based `AssureAccessLevel` on rename/delete with the claim+TeamKey checks (so API keys work).
 - [x] 4. **Enforce `AllowTeamCreation` in the service** — DONE (decorator `RequireCreateAsync` / `RequireDeleteAsync` read `TeamLifecycleOptions.AllowTeamCreation`, set from `o.AllowTeamCreation` at registration); `teams:delete` exempt.
-- [ ] 5. **Update `[RequireScope]` attributes** on `ITeamManagementService` to match (remove from Create; member-name → member:manage) — kept as documentation even though enforcement now runs through the authorizer.
-- [ ] 6. **UI** — align `TeamComponent` gates (member display-name → `member:manage`); keep the buttons as a UX layer over the enforced service.
+- [x] 5. **Update `[RequireScope]` attributes** — DONE. Removed from `CreateTeamAsync` (now XML-documented as AllowTeamCreation + auth); `SetMemberNameAsync` → `MemberManage`; `DeleteTeamAsync` doc notes the `teams:delete` path; interface summary points to the service decorator as the enforcement.
+- [x] 6. **UI** — DONE. `TeamComponent` member display-name edit gate `_canManage` → `_canManageMembers` (matches the `member:manage` service rule; self-edit unchanged).
 - [ ] 7. **Tests** — authorization matrix: operation × caller (admin user / team API key / `teams:delete` holder / unauthorized) × `AllowTeamCreation` on-off × cross-team attempt. Plus registration test for the `teams:delete` system scope.
 - [ ] 8. **Docs** — scopes table (+ `teams:delete`), the authorization model, `AllowTeamCreation` semantics, and explicit guidance that REST consumers rely on these service checks (no toolkit controllers).
 - [ ] 9. Build + full test run; finalize.
