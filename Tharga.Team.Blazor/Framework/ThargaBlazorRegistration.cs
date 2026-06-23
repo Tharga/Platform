@@ -68,12 +68,20 @@ public static class ThargaBlazorRegistration
                 services.AddThargaScopes(scopes =>
                 {
                     scopes.Register(TeamScopes.Read, AccessLevel.Viewer, "View team details and members.");
-                    scopes.Register(TeamScopes.Manage, AccessLevel.Administrator, "Administer the team: rename, delete, transfer ownership, and edit member display names.");
-                    scopes.Register(TeamScopes.MemberManage, AccessLevel.Administrator, "Manage team members — invite, remove, and change access level, roles, and scope overrides.");
+                    scopes.Register(TeamScopes.Manage, AccessLevel.Administrator, "Administer the team: rename, delete, and transfer ownership.");
+                    scopes.Register(TeamScopes.MemberManage, AccessLevel.Administrator, "Manage team members — invite, remove, edit display names, and change access level, roles, and scope overrides.");
                     scopes.Register(ApiKeyScopes.Manage, AccessLevel.Administrator, "Create, refresh, lock, and delete API keys.");
                     scopes.Register(AuditScopes.Read, AccessLevel.Administrator, "View the audit log.");
                 });
             }
+
+            // Built-in system scope: teams:delete authorizes deleting any team (cross-team). Merge-safe with
+            // any consumer ConfigureSystemScopes; grant it via ConfigureSystemRoles or a system API key.
+            services.AddThargaSystemScopes(scopes =>
+            {
+                if (scopes.All.All(s => s.Name != SystemTeamScopes.Delete))
+                    scopes.Register(SystemTeamScopes.Delete, "Delete any team (cross-team), regardless of membership or the AllowTeamCreation option.");
+            });
 
             // Server-side claims enrichment — always registered, reads selected_team_id cookie
             services.AddHttpContextAccessor();
