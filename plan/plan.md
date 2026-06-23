@@ -1,13 +1,11 @@
 # Plan: Service-level authorization for team operations (→ 3.2.0)
 
 - [ ] 0. NuGet up front — `dotnet outdated -u`; verify build + tests.
-- [ ] 1. **Scopes/options surface**
-       - Add `TeamScopes`-adjacent constant for `teams:delete` (system) — e.g. `SystemTeamScopes.Delete = "teams:delete"`.
-       - Register `teams:delete` as a built-in system scope (in the default registration, into `ISystemScopeRegistry`).
-       - Update `team:manage` description (drop create + member-name); fold member display-name into the `member:manage` description.
-- [ ] 2. **Authorization mechanism** — design + build the service-layer authorizer.
-       - Reads the caller principal via `ITeamPrincipalAccessor`; helpers: `HasScope(scope)`, `TeamKeyMatches(teamKey)`, `HasSystemScope(scope)`.
-       - Decide shape: injected `ITeamAuthorizer` used inside the service, **or** an authorization decorator over `ITeamManagementService` in `Tharga.Team.Service`. (Lives in the Service layer — it needs the principal.)
+- [~] 1. **Scopes/options surface**
+       - [x] Add `SystemTeamScopes.Delete = "teams:delete"` (Tharga.Team).
+       - [ ] Register `teams:delete` as a built-in system scope (ThargaBlazorRegistration → `ISystemScopeRegistry`). DEFERRED — touches ThargaBlazorRegistration; do after ScopeView #110 merges (rebase first).
+       - [ ] Update `team:manage` description (drop create + member-name); fold member display-name into `member:manage`. DEFERRED — same file overlaps ScopeView #110.
+- [x] 2. **Authorization mechanism** — DONE. Decided: an **authorization decorator over `ITeamService`** in `Tharga.Team.Service` (mirrors `AuditingTeamServiceDecorator`; wired via the existing `DecorateWith` pattern, outermost so it checks before audit). Built `TeamAuthorizer` (reads principal via `ITeamPrincipalAccessor`): `IsAuthenticatedAsync`, `HasTeamScopeAsync(scope, teamKey)` (scope claim **and** `TeamKey == teamKey`), `HasSystemScopeAsync(scope)`. 8 unit tests green.
 - [ ] 3. **Apply per-operation rules** (the model table):
        - Create: authenticated + `AllowTeamCreation` (no scope); owner = current user.
        - Delete: (`team:manage` + `TeamKey==teamKey` + `AllowTeamCreation`) OR `teams:delete`.
