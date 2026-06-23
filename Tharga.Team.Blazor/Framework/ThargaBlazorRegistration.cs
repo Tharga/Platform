@@ -121,9 +121,36 @@ public static class ThargaBlazorRegistration
         {
             DecorateWithAudit<ITeamService>(services,
                 (inner, logger, http) => new AuditingTeamServiceDecorator(inner, logger, http));
+
+            // Service-layer authorization — outermost (checks before audit/operation), so the same scope
+            // rules protect the Blazor circuit and any consumer's REST controller calling ITeamService.
+            services.TryAddScoped<TeamAuthorizer>();
+            DecorateWithAuthorization(services, new TeamLifecycleOptions { AllowTeamCreation = o.AllowTeamCreation });
         }
 
         services.AddSingleton(Options.Create(o));
+    }
+
+    private static void DecorateWithAuthorization(IServiceCollection services, TeamLifecycleOptions lifecycle)
+    {
+        var existing = services.LastOrDefault(d => d.ServiceType == typeof(ITeamService));
+        if (existing == null) return;
+
+        services.Remove(existing);
+
+        services.AddScoped<ITeamService>(sp =>
+        {
+            ITeamService inner;
+            if (existing.ImplementationFactory != null)
+                inner = (ITeamService)existing.ImplementationFactory(sp);
+            else if (existing.ImplementationType != null)
+                inner = (ITeamService)ActivatorUtilities.CreateInstance(sp, existing.ImplementationType);
+            else
+                throw new InvalidOperationException("Cannot resolve inner ITeamService for authorization decoration.");
+
+            var authorizer = sp.GetRequiredService<TeamAuthorizer>();
+            return new AuthorizationTeamServiceDecorator(inner, authorizer, lifecycle);
+        });
     }
 
     private static void DecorateWithAudit<TService>(
