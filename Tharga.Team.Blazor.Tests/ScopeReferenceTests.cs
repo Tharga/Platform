@@ -169,4 +169,47 @@ public class ScopeReferenceTests
 
         Assert.False(grant.Granted);
     }
+
+    private static SystemScopeRegistry BuildSystemRegistry()
+    {
+        var system = new SystemScopeRegistry();
+        system.Register("system:teams:read", "Read any team.");
+        system.Register("system:metrics:read", "Read metrics.");
+        system.Register("mcp:discover", "Discover MCP.");
+        return system;
+    }
+
+    [Fact]
+    public void UserSystemScopes_ReturnsOnlyHeldRegisteredSystemScopes_OrdinalSorted()
+    {
+        // Holds two system scopes plus an unrelated team-scope claim.
+        var result = ScopeReference.UserSystemScopes(
+            BuildSystemRegistry(), new[] { "system:teams:read", "mcp:discover", "orders:read" });
+
+        Assert.Equal(new[] { "mcp:discover", "system:teams:read" }, result.Select(s => s.Name).ToArray());
+    }
+
+    [Fact]
+    public void UserSystemScopes_IgnoresClaimsThatAreNotRegisteredSystemScopes()
+    {
+        var result = ScopeReference.UserSystemScopes(BuildSystemRegistry(), new[] { "orders:read", "team:manage" });
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void UserSystemScopes_CarriesDescription()
+    {
+        var result = ScopeReference.UserSystemScopes(BuildSystemRegistry(), new[] { "mcp:discover" });
+
+        Assert.Equal("Discover MCP.", result.Single().Description);
+    }
+
+    [Fact]
+    public void UserSystemScopes_NullRegistry_ReturnsEmpty()
+        => Assert.Empty(ScopeReference.UserSystemScopes(null, new[] { "mcp:discover" }));
+
+    [Fact]
+    public void UserSystemScopes_NoneHeld_ReturnsEmpty()
+        => Assert.Empty(ScopeReference.UserSystemScopes(BuildSystemRegistry(), Array.Empty<string>()));
 }

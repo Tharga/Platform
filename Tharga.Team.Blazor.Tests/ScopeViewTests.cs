@@ -15,6 +15,7 @@ public class ScopeViewTests
     [InlineData("ShowAccessLevelSelector", true)]
     [InlineData("AllowGridSorting", true)]
     [InlineData("AllowGridFiltering", false)]
+    [InlineData("ShowSystemScopes", true)]
     public void BoolParameter_HasExpectedDefault_AndParameterAttribute(string propertyName, bool expectedDefault)
     {
         var componentType = ResolveScopeView();

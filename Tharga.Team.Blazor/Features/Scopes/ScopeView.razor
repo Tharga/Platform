@@ -13,14 +13,19 @@
     overrides are highlighted. Built dynamically from IScopeRegistry / ITenantRoleRegistry, so it always
     reflects the live configuration. Defaults to the current member's access level, roles and overrides.
 *@
-@if (_rows.Count == 0)
+@if (_rows.Count == 0 && !ShowSystemSection)
 {
     <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" Variant="Variant.Flat">
         No scopes are configured. Register them via <code>o.ConfigureScopes</code> in Program.cs.
     </RadzenAlert>
 }
-else
+
+@if (_rows.Count > 0)
 {
+    @if (ShowSystemSection)
+    {
+        <RadzenText TextStyle="TextStyle.H6" class="rz-mb-2">Team scopes</RadzenText>
+    }
     <RadzenStack Orientation="Orientation.Horizontal" Gap="1.5rem" AlignItems="AlignItems.End" Wrap="FlexWrap.Wrap" class="rz-mb-3">
         @if (ShowAccessLevelSelector)
         {
@@ -105,6 +110,28 @@ else
     </RadzenDataGrid>
 }
 
+@if (ShowSystemSection)
+{
+    <RadzenText TextStyle="TextStyle.H6" class="rz-mt-4 rz-mb-2">System scopes</RadzenText>
+    <RadzenText TextStyle="TextStyle.Body2" class="rz-mb-2">
+        Global capabilities you currently hold — granted to system API keys and via privileged roles.
+    </RadzenText>
+    <RadzenDataGrid Data="@_systemScopes" TItem="SystemScopeDefinition"
+                    AllowSorting="@AllowGridSorting"
+                    AllowFiltering="@AllowGridFiltering"
+                    FilterMode="FilterMode.Simple"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
+        <Columns>
+            <RadzenDataGridColumn Title="Scope" Property="@nameof(SystemScopeDefinition.Name)" Width="260px" SortOrder="SortOrder.Ascending">
+                <Template>
+                    <code>@context.Name</code>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Description" Property="@nameof(SystemScopeDefinition.Description)" Visible="@ShowDescription" Filterable="false" />
+        </Columns>
+    </RadzenDataGrid>
+}
+
 @code {
     /// <summary>Show the scope Description column. Default true.</summary>
     [Parameter] public bool ShowDescription { get; set; } = true;
@@ -121,11 +148,21 @@ else
     /// <summary>Allow a case-insensitive text filter on the grid. Default false.</summary>
     [Parameter] public bool AllowGridFiltering { get; set; } = false;
 
+    /// <summary>
+    /// Show a separate table listing the system scopes the current user holds (only when system scopes are
+    /// registered). Default true.
+    /// </summary>
+    [Parameter] public bool ShowSystemScopes { get; set; } = true;
+
     private static readonly ScopeGrant NotGranted = new(false, false, Array.Empty<string>(), false);
 
     private IReadOnlyList<ScopeRow> _rows = Array.Empty<ScopeRow>();
     private IReadOnlyList<string> _allRoleNames = Array.Empty<string>();
     private Dictionary<string, ScopeGrant> _grants = new();
+    private IReadOnlyList<SystemScopeDefinition> _systemScopes = Array.Empty<SystemScopeDefinition>();
+
+    // Show the System scopes section only when the user actually holds system scopes.
+    private bool ShowSystemSection => ShowSystemScopes && _systemScopes.Count > 0;
 
     private AccessLevel? _selectedLevel;
     private IEnumerable<string> _selectedRolesValue = Array.Empty<string>();
@@ -136,30 +173,40 @@ else
     {
         var scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
         var roleRegistry = ServiceProvider.GetService<ITenantRoleRegistry>();
+        var systemRegistry = ServiceProvider.GetService<ISystemScopeRegistry>();
 
         _rows = ScopeReference.Build(scopeRegistry, roleRegistry);
         _allRoleNames = roleRegistry?.All?.Select(r => r.Name).ToList() ?? (IReadOnlyList<string>)Array.Empty<string>();
 
         RecomputeGrants(); // populate for the initial render before any await
 
-        if (_rows.Count > 0)
-            await ApplyCurrentUserDefaultsAsync();
+        var principal = await GetCurrentPrincipalAsync();
+
+        // System scopes the current user holds: their Scope claims that are registered system scopes.
+        _systemScopes = ScopeReference.UserSystemScopes(
+            systemRegistry,
+            principal?.Claims.Where(c => c.Type == TeamClaimTypes.Scope).Select(c => c.Value) ?? Enumerable.Empty<string>());
+
+        if (_rows.Count > 0 && principal != null)
+            await ApplyCurrentUserDefaultsAsync(principal);
 
         RecomputeGrants(); // refine with the loaded defaults
     }
 
-    // Tenant roles and scope overrides are not in the claims — they live on the member record — so default
-    // the selectors from the current member (best-effort; falls back to the AccessLevel claim).
-    private async Task ApplyCurrentUserDefaultsAsync()
+    private async Task<ClaimsPrincipal> GetCurrentPrincipalAsync()
     {
-        ClaimsPrincipal principal = null;
         try
         {
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            principal = authState?.User;
+            return authState?.User;
         }
-        catch { /* no auth context */ }
+        catch { return null; /* no auth context */ }
+    }
 
+    // Tenant roles and scope overrides are not in the claims — they live on the member record — so default
+    // the selectors from the current member (best-effort; falls back to the AccessLevel claim).
+    private async Task ApplyCurrentUserDefaultsAsync(ClaimsPrincipal principal)
+    {
         if (principal != null && Enum.TryParse<AccessLevel>(principal.FindFirst(TeamClaimTypes.AccessLevel)?.Value, out var claimLevel))
             _selectedLevel = ScopeReference.ToSelectableLevel(claimLevel);
 
