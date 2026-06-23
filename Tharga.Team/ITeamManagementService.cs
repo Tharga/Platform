@@ -1,17 +1,20 @@
 namespace Tharga.Team;
 
 /// <summary>
-/// Scope-enforced service for team management mutations.
+/// Team management mutations. Authorization is enforced in the service layer by
+/// <c>AuthorizationTeamServiceDecorator</c> (over <see cref="ITeamService"/>); the <c>[RequireScope]</c>
+/// attributes here document the scope each operation requires.
 /// Read operations use ITeamService directly.
 /// </summary>
 public interface ITeamManagementService
 {
-    [RequireScope(TeamScopes.Manage)]
+    /// <summary>Create a team. Gated by <c>AllowTeamCreation</c> + authentication (no scope) — self-service.</summary>
     Task<ITeam> CreateTeamAsync(string name = null);
 
     [RequireScope(TeamScopes.Manage)]
     Task RenameTeamAsync(string teamKey, string name);
 
+    /// <summary>Delete a team. Requires <c>team:manage</c> on the team (with <c>AllowTeamCreation</c>) or the <c>teams:delete</c> system scope.</summary>
     [RequireScope(TeamScopes.Manage)]
     Task DeleteTeamAsync(string teamKey);
 
@@ -30,7 +33,7 @@ public interface ITeamManagementService
     [RequireScope(TeamScopes.MemberManage)]
     Task SetMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides);
 
-    [RequireScope(TeamScopes.Manage)]
+    [RequireScope(TeamScopes.MemberManage)]
     Task SetMemberNameAsync(string teamKey, string userKey, string name);
 
     [RequireScope(TeamScopes.Manage)]

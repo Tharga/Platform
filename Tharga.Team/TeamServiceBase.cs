@@ -81,10 +81,11 @@ public abstract class TeamServiceBase : ITeamService
         return team;
     }
 
+    // Authorization (team:manage / teams:delete) is enforced by AuthorizationTeamServiceDecorator at the
+    // service boundary, so it applies uniformly to admin users and team API keys. These methods perform the
+    // operation; they assume the caller is already authorized.
     public async Task RenameTeamAsync<TMember>(string teamKey, string name) where TMember : ITeamMember
     {
-        await AssureAccessLevel<TMember>(teamKey, AccessLevel.Administrator);
-
         await SetTeamNameAsync(teamKey, name);
 
         TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
@@ -92,8 +93,6 @@ public abstract class TeamServiceBase : ITeamService
 
     public async Task DeleteTeamAsync<TMember>(string teamKey) where TMember : ITeamMember
     {
-        await AssureAccessLevel<TMember>(teamKey, AccessLevel.Administrator);
-
         await DeleteTeamAsync(teamKey);
 
         TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
@@ -277,15 +276,6 @@ public abstract class TeamServiceBase : ITeamService
         return teamKey;
     }
 
-    private async Task AssureAccessLevel<TMember>(string teamKey, AccessLevel accessLevel) where TMember : ITeamMember
-    {
-        var user = await RequireCurrentUserAsync();
-        var team = await GetTeamAsync<TMember>(teamKey);
-        var member = team.Members.PickOneOrDefault(x => x.Key == user.Key, _logger, teamKey, user.Key);
-        if (member == null) throw new InvalidOperationException("User is not a member.");
-        if (member.State != MembershipState.Member) throw new InvalidOperationException("User is not a member.");
-        if (member.AccessLevel > accessLevel) throw new InvalidOperationException($"Cannot be executed by user {user.EMail} with {member.AccessLevel}.");
-    }
 
     private async Task<IUser> GetCurrentUserAsync()
     {

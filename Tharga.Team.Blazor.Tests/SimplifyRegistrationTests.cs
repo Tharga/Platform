@@ -52,6 +52,21 @@ public class SimplifyRegistrationTests
     }
 
     [Fact]
+    public void RegisterTeamService_RegistersTeamsDeleteSystemScope()
+    {
+        var services = new ServiceCollection();
+
+        services.AddThargaTeamBlazor(o =>
+        {
+            o.RegisterTeamService<StubTeamService, StubUserService>();
+        });
+
+        var provider = services.BuildServiceProvider();
+        var systemRegistry = provider.GetRequiredService<ISystemScopeRegistry>();
+        Assert.Contains(systemRegistry.All, s => s.Name == SystemTeamScopes.Delete);
+    }
+
+    [Fact]
     public void RegisterTeamService_DoesNotOverrideExistingScopeRegistry()
     {
         var services = new ServiceCollection();

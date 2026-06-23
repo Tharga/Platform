@@ -67,7 +67,7 @@ else
                                     <RadzenDataGridColumn Title="Name" Property="@nameof(ITeamMember.Name)">
                                         <Template>
                                             @{
-                                                var canEditThisRow = EnableMemberNameEdit && (_canManage || context.Key == _user.Key);
+                                                var canEditThisRow = EnableMemberNameEdit && (_canManageMembers || context.Key == _user.Key);
                                                 var isSelfEdit = context.Key == _user.Key;
                                             }
                                             @if (canEditThisRow && !string.IsNullOrEmpty(_editingMemberKey) && _editingMemberKey == context.Key)

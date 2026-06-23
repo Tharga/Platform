@@ -788,14 +788,27 @@ The `ScopeProxy<T>` automatically checks that the current user has the required 
 
 ### Built-in scopes
 
-| Scope | Default level | Source |
-|-------|---------------|--------|
-| `team:read` | — | `TeamScopes.Read` |
-| `team:manage` | — | `TeamScopes.Manage` |
-| `member:manage` | Administrator | `TeamScopes.MemberManage` |
-| `apikey:manage` | — | `ApiKeyScopes.Manage` |
+| Scope | Kind | Source | Gates |
+|-------|------|--------|-------|
+| `team:read` | team | `TeamScopes.Read` | View team details & members |
+| `team:manage` | team | `TeamScopes.Manage` | Rename, delete, transfer ownership |
+| `member:manage` | team | `TeamScopes.MemberManage` | Invite/remove members, change access level/roles/scope-overrides, edit display names |
+| `teams:delete` | **system** | `SystemTeamScopes.Delete` | Delete **any** team (cross-team) |
+| `apikey:manage` | team | `ApiKeyScopes.Manage` | Create/refresh/lock/delete API keys |
 
-`member:manage` authorizes all member management — inviting, removing, and changing members' access level, roles, and scope overrides. Gate a member-management surface with `[RequireScope(TeamScopes.MemberManage)]`.
+#### Team-operation authorization
+
+Team mutations are enforced in the **service layer** (`AuthorizationTeamServiceDecorator` over `ITeamService`), so the same rules protect the Blazor circuit **and** any consumer's REST controller that calls the service — the toolkit ships no controllers of its own.
+
+| Operation | Allowed when |
+|---|---|
+| Create | authenticated **and** `AllowTeamCreation` (no scope — self-service) |
+| Delete | (`team:manage` on the team **and** `AllowTeamCreation`) **or** `teams:delete` |
+| Rename / Consent | `team:manage` on the team |
+| Member invite/remove/role/overrides/display-name | `member:manage` on the team |
+| Transfer ownership | Owner only |
+
+Team scopes (`team:*`, `member:manage`) authorize only the caller's **own** team — the `TeamKey` claim must match the team being acted on, so an admin of one team can't act on another. **`teams:delete`** is a **system** scope (toolkit-defined) that authorizes deleting *any* team regardless of membership and regardless of `AllowTeamCreation` — grant it to your support/dev tooling via `o.ConfigureSystemRoles` (e.g. map `Developer` → `teams:delete`) or to a system API key. Setting `AllowTeamCreation = false` disables the self-service create and in-team delete paths but never blocks `teams:delete`.
 
 ### Alternative: Access level enforcement
 
