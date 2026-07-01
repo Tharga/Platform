@@ -71,6 +71,22 @@ builder.Services.AddThargaTeamBlazor(o =>
 - `<LoginDisplay />` — profile menu with Gravatar when authenticated, login button when not.
 - `<UserProfileView />` — displays the user's profile info and authentication claims.
 
+### Per-team role visibility
+
+When `TeamComponent`'s role editor is enabled (`ShowRoles`), it offers every registered tenant role by default. To hide feature-gated roles from teams where the feature is disabled, register an `ITenantRoleVisibilityProvider` (from `Tharga.Team`):
+
+```csharp
+public sealed class FeatureGatedRoleVisibility : ITenantRoleVisibilityProvider
+{
+    public async Task<bool> IsRoleVisibleAsync(string teamKey, string roleName, CancellationToken ct = default)
+        => await _features.IsRoleEnabledForTeamAsync(teamKey, roleName, ct);
+}
+
+builder.Services.AddSingleton<ITenantRoleVisibilityProvider, FeatureGatedRoleVisibility>();
+```
+
+`TeamComponent` filters the editor's role list per team through the provider. Hiding a role is **UI-only**: a role already assigned to a member stays assigned (it is preserved, never pruned, and reappears if the feature is re-enabled) and continues to grant its scopes at runtime. The default provider shows all roles, so this is opt-in and non-breaking.
+
 ## Dependencies
 
 - [Tharga.Blazor](https://www.nuget.org/packages/Tharga.Blazor) - Generic UI components.

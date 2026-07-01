@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Tharga.Team;
 
@@ -16,6 +17,8 @@ public static class TenantRoleServiceCollectionExtensions
         var roleRegistry = new TenantRoleRegistry();
         configure(roleRegistry);
         services.AddSingleton<ITenantRoleRegistry>(roleRegistry);
+
+        services.TryAddSingleton<ITenantRoleVisibilityProvider, AllRolesVisibleTenantRoleVisibilityProvider>();
 
         var scopeRegistry = services.BuildServiceProvider().GetService<IScopeRegistry>() as ScopeRegistry;
         scopeRegistry?.SetRoleRegistry(roleRegistry);
