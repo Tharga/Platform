@@ -26,6 +26,7 @@ Domain models, service abstractions, and authorization primitives for multi-tena
 - `TeamClaimTypes` - Claim type constants (`TeamKey`, `AccessLevel`, `Scope`, `TagPrefix`).
 - `IScopeRegistry` / `ScopeRegistry` - Register and resolve scopes per access level.
 - `ITenantRoleRegistry` / `TenantRoleRegistry` - Register tenant roles with associated scopes.
+- `ITenantRoleVisibilityProvider` - Optional per-team hook that decides whether a tenant role is offered in the role editor. Default (`AllRolesVisibleTenantRoleVisibilityProvider`) shows every role; register your own to hide feature-gated roles from teams where the feature is disabled. Hiding a role never prunes existing assignments and does not affect scope resolution.
 - `RequireAccessLevelAttribute` / `RequireScopeAttribute` - Declarative authorization on service methods.
 - `TeamScopes` / `ApiKeyScopes` / `AuditScopes` - Built-in scope constants (`audit:read` gates the audit log).
 - `ISystemScopeRegistry` / `ISystemRoleRegistry` - Global (system) scopes for system API keys, and a mapping of app/global roles (e.g. `Developer`) to those scopes for privileged users. Configured via `o.ConfigureSystemScopes` / `o.ConfigureSystemRoles`.

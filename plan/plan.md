@@ -14,10 +14,11 @@
 - [x] 6. Tests (no bUnit in this project → logic extracted to testable `RoleSelectionResolver`):
       6 resolver tests (split/merge/preservation) + 3 Service tests (default visibility, default
       registration, consumer override). Full suite green: 502 passed.
-- [~] 7. Docs: update `Tharga.Team` + `Tharga.Team.Blazor` README and the docs site article for the
-      new hook. Re-run `dotnet outdated` at finalization.
-- [ ] 8. Close-out: archive feature.md to Plan dir `done/`, `git rm -r plan`, final commit, open PR
-      develop → master.
+- [x] 7. Docs: updated `Tharga.Team` README (authorization list), `Tharga.Team.Blazor` README (new
+      "Per-team role visibility" subsection), and docs-site `implementation-guide.md` Step 7
+      ("Hiding roles per team"). `dotnet outdated` re-run deferred to finalization (step 8).
+- [~] 8. Close-out (after user tests + confirms): re-run `dotnet outdated`, archive feature.md to
+      Plan dir `done/`, `git rm -r plan`, final commit, open PR develop → master.
 
 ## Notes / decisions
 - Branch base: local `develop` (already contains all of master); PR target `master` (per user).
