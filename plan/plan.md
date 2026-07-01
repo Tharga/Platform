@@ -5,16 +5,16 @@
 - [x] 1. **NuGet updates (up front, bundled into this PR).** Applied solution-wide:
       `Microsoft.Identity.Web` 4.11.0→4.12.0, `Tharga.MongoDB` 2.11.2→2.11.3. Build + full test
       suite green (493 tests passed). Committed.
-- [~] 2. Add `ITenantRoleVisibilityProvider` interface in `Tharga.Team` (next to `ITenantRoleRegistry`).
-- [ ] 3. Add default identity implementation (all roles visible); register via `TryAddSingleton`
-      in the tenant-role service-collection extension so it's overridable and non-breaking.
-- [ ] 4. `TeamComponent`: resolve the provider, build a per-team visible-role map during team load,
-      pass the team's visible list to each row's `RoleEditor`.
-- [ ] 5. `RoleEditor`: preserve assigned-but-hidden roles on change (union hidden-selected into the
-      emitted value) so hidden assignments are never pruned.
-- [ ] 6. Tests: default provider visibility; overridable registration; `TeamComponent` per-team
-      filtering (bUnit); hidden-assigned preservation.
-- [ ] 7. Docs: update `Tharga.Team` + `Tharga.Team.Blazor` README and the docs site article for the
+- [x] 2. Added `ITenantRoleVisibilityProvider` interface in `Tharga.Team`.
+- [x] 3. Added `AllRolesVisibleTenantRoleVisibilityProvider` (identity); registered via
+      `TryAddSingleton` in `AddThargaTenantRoles` — overridable, non-breaking.
+- [x] 4. `TeamComponent` resolves the provider, builds `_visibleRolesByTeam` in `ReloadTeams` via
+      `BuildVisibleRolesAsync`, and renders each row's `RoleEditor` with `GetVisibleRoles(team.Key)`.
+- [x] 5. `RoleEditor` preserves assigned-but-hidden roles via `RoleSelectionResolver.Split/Merge`.
+- [x] 6. Tests (no bUnit in this project → logic extracted to testable `RoleSelectionResolver`):
+      6 resolver tests (split/merge/preservation) + 3 Service tests (default visibility, default
+      registration, consumer override). Full suite green: 502 passed.
+- [~] 7. Docs: update `Tharga.Team` + `Tharga.Team.Blazor` README and the docs site article for the
       new hook. Re-run `dotnet outdated` at finalization.
 - [ ] 8. Close-out: archive feature.md to Plan dir `done/`, `git rm -r plan`, final commit, open PR
       develop → master.

@@ -140,7 +140,7 @@ else
                                         <Template>
                                             @if (_canManageMembers && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
                                             {
-                                                <RoleEditor Roles="_roleDefinitions"
+                                                <RoleEditor Roles="@GetVisibleRoles(team.Key)"
                                                             Selected="@(context.TenantRoles ?? Array.Empty<string>())"
                                                             SelectedChanged="@(r => ChangeTenantRoles(team, context.Key, r))" />
                                             }
@@ -271,6 +271,8 @@ else
     private IReadOnlyDictionary<string, string> _scopeDescriptions = new Dictionary<string, string>();
     private IScopeRegistry _scopeRegistry;
     private ITenantRoleRegistry _tenantRoleRegistry;
+    private ITenantRoleVisibilityProvider _roleVisibilityProvider;
+    private readonly Dictionary<string, IReadOnlyList<TenantRoleDefinition>> _visibleRolesByTeam = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -281,6 +283,7 @@ else
 
         _scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
         _tenantRoleRegistry = ServiceProvider.GetService<ITenantRoleRegistry>();
+        _roleVisibilityProvider = ServiceProvider.GetService<ITenantRoleVisibilityProvider>();
 
         _allowTeamCreation = BlazorOptions.Value.AllowTeamCreation;
         _showConsentToggle = BlazorOptions.Value.Consent.ShowToggle;
@@ -611,8 +614,29 @@ else
         _teams = null;
         _selectedTeam = await TeamStateService.GetSelectedTeamAsync();
         _teams = await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
+        await BuildVisibleRolesAsync();
         StateHasChanged();
     }
+
+    private async Task BuildVisibleRolesAsync()
+    {
+        _visibleRolesByTeam.Clear();
+        if (_roleDefinitions.Count == 0 || _roleVisibilityProvider == null) return;
+
+        foreach (var team in _teams)
+        {
+            var visible = new List<TenantRoleDefinition>(_roleDefinitions.Count);
+            foreach (var role in _roleDefinitions)
+            {
+                if (await _roleVisibilityProvider.IsRoleVisibleAsync(team.Key, role.Name))
+                    visible.Add(role);
+            }
+            _visibleRolesByTeam[team.Key] = visible;
+        }
+    }
+
+    private IReadOnlyList<TenantRoleDefinition> GetVisibleRoles(string teamKey)
+        => _visibleRolesByTeam.TryGetValue(teamKey, out var roles) ? roles : _roleDefinitions;
 
     private async Task CopyInvitationLink(ITeam<TMember> team, string userKey)
     {

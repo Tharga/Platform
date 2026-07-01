@@ -20,7 +20,11 @@
 </RadzenDropDown>
 
 @code {
-    /// <summary>The registered tenant roles to offer (typically <c>ITenantRoleRegistry.All</c>).</summary>
+    /// <summary>
+    /// The tenant roles to offer, already filtered to those visible for the current team. A role
+    /// assigned to the member but absent here is treated as hidden: it stays assigned but is not
+    /// shown or editable.
+    /// </summary>
     [Parameter] public IReadOnlyList<TenantRoleDefinition> Roles { get; set; } = Array.Empty<TenantRoleDefinition>();
 
     /// <summary>Currently assigned role names.</summary>
@@ -33,13 +37,16 @@
 
     private List<RoleOption> _options = new();
     private IEnumerable<string> _value = Array.Empty<string>();
+    private string[] _hiddenSelected = Array.Empty<string>();
 
     protected override void OnParametersSet()
     {
-        _options = (Roles ?? Array.Empty<TenantRoleDefinition>())
-            .Select(r => new RoleOption(r.Name, BuildTooltip(r)))
-            .ToList();
-        _value = (Selected ?? Array.Empty<string>()).ToList();
+        var roles = Roles ?? Array.Empty<TenantRoleDefinition>();
+        _options = roles.Select(r => new RoleOption(r.Name, BuildTooltip(r))).ToList();
+
+        var (visible, hidden) = RoleSelectionResolver.Split(roles.Select(r => r.Name), Selected);
+        _hiddenSelected = hidden.ToArray();
+        _value = visible.ToList();
     }
 
     private static string BuildTooltip(TenantRoleDefinition role)
@@ -54,7 +61,7 @@
     {
         var selected = (value ?? Enumerable.Empty<string>()).ToList();
         _value = selected;
-        await SelectedChanged.InvokeAsync(selected.ToArray());
+        await SelectedChanged.InvokeAsync(RoleSelectionResolver.Merge(selected, _hiddenSelected));
     }
 
     public sealed record RoleOption(string Name, string Tooltip);
