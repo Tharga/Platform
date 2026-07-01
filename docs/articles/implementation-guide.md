@@ -860,6 +860,22 @@ Role assignment is a **component parameter**, not a global option. Set `ShowRole
 
 When a team member is assigned the "Editor" role, they automatically receive the `feature:read` and `feature:write` scopes in addition to their access-level scopes. Roles are combined — a member with both "Editor" and "Auditor" gets all scopes from both. Members/keys store the role **names**; the scopes are resolved live from the registry (change a role's scopes and it applies to all assignees).
 
+### Hiding roles per team
+
+By default the role editor offers every registered role for every team. If a role is feature-gated — only meaningful for teams that have the feature enabled — register an `ITenantRoleVisibilityProvider` to hide it where the feature is off:
+
+```csharp
+public sealed class FeatureGatedRoleVisibility : ITenantRoleVisibilityProvider
+{
+    public Task<bool> IsRoleVisibleAsync(string teamKey, string roleName, CancellationToken ct = default)
+        => _features.IsRoleEnabledForTeamAsync(teamKey, roleName, ct);
+}
+
+builder.Services.AddSingleton<ITenantRoleVisibilityProvider, FeatureGatedRoleVisibility>();
+```
+
+`<TeamComponent>` consults the provider per team before building each row's role list. This is **display-only**: a role already assigned to a member is preserved (never pruned) and still grants its scopes at runtime even while hidden — it simply isn't offered as a new choice, and reappears in the editor if the feature is re-enabled. The default provider shows all roles, so the hook is opt-in and non-breaking.
+
 ### Verification
 
 Assign a role to a team member, then verify they can access methods protected by the role's scopes.
