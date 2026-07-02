@@ -242,7 +242,7 @@
         if (ShowAuditLogButton) items.Add(new ContextMenuItem { Text = "Audit log", Icon = "manage_search", Value = "audit" });
         if (hasValue) items.Add(new ContextMenuItem { Text = "Lock", Icon = "lock", Value = "lock" });
         items.Add(new ContextMenuItem { Text = "Refresh", Icon = "refresh", Value = "refresh" });
-        items.Add(new ContextMenuItem { Text = "Delete", Icon = "delete", Value = "delete" });
+        items.Add(new ContextMenuItem { Text = "Delete", Icon = "delete", IconColor = "var(--rz-danger)", Value = "delete" });
 
         ContextMenuService.Open(args, items, async e =>
         {

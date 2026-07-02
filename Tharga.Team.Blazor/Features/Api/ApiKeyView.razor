@@ -442,7 +442,7 @@ else
         if (showEdit) items.Add(new ContextMenuItem { Text = "Edit roles & scopes", Icon = "tune", Value = "edit" });
         if (hasValue) items.Add(new ContextMenuItem { Text = "Lock", Icon = "lock", Value = "lock" });
         items.Add(new ContextMenuItem { Text = "Refresh", Icon = "refresh", Value = "refresh" });
-        if (_options.AdvancedMode) items.Add(new ContextMenuItem { Text = "Delete", Icon = "delete", Value = "delete" });
+        if (_options.AdvancedMode) items.Add(new ContextMenuItem { Text = "Delete", Icon = "delete", IconColor = "var(--rz-danger)", Value = "delete" });
 
         ContextMenuService.Open(args, items, async e =>
         {
