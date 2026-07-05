@@ -49,6 +49,14 @@ public class ThargaPlatformOptions
     public Action<TenantRoleRegistry> ConfigureTenantRoles { get; set; }
 
     /// <summary>
+    /// Enable runtime-defined (dynamic) tenant roles: team administrators can create / update / delete their
+    /// own custom roles per team (scopes constrained to app-registered scopes), managed via the
+    /// <c>TenantRoleManager</c> component and surfaced alongside code-registered roles. When false (default),
+    /// only code-registered roles apply and custom-role scopes are not resolved into claims.
+    /// </summary>
+    public bool EnableDynamicRoles { get; set; }
+
+    /// <summary>
     /// Configure system-level (global) scopes — the capabilities offered to system API keys (and, via role
     /// mapping, to privileged users). When null, system-scope registration is skipped.
     /// </summary>

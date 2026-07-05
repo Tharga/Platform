@@ -18,6 +18,7 @@ internal class TeamServerClaimsTransformation : IClaimsTransformation
     private readonly IScopeRegistry _scopeRegistry;
     private readonly ISystemRoleRegistry _systemRoleRegistry;
     private readonly ITeamClaimsEnricher _claimsEnricher;
+    private readonly ITenantRoleService _tenantRoleService;
     private readonly ThargaBlazorOptions _options;
 
     public TeamServerClaimsTransformation(
@@ -27,7 +28,8 @@ internal class TeamServerClaimsTransformation : IClaimsTransformation
         IOptions<ThargaBlazorOptions> options,
         IScopeRegistry scopeRegistry = null,
         ISystemRoleRegistry systemRoleRegistry = null,
-        ITeamClaimsEnricher claimsEnricher = null)
+        ITeamClaimsEnricher claimsEnricher = null,
+        ITenantRoleService tenantRoleService = null)
     {
         _httpContextAccessor = httpContextAccessor;
         _teamService = teamService;
@@ -36,6 +38,7 @@ internal class TeamServerClaimsTransformation : IClaimsTransformation
         _scopeRegistry = scopeRegistry;
         _systemRoleRegistry = systemRoleRegistry;
         _claimsEnricher = claimsEnricher;
+        _tenantRoleService = tenantRoleService;
     }
 
     public async Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
@@ -84,7 +87,14 @@ internal class TeamServerClaimsTransformation : IClaimsTransformation
             if (!string.IsNullOrEmpty(member.Key))
                 AddClaimSafe(identity, TeamClaimTypes.MemberKey, member.Key);
 
-            if (_scopeRegistry != null)
+            if (_tenantRoleService != null)
+            {
+                foreach (var scope in await _tenantRoleService.GetEffectiveScopesAsync(teamKey, member.AccessLevel, member.TenantRoles, member.ScopeOverrides))
+                {
+                    AddClaimSafe(identity, TeamClaimTypes.Scope, scope);
+                }
+            }
+            else if (_scopeRegistry != null)
             {
                 foreach (var scope in _scopeRegistry.GetEffectiveScopes(member.AccessLevel, member.TenantRoles, member.ScopeOverrides))
                 {

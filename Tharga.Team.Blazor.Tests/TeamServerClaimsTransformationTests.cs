@@ -225,6 +225,38 @@ public class TeamServerClaimsTransformationTests
     }
 
     [Fact]
+    public async Task WithTenantRoleService_ResolvesCustomRoleScopes_AndBypassesScopeRegistry()
+    {
+        SetupCookie("team-1");
+        var principal = CreateAuthenticatedPrincipal();
+        var user = Mock.Of<IUser>(u => u.Key == "user-1");
+        _userService.Setup(u => u.GetCurrentUserAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(user);
+        _teamService.Setup(t => t.GetTeamMemberAsync("team-1", "user-1"))
+            .ReturnsAsync(Mock.Of<ITeamMember>(m =>
+                m.AccessLevel == AccessLevel.Custom &&
+                m.TenantRoles == new[] { "Registrar" } &&
+                m.ScopeOverrides == Array.Empty<string>()));
+
+        var tenantRoleService = new Mock<ITenantRoleService>();
+        tenantRoleService.Setup(s => s.GetEffectiveScopesAsync(
+                "team-1", AccessLevel.Custom, It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(new[] { "case:read", "case:write" });
+
+        var sut = new TeamServerClaimsTransformation(
+            _httpContextAccessor.Object, _teamService.Object, _userService.Object, _options.Object,
+            _scopeRegistry.Object, tenantRoleService: tenantRoleService.Object);
+
+        var result = await sut.TransformAsync(principal);
+
+        Assert.Contains(result.Claims, c => c.Type == TeamClaimTypes.Scope && c.Value == "case:read");
+        Assert.Contains(result.Claims, c => c.Type == TeamClaimTypes.Scope && c.Value == "case:write");
+        // When the team-aware resolver is present, the plain scope-registry path is not used.
+        _scopeRegistry.Verify(s => s.GetEffectiveScopes(
+            It.IsAny<AccessLevel>(), It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()), Times.Never);
+    }
+
+    [Fact]
     public async Task DuplicateClaims_NotAdded()
     {
         SetupCookie("team-1");

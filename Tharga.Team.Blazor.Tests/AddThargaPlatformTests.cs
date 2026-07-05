@@ -55,6 +55,24 @@ public class AddThargaPlatformTests
     }
 
     [Fact]
+    public void EnableDynamicRoles_True_RegistersTenantRoleService()
+    {
+        var builder = CreateBuilder();
+        builder.AddThargaPlatform(o => o.EnableDynamicRoles = true);
+
+        Assert.Contains(builder.Services, d => d.ServiceType == typeof(ITenantRoleService));
+    }
+
+    [Fact]
+    public void EnableDynamicRoles_Default_DoesNotRegisterTenantRoleService()
+    {
+        var builder = CreateBuilder();
+        builder.AddThargaPlatform();
+
+        Assert.DoesNotContain(builder.Services, d => d.ServiceType == typeof(ITenantRoleService));
+    }
+
+    [Fact]
     public void RegistersBlazorOptions()
     {
         var builder = CreateBuilder();

@@ -25,4 +25,15 @@ public static class TenantRoleServiceCollectionExtensions
 
         return services;
     }
+
+    /// <summary>
+    /// Registers the team-aware <see cref="ITenantRoleService"/> that resolves a member's effective scopes
+    /// from code-registered roles plus the team's runtime-defined custom roles. Enables dynamic tenant roles:
+    /// without it, only code-registered roles are resolved into claims.
+    /// </summary>
+    public static IServiceCollection AddThargaDynamicTenantRoles(this IServiceCollection services)
+    {
+        services.TryAddScoped<ITenantRoleService, TenantRoleService>();
+        return services;
+    }
 }
