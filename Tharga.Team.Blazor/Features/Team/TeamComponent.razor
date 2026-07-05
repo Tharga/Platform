@@ -168,7 +168,7 @@ else
                                     </RadzenDataGridColumn>
                                     <RadzenDataGridColumn Title="Scopes" Width="80px" Visible="@(_scopeRegistry != null && ShowScopeTooltip)">
                                         <Template>
-                                            <span title="@GetEffectiveScopesWithOriginText(context)">
+                                            <span title="@GetEffectiveScopesWithOriginText(team, context)">
                                                 <RadzenIcon Icon="info" Style="cursor: help;" />
                                             </span>
                                         </Template>
@@ -262,6 +262,7 @@ else
     private ITeam _selectedTeam;
     private IUser _user;
     private IReadOnlyList<TenantRoleDefinition> _roleDefinitions = Array.Empty<TenantRoleDefinition>();
+    private ITenantRoleService _tenantRoleService;
     private bool _canManage;
     private bool _canManageMembers;
     private bool _allowTeamCreation;
@@ -283,6 +284,7 @@ else
 
         _scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
         _tenantRoleRegistry = ServiceProvider.GetService<ITenantRoleRegistry>();
+        _tenantRoleService = ServiceProvider.GetService<ITenantRoleService>();
         _roleVisibilityProvider = ServiceProvider.GetService<ITenantRoleVisibilityProvider>();
 
         _allowTeamCreation = BlazorOptions.Value.AllowTeamCreation;
@@ -304,17 +306,22 @@ else
         await base.OnInitializedAsync();
     }
 
-    private string GetEffectiveScopesWithOriginText(TMember member)
+    private string GetEffectiveScopesWithOriginText(ITeam<TMember> team, TMember member)
     {
         if (_scopeRegistry == null) return "";
 
+        var roleNames = member.TenantRoles ?? Array.Empty<string>();
         var accessLevelScopes = _scopeRegistry.GetScopesForAccessLevel(member.AccessLevel);
-        var roleScopes = _tenantRoleRegistry?.GetScopesForRoles(member.TenantRoles ?? Array.Empty<string>())
+        var codeRoleScopes = _tenantRoleRegistry?.GetScopesForRoles(roleNames)
             ?? (IReadOnlyList<string>)Array.Empty<string>();
+        var customRoleScopes = (_tenantRoleService != null ? team.CustomRoles ?? [] : [])
+            .Where(r => roleNames.Contains(r.Name))
+            .SelectMany(r => r.Scopes ?? []);
+        var roleScopes = codeRoleScopes.Concat(customRoleScopes).ToHashSet(StringComparer.Ordinal);
         var overrides = member.ScopeOverrides ?? Array.Empty<string>();
 
+        var allScopes = accessLevelScopes.Concat(roleScopes).Concat(overrides).Distinct();
         var lines = new List<string>();
-        var allScopes = _scopeRegistry.GetEffectiveScopes(member.AccessLevel, member.TenantRoles, member.ScopeOverrides);
         foreach (var scope in allScopes.OrderBy(s => s, StringComparer.Ordinal))
         {
             var origin = overrides.Contains(scope) ? "override"
@@ -621,18 +628,44 @@ else
     private async Task BuildVisibleRolesAsync()
     {
         _visibleRolesByTeam.Clear();
-        if (_roleDefinitions.Count == 0 || _roleVisibilityProvider == null) return;
+        if (_teams == null) return;
 
         foreach (var team in _teams)
         {
-            var visible = new List<TenantRoleDefinition>(_roleDefinitions.Count);
-            foreach (var role in _roleDefinitions)
+            var teamRoles = RolesForTeam(team);
+            if (teamRoles.Count == 0)
+            {
+                _visibleRolesByTeam[team.Key] = teamRoles;
+                continue;
+            }
+
+            if (_roleVisibilityProvider == null)
+            {
+                _visibleRolesByTeam[team.Key] = teamRoles;
+                continue;
+            }
+
+            var visible = new List<TenantRoleDefinition>(teamRoles.Count);
+            foreach (var role in teamRoles)
             {
                 if (await _roleVisibilityProvider.IsRoleVisibleAsync(team.Key, role.Name))
                     visible.Add(role);
             }
             _visibleRolesByTeam[team.Key] = visible;
         }
+    }
+
+    // Code-registered roles plus (when dynamic roles are enabled) the team's own custom roles. Code roles
+    // win on a name clash. Reads the team's custom roles from the already-loaded team document (no extra fetch).
+    private IReadOnlyList<TenantRoleDefinition> RolesForTeam(ITeam<TMember> team)
+    {
+        if (_tenantRoleService == null || team.CustomRoles is not { Count: > 0 })
+            return _roleDefinitions;
+
+        var codeNames = _roleDefinitions.Select(r => r.Name).ToHashSet(StringComparer.Ordinal);
+        return _roleDefinitions
+            .Concat(team.CustomRoles.Where(r => !codeNames.Contains(r.Name)))
+            .ToList();
     }
 
     private IReadOnlyList<TenantRoleDefinition> GetVisibleRoles(string teamKey)
