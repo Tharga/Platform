@@ -83,6 +83,13 @@ internal class TestTeamService : TeamServiceBase
 
     protected override Task SetTeamConsentInternalAsync(string teamKey, string[] consentedRoles, AccessLevel? accessLevel) => Task.CompletedTask;
     protected override IAsyncEnumerable<ITeam> GetConsentedTeamsInternalAsync(string[] userRoles) => AsyncEnumerable.Empty<ITeam>();
+
+    protected override Task SetTeamCustomRolesInternalAsync(string teamKey, IReadOnlyList<TenantRoleDefinition> customRoles)
+    {
+        if (_teams.TryGetValue(teamKey, out var team))
+            _teams[teamKey] = team with { CustomRoles = customRoles };
+        return Task.CompletedTask;
+    }
 }
 
 internal record TestTeam : ITeam<TestMember>
@@ -91,6 +98,7 @@ internal record TestTeam : ITeam<TestMember>
     public string Name { get; init; }
     public string Icon { get; init; }
     public string[] ConsentedRoles { get; init; }
+    public IReadOnlyList<TenantRoleDefinition> CustomRoles { get; init; }
     public TestMember[] Members { get; init; } = [];
 }
 

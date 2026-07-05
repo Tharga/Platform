@@ -19,4 +19,7 @@ public abstract record TeamEntityBase<TTeamMemberModel> : EntityBase, ITeam<TTea
 
     [BsonIgnoreIfNull]
     public AccessLevel? ConsentAccessLevel { get; init; }
+
+    [BsonIgnoreIfNull]
+    public IReadOnlyList<TenantRoleDefinition> CustomRoles { get; init; }
 }

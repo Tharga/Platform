@@ -200,6 +200,13 @@ internal class TeamRepository<TTeamEntity, TMember> : ITeamRepository<TTeamEntit
         return _collection.UpdateOneAsync(filter, update);
     }
 
+    public Task SetCustomRolesAsync(string teamKey, IReadOnlyList<TenantRoleDefinition> customRoles)
+    {
+        var filter = new FilterDefinitionBuilder<TTeamEntity>().Eq(x => x.Key, teamKey);
+        var update = new UpdateDefinitionBuilder<TTeamEntity>().Set(x => x.CustomRoles, customRoles);
+        return _collection.UpdateOneAsync(filter, update);
+    }
+
     public IAsyncEnumerable<TTeamEntity> GetTeamsByConsentAsync(string[] roles)
     {
         return _collection.GetAsync(x => x.ConsentedRoles != null && x.ConsentedRoles.Any(r => roles.Contains(r)));

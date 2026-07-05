@@ -35,6 +35,7 @@ public abstract class TeamServiceBase : ITeamService
     protected abstract Task SetTeamMemberNameAsync(string teamKey, string userKey, string name);
     protected abstract Task SetTeamConsentInternalAsync(string teamKey, string[] consentedRoles, AccessLevel? accessLevel);
     protected abstract IAsyncEnumerable<ITeam> GetConsentedTeamsInternalAsync(string[] userRoles);
+    protected abstract Task SetTeamCustomRolesInternalAsync(string teamKey, IReadOnlyList<TenantRoleDefinition> customRoles);
 
     public async IAsyncEnumerable<ITeam> GetTeamsAsync()
     {
@@ -261,6 +262,18 @@ public abstract class TeamServiceBase : ITeamService
     public IAsyncEnumerable<ITeam> GetConsentedTeamsAsync(string[] userRoles)
     {
         return GetConsentedTeamsInternalAsync(userRoles);
+    }
+
+    public async Task<IReadOnlyList<TenantRoleDefinition>> GetTeamCustomRolesAsync(string teamKey)
+    {
+        var team = await GetTeamAsync(teamKey);
+        return team?.CustomRoles ?? Array.Empty<TenantRoleDefinition>();
+    }
+
+    public async Task SetTeamCustomRolesAsync(string teamKey, IReadOnlyList<TenantRoleDefinition> customRoles)
+    {
+        await SetTeamCustomRolesInternalAsync(teamKey, customRoles);
+        TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
     }
 
     private async Task<string> GetRandomUnsusedTeamKey()

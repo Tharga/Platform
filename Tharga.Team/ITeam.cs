@@ -16,6 +16,13 @@ public interface ITeam
     /// Access level granted to consented roles. Null falls back to the configured default consent level.
     /// </summary>
     AccessLevel? ConsentAccessLevel => null;
+
+    /// <summary>
+    /// Custom roles defined at runtime for this team (created / updated / deleted without a code deploy).
+    /// Null or empty means only code-registered roles apply. Each role's scopes are constrained to
+    /// app-registered scopes.
+    /// </summary>
+    IReadOnlyList<TenantRoleDefinition> CustomRoles => null;
 }
 
 public interface ITeam<TMember> : ITeam

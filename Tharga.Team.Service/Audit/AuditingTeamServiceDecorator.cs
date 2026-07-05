@@ -44,6 +44,7 @@ public class AuditingTeamServiceDecorator : ITeamService
     public IAsyncEnumerable<ITeamMember> GetMembersAsync(string teamKey) => _inner.GetMembersAsync(teamKey);
     public IAsyncEnumerable<ITeam> GetConsentedTeamsAsync(string[] userRoles) => _inner.GetConsentedTeamsAsync(userRoles);
     public Task SetMemberLastSeenAsync(string teamKey) => _inner.SetMemberLastSeenAsync(teamKey);
+    public Task<IReadOnlyList<TenantRoleDefinition>> GetTeamCustomRolesAsync(string teamKey) => _inner.GetTeamCustomRolesAsync(teamKey);
 
     // Mutation operations — log audit entries
 
@@ -232,6 +233,23 @@ public class AuditingTeamServiceDecorator : ITeamService
         {
             sw.Stop();
             Log("set-consent", nameof(SetTeamConsentAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey);
+            throw;
+        }
+    }
+
+    public async Task SetTeamCustomRolesAsync(string teamKey, IReadOnlyList<TenantRoleDefinition> customRoles)
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            await _inner.SetTeamCustomRolesAsync(teamKey, customRoles);
+            sw.Stop();
+            Log("set-custom-roles", nameof(SetTeamCustomRolesAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            Log("set-custom-roles", nameof(SetTeamCustomRolesAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey);
             throw;
         }
     }
