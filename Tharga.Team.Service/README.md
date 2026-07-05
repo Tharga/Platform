@@ -36,6 +36,19 @@ app.UseAuthorization();
 app.Run();
 ```
 
+## Customizing the OpenAPI document
+
+`AddThargaControllers` owns the OpenAPI document (it registers the API-key security scheme on it). To add your own `IOpenApiDocumentTransformer` / `IOpenApiOperationTransformer` — for example, to filter the generated spec down to the operations the current caller is authorized for — use the `ConfigureOpenApi` hook instead of calling `AddOpenApi("v1", …)` yourself:
+
+```csharp
+builder.Services.AddThargaControllers(o =>
+    o.ConfigureOpenApi(api => api.AddDocumentTransformer<ScopeFilteringDocumentTransformer>()));
+```
+
+The callback receives the same `OpenApiOptions` Tharga configures, so your transformers run against the document Tharga already manages. Multiple `ConfigureOpenApi` calls compose (each runs, in registration order). This avoids a second `AddOpenApi("v1", …)` registration — which would leave it ambiguous whether your document composes with or overrides Tharga's, and, in .NET 10, forces the OpenAPI XML-comment source generator to emit an interceptor into your project (requiring `<InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.OpenApi.Generated</InterceptorsNamespaces>` just to compile).
+
+> **.NET 10+ only.** On .NET 9 the document is built by Swashbuckle and this hook is not present; use Swashbuckle's `IDocumentFilter` / `IOperationFilter` there.
+
 ## System API keys
 
 For infrastructure-level credentials that aren't tied to a team (MCP gatekeepers, CI/CD callers, cross-team admin tooling), use **system keys** — API keys with no `TeamKey`.

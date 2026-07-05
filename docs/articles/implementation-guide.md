@@ -323,6 +323,17 @@ builder.Services.AddThargaControllers(o =>
 });
 ```
 
+### Customizing the OpenAPI document (.NET 10+)
+
+`AddThargaControllers` owns the OpenAPI document and registers the API-key security scheme on it. To add your own `IOpenApiDocumentTransformer` / `IOpenApiOperationTransformer` — for example, per-scope operation filtering so the generated spec only exposes operations the caller is authorized for — use the `ConfigureOpenApi` hook rather than calling `AddOpenApi("v1", …)` directly:
+
+```csharp
+builder.Services.AddThargaControllers(o =>
+    o.ConfigureOpenApi(api => api.AddDocumentTransformer<ScopeFilteringDocumentTransformer>()));
+```
+
+The callback receives the same `OpenApiOptions` Tharga configures, so your transformers apply to the document Tharga already manages. Multiple `ConfigureOpenApi` calls compose in registration order. Using this hook (instead of a separate `AddOpenApi("v1", …)` call) keeps composition explicit and avoids the .NET 10 OpenAPI source generator emitting an interceptor into your project. On .NET 9 the document is Swashbuckle-based and this hook is not present.
+
 ### What becomes available
 
 - MVC controller routing
