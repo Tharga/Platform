@@ -141,6 +141,11 @@ public abstract class TeamServiceRepositoryBase<TTeamEntity, TMember> : TeamServ
         return _teamRepository.SetConsentAsync(teamKey, consentedRoles, accessLevel);
     }
 
+    protected override Task SetTeamCustomRolesInternalAsync(string teamKey, IReadOnlyList<TenantRoleDefinition> customRoles)
+    {
+        return _teamRepository.SetCustomRolesAsync(teamKey, customRoles);
+    }
+
     protected override IAsyncEnumerable<ITeam> GetConsentedTeamsInternalAsync(string[] userRoles)
     {
         return _teamRepository.GetTeamsByConsentAsync(userRoles);

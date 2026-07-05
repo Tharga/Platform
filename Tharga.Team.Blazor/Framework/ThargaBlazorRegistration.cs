@@ -157,7 +157,9 @@ public static class ThargaBlazorRegistration
                 throw new InvalidOperationException("Cannot resolve inner ITeamService for authorization decoration.");
 
             var authorizer = sp.GetRequiredService<TeamAuthorizer>();
-            return new AuthorizationTeamServiceDecorator(inner, authorizer, lifecycle);
+            var scopeRegistry = sp.GetService<IScopeRegistry>();
+            var tenantRoleRegistry = sp.GetService<ITenantRoleRegistry>();
+            return new AuthorizationTeamServiceDecorator(inner, authorizer, lifecycle, scopeRegistry, tenantRoleRegistry);
         });
     }
 

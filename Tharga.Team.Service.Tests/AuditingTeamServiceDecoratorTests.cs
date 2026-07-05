@@ -147,6 +147,18 @@ public class AuditingTeamServiceDecoratorTests
     }
 
     [Fact]
+    public async Task SetTeamCustomRolesAsync_LogsAuditEntry()
+    {
+        await _sut.SetTeamCustomRolesAsync("team-1", [new TenantRoleDefinition("Registrar", ["case:read"])]);
+
+        var entry = Assert.Single(_backend.Entries);
+        Assert.Equal("team", entry.Feature);
+        Assert.Equal("set-custom-roles", entry.Action);
+        Assert.Equal("team-1", entry.TeamKey);
+        Assert.True(entry.Success);
+    }
+
+    [Fact]
     public async Task TransferOwnershipAsync_LogsAuditEntry()
     {
         await _sut.TransferOwnershipAsync<TestMember>("team-1", "user-2");

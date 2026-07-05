@@ -887,6 +887,28 @@ builder.Services.AddSingleton<ITenantRoleVisibilityProvider, FeatureGatedRoleVis
 
 `<TeamComponent>` consults the provider per team before building each row's role list. This is **display-only**: a role already assigned to a member is preserved (never pruned) and still grants its scopes at runtime even while hidden — it simply isn't offered as a new choice, and reappears in the editor if the feature is re-enabled. The default provider shows all roles, so the hook is opt-in and non-breaking.
 
+### Dynamic (runtime-defined) tenant roles
+
+The roles registered above via `AddThargaTenantRoles` are **code roles** — global and fixed at deploy time. To let a team administrator define their **own** roles per team at runtime (e.g. org-specific Registrar / Case officer / Reader / Archivist), enable dynamic tenant roles and add the management component:
+
+```csharp
+builder.AddThargaPlatform(o =>
+{
+    o.ConfigureScopes = s => { s.Register("case:read", AccessLevel.Custom); s.Register("case:write", AccessLevel.Custom); };
+    o.EnableDynamicRoles = true;
+});
+```
+
+```razor
+@* a team:manage-gated admin page *@
+<TenantRoleManager />
+```
+
+- **Per-team storage** — custom roles are stored on the team document and edited via `ITeamManagementService.SetTeamCustomRolesAsync`, which requires **`team:manage`** on the team. Assigning a role to a member is still a **`member:manage`** operation.
+- **No privilege escalation** — the manager only offers scopes registered via `o.ConfigureScopes`, and the server rejects any unregistered scope, duplicate names, or names that collide with a code role.
+- **Resolved like code roles** — when enabled, a member assigned a custom role receives that role's scopes as claims (server, WASM, and API-key paths), and custom roles appear alongside code roles in `<TeamComponent>`'s picker (honouring the visibility provider above).
+- **Off by default** — `EnableDynamicRoles = false` leaves behaviour unchanged (code roles only).
+
 ### Verification
 
 Assign a role to a team member, then verify they can access methods protected by the role's scopes.

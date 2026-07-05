@@ -15,6 +15,7 @@ internal class TeamClaimsAuthenticationStateProvider : AuthenticationStateProvid
     private readonly IScopeRegistry _scopeRegistry;
     private readonly ILocalStorageService _localStorage;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ITenantRoleService _tenantRoleService;
 
     public TeamClaimsAuthenticationStateProvider(
         [FromKeyedServices("inner-auth-state")] AuthenticationStateProvider inner,
@@ -22,7 +23,8 @@ internal class TeamClaimsAuthenticationStateProvider : AuthenticationStateProvid
         IUserService userService,
         ILocalStorageService localStorage,
         IHttpContextAccessor httpContextAccessor,
-        IScopeRegistry scopeRegistry = null)
+        IScopeRegistry scopeRegistry = null,
+        ITenantRoleService tenantRoleService = null)
     {
         _inner = inner;
         _teamService = teamService;
@@ -30,6 +32,7 @@ internal class TeamClaimsAuthenticationStateProvider : AuthenticationStateProvid
         _localStorage = localStorage;
         _httpContextAccessor = httpContextAccessor;
         _scopeRegistry = scopeRegistry;
+        _tenantRoleService = tenantRoleService;
 
         _inner.AuthenticationStateChanged += task => NotifyAuthenticationStateChanged(task);
     }
@@ -77,7 +80,14 @@ internal class TeamClaimsAuthenticationStateProvider : AuthenticationStateProvid
             identity.AddClaim(new Claim(ClaimTypes.Role, $"Team{member.AccessLevel}"));
             identity.AddClaim(new Claim(TeamClaimTypes.AccessLevel, member.AccessLevel.ToString()));
 
-            if (_scopeRegistry != null)
+            if (_tenantRoleService != null)
+            {
+                foreach (var scope in await _tenantRoleService.GetEffectiveScopesAsync(teamKey, member.AccessLevel, member.TenantRoles, member.ScopeOverrides))
+                {
+                    identity.AddClaim(new Claim(TeamClaimTypes.Scope, scope));
+                }
+            }
+            else if (_scopeRegistry != null)
             {
                 foreach (var scope in _scopeRegistry.GetEffectiveScopes(member.AccessLevel, member.TenantRoles, member.ScopeOverrides))
                 {

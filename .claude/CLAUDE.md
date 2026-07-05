@@ -4,8 +4,9 @@
 1. Run `git status` to check for uncommitted changes
    - If uncommitted changes exist, alert me immediately and stop
    - Do not proceed until I have confirmed how to handle them (commit, stash, or discard)
-2. Check if `.claude/mission.md` exists and read it.
-   - Follow **all** file references listed under "External References" — read each one (shared-instructions, backlog, incoming requests, etc.)
+2. Read `.claude/mission.md` in full. It lists external references under two categories:
+   - **`shared-instructions.md` is binding rules, not data.** Read it in full and treat every rule inside as if it were written directly in this CLAUDE.md. Whenever the user asks a question (requests/TODOs/features/etc.), re-check the relevant section of shared-instructions.md before answering — do not answer from the primary data source alone. If `mission.md` has an override, the override wins.
+   - **Data references** (backlog, incoming requests, plans, etc.) are sources to survey — read them for content.
    - **Environment preflight — do this before reading any reference and before any work.** Several External References live under `$DOC_ROOT` (the SynologyDrive Notes folder), so the session cannot run without it. Resolve `$DOC_ROOT` from the environment variable defined in `~/.claude/settings.json`.
      - If `$DOC_ROOT` is **unset/empty**, does not point to an existing directory, or **any** `$DOC_ROOT/...` reference cannot be read: **STOP — do not continue the session.** Ask me to prepare the environment by adding the following to `~/.claude/settings.json` and then **restarting the session** (the env var is only loaded at startup):
        ```json

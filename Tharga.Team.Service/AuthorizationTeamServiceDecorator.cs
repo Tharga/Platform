@@ -20,12 +20,16 @@ public sealed class AuthorizationTeamServiceDecorator : ITeamService
     private readonly ITeamService _inner;
     private readonly TeamAuthorizer _authorizer;
     private readonly TeamLifecycleOptions _lifecycle;
+    private readonly IScopeRegistry _scopeRegistry;
+    private readonly ITenantRoleRegistry _tenantRoleRegistry;
 
-    public AuthorizationTeamServiceDecorator(ITeamService inner, TeamAuthorizer authorizer, TeamLifecycleOptions lifecycle)
+    public AuthorizationTeamServiceDecorator(ITeamService inner, TeamAuthorizer authorizer, TeamLifecycleOptions lifecycle, IScopeRegistry scopeRegistry = null, ITenantRoleRegistry tenantRoleRegistry = null)
     {
         _inner = inner;
         _authorizer = authorizer;
         _lifecycle = lifecycle;
+        _scopeRegistry = scopeRegistry;
+        _tenantRoleRegistry = tenantRoleRegistry;
     }
 
     public event EventHandler<TeamsListChangedEventArgs> TeamsListChangedEvent
@@ -47,6 +51,7 @@ public sealed class AuthorizationTeamServiceDecorator : ITeamService
     public Task<ITeamMember> GetTeamMemberAsync(string teamKey, string userKey) => _inner.GetTeamMemberAsync(teamKey, userKey);
     public IAsyncEnumerable<ITeamMember> GetMembersAsync(string teamKey) => _inner.GetMembersAsync(teamKey);
     public IAsyncEnumerable<ITeam> GetConsentedTeamsAsync(string[] userRoles) => _inner.GetConsentedTeamsAsync(userRoles);
+    public Task<IReadOnlyList<TenantRoleDefinition>> GetTeamCustomRolesAsync(string teamKey) => _inner.GetTeamCustomRolesAsync(teamKey);
     public Task SetMemberLastSeenAsync(string teamKey) => _inner.SetMemberLastSeenAsync(teamKey);
     public Task SetInvitationResponseAsync(string teamKey, string userKey, string inviteCode, bool accept) => _inner.SetInvitationResponseAsync(teamKey, userKey, inviteCode, accept);
     public Task TransferOwnershipAsync<TMember>(string teamKey, string newOwnerUserKey) where TMember : ITeamMember => _inner.TransferOwnershipAsync<TMember>(teamKey, newOwnerUserKey);
@@ -75,6 +80,13 @@ public sealed class AuthorizationTeamServiceDecorator : ITeamService
     {
         await RequireTeamScopeAsync(TeamScopes.Manage, teamKey);
         await _inner.SetTeamConsentAsync(teamKey, consentedRoles, accessLevel);
+    }
+
+    public async Task SetTeamCustomRolesAsync(string teamKey, IReadOnlyList<TenantRoleDefinition> customRoles)
+    {
+        await RequireTeamScopeAsync(TeamScopes.Manage, teamKey);
+        ValidateCustomRoles(customRoles);
+        await _inner.SetTeamCustomRolesAsync(teamKey, customRoles);
     }
 
     // Member administration (member:manage on the team).
@@ -135,5 +147,41 @@ public sealed class AuthorizationTeamServiceDecorator : ITeamService
     {
         if (!await _authorizer.HasTeamScopeAsync(scope, teamKey))
             throw new UnauthorizedAccessException($"This operation on team '{teamKey}' requires the '{scope}' scope on that team.");
+    }
+
+    /// <summary>
+    /// Guards against privilege escalation and ambiguity when defining custom roles: every scope must be
+    /// app-registered (<see cref="IScopeRegistry"/>), names must be non-empty and unique, and must not
+    /// collide with a code-registered role name.
+    /// </summary>
+    private void ValidateCustomRoles(IReadOnlyList<TenantRoleDefinition> customRoles)
+    {
+        if (customRoles == null) return;
+
+        var registeredScopes = _scopeRegistry?.All.Select(s => s.Name).ToHashSet(StringComparer.Ordinal);
+        var codeRoleNames = _tenantRoleRegistry?.All.Select(r => r.Name).ToHashSet(StringComparer.Ordinal)
+                            ?? [];
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var role in customRoles)
+        {
+            if (string.IsNullOrWhiteSpace(role.Name))
+                throw new InvalidOperationException("A custom role name must not be empty.");
+
+            var name = role.Name.Trim();
+
+            if (!seen.Add(name))
+                throw new InvalidOperationException($"Duplicate custom role name '{name}'.");
+
+            if (codeRoleNames.Contains(name))
+                throw new InvalidOperationException($"Custom role '{name}' collides with a code-registered role of the same name.");
+
+            foreach (var scope in role.Scopes ?? [])
+            {
+                if (registeredScopes == null || !registeredScopes.Contains(scope))
+                    throw new InvalidOperationException(
+                        $"Custom role '{name}' references scope '{scope}', which is not an app-registered scope.");
+            }
+        }
     }
 }

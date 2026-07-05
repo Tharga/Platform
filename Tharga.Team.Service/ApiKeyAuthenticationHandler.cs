@@ -16,6 +16,7 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
     private readonly IApiKeyAdministrationService _apiKeyAdministrationService;
     private readonly IScopeRegistry _scopeRegistry;
     private readonly IAuditLogger _auditLogger;
+    private readonly ITenantRoleService _tenantRoleService;
 
     /// <summary>
     /// Creates a new instance of the API key authentication handler.
@@ -26,12 +27,14 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
         UrlEncoder encoder,
         IApiKeyAdministrationService apiKeyAdministrationService,
         IScopeRegistry scopeRegistry = null,
-        CompositeAuditLogger auditLogger = null)
+        CompositeAuditLogger auditLogger = null,
+        ITenantRoleService tenantRoleService = null)
         : base(options, logger, encoder)
     {
         _apiKeyAdministrationService = apiKeyAdministrationService;
         _scopeRegistry = scopeRegistry;
         _auditLogger = auditLogger;
+        _tenantRoleService = tenantRoleService;
     }
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -87,7 +90,14 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
             claims.Add(new Claim(TeamClaimTypes.TeamKey, key.TeamKey));
             claims.Add(new Claim(TeamClaimTypes.AccessLevel, accessLevel.ToString()));
 
-            if (_scopeRegistry != null)
+            if (_tenantRoleService != null)
+            {
+                foreach (var scope in await _tenantRoleService.GetEffectiveScopesAsync(key.TeamKey, accessLevel, roleNames, scopeOverrides))
+                {
+                    claims.Add(new Claim(TeamClaimTypes.Scope, scope));
+                }
+            }
+            else if (_scopeRegistry != null)
             {
                 foreach (var scope in _scopeRegistry.GetEffectiveScopes(accessLevel, roleNames, scopeOverrides))
                 {

@@ -57,6 +57,9 @@ builder.AddThargaPlatform(o =>
         roles.Register("Support", ["orders:read", "valuegroup:read"]); // no description — tooltip shows scopes only
     };
 
+    // Demo: let team admins define their own custom roles at runtime (see the /roles page → TenantRoleManager).
+    o.EnableDynamicRoles = true;
+
     // Demo system scopes (global capabilities for system API keys; separate from team scopes).
     o.ConfigureSystemScopes = scopes =>
     {

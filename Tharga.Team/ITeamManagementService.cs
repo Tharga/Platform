@@ -39,6 +39,14 @@ public interface ITeamManagementService
     [RequireScope(TeamScopes.Manage)]
     Task TransferOwnershipAsync(string teamKey, string newOwnerUserKey);
 
+    /// <summary>
+    /// Replace the team's runtime-defined custom roles. Requires <c>team:manage</c> on the team. Each
+    /// role's scopes must be app-registered scopes (rejected otherwise, as a privilege-escalation guard).
+    /// Assigning these roles to members remains a <c>member:manage</c> operation.
+    /// </summary>
+    [RequireScope(TeamScopes.Manage)]
+    Task SetTeamCustomRolesAsync(string teamKey, IReadOnlyList<TenantRoleDefinition> customRoles);
+
     [RequireScope(TeamScopes.Read)]
     Task SetMemberLastSeenAsync(string teamKey);
 

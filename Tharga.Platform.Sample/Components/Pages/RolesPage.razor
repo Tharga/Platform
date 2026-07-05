@@ -1,0 +1,15 @@
+@page "/roles"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Tharga.Team.Blazor.Features.Roles
+
+<PageTitle>Custom roles</PageTitle>
+
+<RadzenText TextStyle="TextStyle.Body2" class="rz-mb-3">
+    Runtime-defined custom roles for the selected team. Requires the <code>team:manage</code> scope; each
+    role can grant any of the app-registered scopes. Assign them to members on the Team page — they resolve
+    to scopes exactly like code-registered roles.
+</RadzenText>
+
+<TenantRoleManager />
