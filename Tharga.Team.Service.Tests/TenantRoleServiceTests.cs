@@ -124,4 +124,29 @@ public class TenantRoleServiceTests
 
         Assert.Equal(["team:read"], scopes);
     }
+
+    // End-to-end through the REAL composition (no mocked store or resolver): define a custom role on a team
+    // via the service write path, then confirm a member holding that role resolves to its scopes.
+    [Fact]
+    public async Task EndToEnd_DefineCustomRole_thenResolveScopesForAssignedMember()
+    {
+        var userService = Substitute.For<IUserService>();
+        var teamService = new TestTeamService(userService);
+        teamService.AddTeam(TeamKey, "Team One",
+            new TestMember { Key = "u1", AccessLevel = AccessLevel.Custom, TenantRoles = ["Registrar"], State = MembershipState.Member });
+
+        await teamService.SetTeamCustomRolesAsync(TeamKey,
+            [new TenantRoleDefinition("Registrar", ["case:read", "case:write"])]);
+
+        var scopes = new ScopeRegistry();
+        scopes.Register("case:read", AccessLevel.Custom);
+        scopes.Register("case:write", AccessLevel.Custom);
+
+        var resolver = new TenantRoleService(teamService, scopes);
+
+        var effective = await resolver.GetEffectiveScopesAsync(TeamKey, AccessLevel.Custom, ["Registrar"], null);
+
+        Assert.Contains("case:read", effective);
+        Assert.Contains("case:write", effective);
+    }
 }

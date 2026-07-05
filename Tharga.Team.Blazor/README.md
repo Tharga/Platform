@@ -10,6 +10,7 @@ Team management Blazor components for multi-tenant applications. Works with both
 - **Team management** - `TeamSelector`, `TeamComponent`, `TeamDialog`, `InviteUserDialog`, `TeamInviteView`.
 - **API key management** - `ApiKeyView` for team-scoped API keys. Row actions are in a single overflow (`⋮`) **context menu** (copy, show/hide, audit, edit roles & scopes, lock, refresh, delete). On **create or regenerate** the key is shown once in a **reveal dialog** with a copy button and a "shown only once / not stored" warning — required because with `AutoLockKeys` the key is locked immediately. Shows **Created** and **Last used** columns per key (`SystemApiKeyView` shows the same for system keys); the Last used tooltip lists Created / Expiry / **Created by** (falling back to "System" for keys with no recorded creator, e.g. auto-generated). Also shows a **Tags** column (system-set key-value tags, displayed read-only via an `(i)` tooltip). Per-component parameters: `ShowScopeTooltip` (effective-scope `(i)`, default on), `ShowScopeOverrides` (scope-override editor), `ShowRoles` (tenant-role editor), `ShowLastUsed` (Last used column; 60-day expiry warning), `ShowExpiryDatePicker`, `ShowTags` (`bool?` — null = auto-show when any key has tags), `ChipTagKeys`, `ShowAuditLogButton`, `AllowGridSorting` (sort by Name / Last used, default on, Name ascending), `AllowGridFiltering` (case-insensitive Name text filter, default off), `ShowPrivateKeys` (`None`/`Mine`/`All` — include owner-scoped "private" keys; default None) and `AllowPrivilegedAccess` (let Administrator/Owner *see* private keys when `All`; view-only). `TeamComponent` shares `ShowScopeTooltip`/`ShowScopeOverrides`/`ShowRoles`; `SystemApiKeyView` uses global **system scopes** (`o.ConfigureSystemScopes`). Access is gated on the `apikey:manage` scope; cross-team access comes from mapping a role to system scopes (`o.ConfigureSystemRoles`), not per-component role parameters. "Last used" writes are throttled by `ApiKeyOptions.LastUsedThrottle` (default 1 min).
 - **Scope explorer** - `ScopeView` shows which scopes a member would have: pick an **access level** (single-select bar; Owner/Administrator are merged since they grant the same scopes) and **roles** (multi-select bar), and scopes not granted by the selection are **greyed out**. Defaults to the signed-in member's own access level, roles, and **scope overrides** (overrides are highlighted with a ⭐ and an `Override` badge). Built dynamically from `IScopeRegistry` / `ITenantRoleRegistry`, so it always reflects the live configuration (no hard-coded list). Parameters: `ShowDescription` (default on), `ShowAccessLevelSelector` (default on), `ShowRoles` (default on; the roles bar auto-hides when no tenant roles are configured), `AllowGridSorting` (sort by scope name, default on), `AllowGridFiltering` (case-insensitive name filter, default off). Shows a friendly notice when no scopes are configured.
+- **Custom role management** - `TenantRoleManager` lets a team administrator (`team:manage`) create / edit / delete the team's own **runtime-defined custom roles** — each granting a chosen subset of the app-registered scopes — without a code deploy. Requires `o.EnableDynamicRoles = true`. Scopes are picked from `IScopeRegistry` (so a role can never grant an unregistered scope), and the server rejects duplicate names or collisions with code-registered roles. Custom roles then appear alongside code roles in `TeamComponent`'s role picker. See "Dynamic (runtime-defined) tenant roles" below.
 - **User management** - `UserProfileView`, `UsersView`.
 - **Authentication** - `LoginDisplay` with login/logout and team navigation.
 - **Claims augmentation** - `TeamClaimsAuthenticationStateProvider` adds `TeamKey`, `AccessLevel`, role, and scope claims. Compatible with all hosting models.
@@ -86,6 +87,30 @@ builder.Services.AddSingleton<ITenantRoleVisibilityProvider, FeatureGatedRoleVis
 ```
 
 `TeamComponent` filters the editor's role list per team through the provider. Hiding a role is **UI-only**: a role already assigned to a member stays assigned (it is preserved, never pruned, and reappears if the feature is re-enabled) and continues to grant its scopes at runtime. The default provider shows all roles, so this is opt-in and non-breaking.
+
+### Dynamic (runtime-defined) tenant roles
+
+Code-registered roles (`o.ConfigureTenantRoles`) are the same for every team and require a deploy to change. **Dynamic tenant roles** let a team administrator define their own roles per team at runtime — for example, org-specific operational roles like Registrar / Case officer / Reader / Archivist — each granting a chosen subset of the app-registered scopes.
+
+Enable the feature, then drop the management component on a `team:manage`-gated page:
+
+```csharp
+builder.AddThargaPlatform(o =>
+{
+    o.ConfigureScopes = s => { s.Register("case:read", AccessLevel.Custom); s.Register("case:write", AccessLevel.Custom); /* … */ };
+    o.EnableDynamicRoles = true;   // registers the team-aware resolver + enables TenantRoleManager
+});
+```
+
+```razor
+@attribute [Authorize]
+<TenantRoleManager />
+```
+
+- **Storage & scope** — custom roles live on the team document (per team), created/edited/deleted via `ITeamManagementService.SetTeamCustomRolesAsync`, which requires `team:manage` on the team. *Assigning* a role to a member remains a `member:manage` operation.
+- **No privilege escalation** — a custom role may only grant scopes registered via `o.ConfigureScopes`; the server rejects any unregistered scope, duplicate role names, and names that collide with code-registered roles.
+- **Uniform surfacing** — when enabled, a member assigned a custom role receives that role's scopes as claims (server, WASM, and API-key paths), and custom roles appear alongside code roles in `TeamComponent`'s role picker (respecting `ITenantRoleVisibilityProvider`).
+- **Off by default** — with `EnableDynamicRoles = false` (the default) only code roles apply and behaviour is unchanged.
 
 ## Dependencies
 
