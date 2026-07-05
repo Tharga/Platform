@@ -49,6 +49,8 @@ public static class ControllersRegistration
 
                 return Task.CompletedTask;
             });
+
+            options.OpenApiConfigure?.Invoke(o);
         });
 #endif
 
