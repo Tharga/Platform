@@ -40,7 +40,7 @@ app.UseThargaPlatform();
 
 - **`AccessLevel`** — Owner, Administrator, User, Viewer, and **Custom** (no inherited base scopes, for least-privilege keys/members).
 - **Scopes** — register team scopes per access level (`IScopeRegistry`) and gate service methods with `[RequireScope]`.
-- **Tenant roles** — bundle scopes into named roles a team can assign to members and keys (`ITenantRoleRegistry`).
+- **Tenant roles** — bundle scopes into named roles a team can assign to members and API keys. Roles can be code-registered (`ITenantRoleRegistry`) or, with `o.EnableDynamicRoles`, defined by team admins at runtime as custom per-team roles (`ITenantRoleService`, managed via `<TenantRoleManager />`); the scope required to manage custom roles is configurable (`o.DynamicRoleManageScope`, default `team:manage`).
 - **System scopes & roles** — global scopes for system API keys, plus an app-role → system-scope mapping for privileged users (`o.ConfigureSystemScopes` / `o.ConfigureSystemRoles`).
 - **Consent** — a team grants global roles cross-team access at a chosen access level.
 

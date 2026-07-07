@@ -57,6 +57,14 @@ public class ThargaPlatformOptions
     public bool EnableDynamicRoles { get; set; }
 
     /// <summary>
+    /// The scope required to create / edit / delete a team's custom roles when <see cref="EnableDynamicRoles"/>
+    /// is set (via the <c>TenantRoleManager</c> component and the service-layer authorization decorator).
+    /// When null (default), <c>team:manage</c> is used. Set to a narrower scope (e.g. <c>access:manage</c>) to
+    /// move custom-role administration onto a dedicated admin surface without granting the broad <c>team:manage</c>.
+    /// </summary>
+    public string DynamicRoleManageScope { get; set; }
+
+    /// <summary>
     /// Configure system-level (global) scopes — the capabilities offered to system API keys (and, via role
     /// mapping, to privileged users). When null, system-scope registration is skipped.
     /// </summary>

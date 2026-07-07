@@ -73,6 +73,53 @@ public class AddThargaPlatformTests
     }
 
     [Fact]
+    public void EnableDynamicRoles_DefaultManageScope_IsTeamManage()
+    {
+        var builder = CreateBuilder();
+        builder.AddThargaPlatform(o => o.EnableDynamicRoles = true);
+        var provider = builder.Services.BuildServiceProvider();
+
+        var options = provider.GetService<DynamicTenantRoleOptions>();
+        Assert.NotNull(options);
+        Assert.Equal(TeamScopes.Manage, options.ManageScope);
+    }
+
+    [Fact]
+    public void DynamicRoleManageScope_FlowsThroughFacade()
+    {
+        var builder = CreateBuilder();
+        builder.AddThargaPlatform(o =>
+        {
+            o.EnableDynamicRoles = true;
+            o.DynamicRoleManageScope = "access:manage";
+        });
+        var provider = builder.Services.BuildServiceProvider();
+
+        Assert.Equal("access:manage", provider.GetRequiredService<DynamicTenantRoleOptions>().ManageScope);
+    }
+
+    [Fact]
+    public void AddThargaDynamicTenantRoles_ConfiguresManageScope()
+    {
+        var services = new ServiceCollection();
+        services.AddThargaDynamicTenantRoles(o => o.ManageScope = "access:manage");
+        var provider = services.BuildServiceProvider();
+
+        Assert.Equal("access:manage", provider.GetRequiredService<DynamicTenantRoleOptions>().ManageScope);
+        Assert.Contains(services, d => d.ServiceType == typeof(ITenantRoleService));
+    }
+
+    [Fact]
+    public void AddThargaDynamicTenantRoles_DefaultsToTeamManage()
+    {
+        var services = new ServiceCollection();
+        services.AddThargaDynamicTenantRoles();
+        var provider = services.BuildServiceProvider();
+
+        Assert.Equal(TeamScopes.Manage, provider.GetRequiredService<DynamicTenantRoleOptions>().ManageScope);
+    }
+
+    [Fact]
     public void RegistersBlazorOptions()
     {
         var builder = CreateBuilder();

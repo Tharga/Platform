@@ -98,7 +98,11 @@ public static class ThargaPlatformRegistration
         // Dynamic (runtime-defined) tenant roles (opt-in) — team-aware scope resolution incl. custom roles.
         if (options.EnableDynamicRoles)
         {
-            builder.Services.AddThargaDynamicTenantRoles();
+            builder.Services.AddThargaDynamicTenantRoles(o =>
+            {
+                if (!string.IsNullOrWhiteSpace(options.DynamicRoleManageScope))
+                    o.ManageScope = options.DynamicRoleManageScope;
+            });
         }
 
         // System scopes (opt-in) — global capabilities for system keys / privileged roles

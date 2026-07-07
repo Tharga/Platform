@@ -31,8 +31,19 @@ public static class TenantRoleServiceCollectionExtensions
     /// from code-registered roles plus the team's runtime-defined custom roles. Enables dynamic tenant roles:
     /// without it, only code-registered roles are resolved into claims.
     /// </summary>
-    public static IServiceCollection AddThargaDynamicTenantRoles(this IServiceCollection services)
+    /// <param name="services">The service collection.</param>
+    /// <param name="configure">
+    /// Optional configuration for dynamic roles, e.g. <c>o =&gt; o.ManageScope = "access:manage"</c> to gate
+    /// custom-role CRUD under a scope other than the default <c>team:manage</c>.
+    /// </param>
+    public static IServiceCollection AddThargaDynamicTenantRoles(this IServiceCollection services, Action<DynamicTenantRoleOptions> configure = null)
     {
+        var options = new DynamicTenantRoleOptions();
+        configure?.Invoke(options);
+        if (string.IsNullOrWhiteSpace(options.ManageScope))
+            options.ManageScope = TeamScopes.Manage;
+
+        services.TryAddSingleton(options);
         services.TryAddScoped<ITenantRoleService, TenantRoleService>();
         return services;
     }

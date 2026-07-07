@@ -99,6 +99,7 @@ builder.AddThargaPlatform(o =>
 {
     o.ConfigureScopes = s => { s.Register("case:read", AccessLevel.Custom); s.Register("case:write", AccessLevel.Custom); /* … */ };
     o.EnableDynamicRoles = true;   // registers the team-aware resolver + enables TenantRoleManager
+    // o.DynamicRoleManageScope = "access:manage"; // optional — scope required to manage custom roles (default team:manage)
 });
 ```
 
@@ -107,9 +108,9 @@ builder.AddThargaPlatform(o =>
 <TenantRoleManager />
 ```
 
-- **Storage & scope** — custom roles live on the team document (per team), created/edited/deleted via `ITeamManagementService.SetTeamCustomRolesAsync`, which requires `team:manage` on the team. *Assigning* a role to a member remains a `member:manage` operation.
+- **Storage & scope** — custom roles live on the team document (per team), created/edited/deleted via `ITeamManagementService.SetTeamCustomRolesAsync`, which requires `team:manage` on the team by default. Set `o.DynamicRoleManageScope` (e.g. `"access:manage"`) to gate custom-role CRUD under a dedicated scope instead — enforced by both the service layer and `TenantRoleManager`. *Assigning* a role to a member remains a `member:manage` operation.
 - **No privilege escalation** — a custom role may only grant scopes registered via `o.ConfigureScopes`; the server rejects any unregistered scope, duplicate role names, and names that collide with code-registered roles.
-- **Uniform surfacing** — when enabled, a member assigned a custom role receives that role's scopes as claims (server, WASM, and API-key paths), and custom roles appear alongside code roles in `TeamComponent`'s role picker (respecting `ITenantRoleVisibilityProvider`).
+- **Uniform surfacing** — when enabled, a member assigned a custom role receives that role's scopes as claims (server, WASM, and API-key paths). Custom roles also appear alongside code roles in the role pickers of `TeamComponent` (respecting `ITenantRoleVisibilityProvider`) and, with `ShowRoles="true"`, `ApiKeyView` — so a custom role can be assigned to a team API key.
 - **Off by default** — with `EnableDynamicRoles = false` (the default) only code roles apply and behaviour is unchanged.
 
 ## Dependencies

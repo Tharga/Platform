@@ -11,12 +11,12 @@ namespace Tharga.Team.Service.Tests;
 public class AuthorizationTeamServiceDecoratorCustomRolesTests
 {
     private static AuthorizationTeamServiceDecorator Build(
-        ClaimsPrincipal principal, ITeamService inner, IScopeRegistry scopes = null, ITenantRoleRegistry roles = null)
+        ClaimsPrincipal principal, ITeamService inner, IScopeRegistry scopes = null, ITenantRoleRegistry roles = null, string manageScope = null)
     {
         var accessor = Substitute.For<ITeamPrincipalAccessor>();
         accessor.GetCurrentAsync().Returns(new ValueTask<ClaimsPrincipal>(principal));
         return new AuthorizationTeamServiceDecorator(
-            inner, new TeamAuthorizer(accessor), new TeamLifecycleOptions { AllowTeamCreation = true }, scopes, roles);
+            inner, new TeamAuthorizer(accessor), new TeamLifecycleOptions { AllowTeamCreation = true }, scopes, roles, manageScope);
     }
 
     private static ClaimsPrincipal Principal(string teamKey, params string[] scopes)
@@ -124,6 +124,27 @@ public class AuthorizationTeamServiceDecoratorCustomRolesTests
         var sut = Build(Principal("T1", TeamScopes.Manage), inner);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.SetTeamCustomRolesAsync("T1", ValidRoles));
+    }
+
+    [Fact]
+    public async Task CustomManageScope_ConfiguredScope_Delegates()
+    {
+        var inner = Substitute.For<ITeamService>();
+        var sut = Build(Principal("T1", "access:manage"), inner, Scopes("case:read", "case:write"), manageScope: "access:manage");
+
+        await sut.SetTeamCustomRolesAsync("T1", ValidRoles);
+
+        await inner.Received(1).SetTeamCustomRolesAsync("T1", ValidRoles);
+    }
+
+    [Fact]
+    public async Task CustomManageScope_TeamManageInsufficient_Throws()
+    {
+        var inner = Substitute.For<ITeamService>();
+        var sut = Build(Principal("T1", TeamScopes.Manage), inner, Scopes("case:read", "case:write"), manageScope: "access:manage");
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => sut.SetTeamCustomRolesAsync("T1", ValidRoles));
+        await inner.DidNotReceive().SetTeamCustomRolesAsync(Arg.Any<string>(), Arg.Any<IReadOnlyList<TenantRoleDefinition>>());
     }
 
     [Fact]
