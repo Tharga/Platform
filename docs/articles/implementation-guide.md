@@ -896,6 +896,7 @@ builder.AddThargaPlatform(o =>
 {
     o.ConfigureScopes = s => { s.Register("case:read", AccessLevel.Custom); s.Register("case:write", AccessLevel.Custom); };
     o.EnableDynamicRoles = true;
+    // o.DynamicRoleManageScope = "access:manage"; // optional — scope for custom-role CRUD (default team:manage)
 });
 ```
 
@@ -904,9 +905,9 @@ builder.AddThargaPlatform(o =>
 <TenantRoleManager />
 ```
 
-- **Per-team storage** — custom roles are stored on the team document and edited via `ITeamManagementService.SetTeamCustomRolesAsync`, which requires **`team:manage`** on the team. Assigning a role to a member is still a **`member:manage`** operation.
+- **Per-team storage** — custom roles are stored on the team document and edited via `ITeamManagementService.SetTeamCustomRolesAsync`, which requires **`team:manage`** on the team by default; set `o.DynamicRoleManageScope` to require a different scope (e.g. **`access:manage`**) instead, honoured by both the service layer and `TenantRoleManager`. Assigning a role to a member is still a **`member:manage`** operation.
 - **No privilege escalation** — the manager only offers scopes registered via `o.ConfigureScopes`, and the server rejects any unregistered scope, duplicate names, or names that collide with a code role.
-- **Resolved like code roles** — when enabled, a member assigned a custom role receives that role's scopes as claims (server, WASM, and API-key paths), and custom roles appear alongside code roles in `<TeamComponent>`'s picker (honouring the visibility provider above).
+- **Resolved like code roles** — when enabled, a member assigned a custom role receives that role's scopes as claims (server, WASM, and API-key paths), and custom roles appear alongside code roles in the role pickers of `<TeamComponent>` (honouring the visibility provider above) and `<ApiKeyView ShowRoles="true">`, so a custom role can be assigned to a team API key.
 - **Off by default** — `EnableDynamicRoles = false` leaves behaviour unchanged (code roles only).
 
 ### Verification

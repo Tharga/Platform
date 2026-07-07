@@ -90,6 +90,11 @@ builder.AddThargaPlatform(o =>
         roles.Register("Editor", new[] { "orders:read", "orders:write" });
     };
 
+    // Optional: let team admins define their own custom roles at runtime (assignable to members and
+    // API keys via <TenantRoleManager /> and <ApiKeyView ShowRoles="true" />).
+    // o.EnableDynamicRoles = true;
+    // o.DynamicRoleManageScope = "access:manage"; // scope for custom-role CRUD (default team:manage)
+
     // Audit logging (StorageMode defaults to Logger only — set MongoDB to populate AuditLogView)
     o.Audit = new AuditOptions { StorageMode = AuditStorageMode.MongoDB };
 
