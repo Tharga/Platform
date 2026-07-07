@@ -10,6 +10,7 @@ namespace Tharga.Team.Service;
 /// <item>Create — authenticated AND <c>AllowTeamCreation</c> (no scope; self-service).</item>
 /// <item>Delete — (<c>team:manage</c> on the team AND <c>AllowTeamCreation</c>) OR <c>teams:delete</c> (system).</item>
 /// <item>Rename / Consent — <c>team:manage</c> on the team.</item>
+/// <item>Custom-role CRUD — the configurable custom-role manage scope on the team (default <c>team:manage</c>).</item>
 /// <item>Member invite/remove/role/scope-overrides/display-name — <c>member:manage</c> on the team.</item>
 /// <item>Transfer ownership — passed through (Owner-only is enforced by the inner service).</item>
 /// </list>
@@ -22,14 +23,16 @@ public sealed class AuthorizationTeamServiceDecorator : ITeamService
     private readonly TeamLifecycleOptions _lifecycle;
     private readonly IScopeRegistry _scopeRegistry;
     private readonly ITenantRoleRegistry _tenantRoleRegistry;
+    private readonly string _customRoleManageScope;
 
-    public AuthorizationTeamServiceDecorator(ITeamService inner, TeamAuthorizer authorizer, TeamLifecycleOptions lifecycle, IScopeRegistry scopeRegistry = null, ITenantRoleRegistry tenantRoleRegistry = null)
+    public AuthorizationTeamServiceDecorator(ITeamService inner, TeamAuthorizer authorizer, TeamLifecycleOptions lifecycle, IScopeRegistry scopeRegistry = null, ITenantRoleRegistry tenantRoleRegistry = null, string customRoleManageScope = null)
     {
         _inner = inner;
         _authorizer = authorizer;
         _lifecycle = lifecycle;
         _scopeRegistry = scopeRegistry;
         _tenantRoleRegistry = tenantRoleRegistry;
+        _customRoleManageScope = string.IsNullOrWhiteSpace(customRoleManageScope) ? TeamScopes.Manage : customRoleManageScope;
     }
 
     public event EventHandler<TeamsListChangedEventArgs> TeamsListChangedEvent
@@ -84,7 +87,7 @@ public sealed class AuthorizationTeamServiceDecorator : ITeamService
 
     public async Task SetTeamCustomRolesAsync(string teamKey, IReadOnlyList<TenantRoleDefinition> customRoles)
     {
-        await RequireTeamScopeAsync(TeamScopes.Manage, teamKey);
+        await RequireTeamScopeAsync(_customRoleManageScope, teamKey);
         ValidateCustomRoles(customRoles);
         await _inner.SetTeamCustomRolesAsync(teamKey, customRoles);
     }

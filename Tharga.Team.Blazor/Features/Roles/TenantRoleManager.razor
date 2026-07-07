@@ -27,7 +27,7 @@ else if (_tenantRoleService == null)
 else if (!_canManage)
 {
     <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat">
-        Managing custom roles requires the <code>@TeamScopes.Manage</code> scope on this team.
+        Managing custom roles requires the <code>@_manageScope</code> scope on this team.
     </RadzenAlert>
 }
 else if (string.IsNullOrEmpty(_teamKey))
@@ -104,6 +104,7 @@ else
     private RadzenDataGrid<EditableTenantRole> _grid;
     private readonly TenantRoleManagerModel _model = new();
     private string _teamKey;
+    private string _manageScope = TeamScopes.Manage;
     private bool _canManage;
     private string[] _allScopeNames = [];
     private IReadOnlyList<string> _codeRoleNames = [];
@@ -123,8 +124,10 @@ else
             _allScopeNames = _scopeRegistry.All.Select(s => s.Name).OrderBy(s => s, StringComparer.Ordinal).ToArray();
         _codeRoleNames = _roleRegistry?.All.Select(r => r.Name).ToList() ?? (IReadOnlyList<string>)[];
 
+        _manageScope = ServiceProvider.GetService<DynamicTenantRoleOptions>()?.ManageScope ?? TeamScopes.Manage;
+
         var principal = await GetCurrentPrincipalAsync();
-        _canManage = principal?.HasClaim(TeamClaimTypes.Scope, TeamScopes.Manage) ?? false;
+        _canManage = principal?.HasClaim(TeamClaimTypes.Scope, _manageScope) ?? false;
 
         var team = _teamStateService != null ? await _teamStateService.GetSelectedTeamAsync() : null;
         _teamKey = team?.Key;
