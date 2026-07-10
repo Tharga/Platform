@@ -1,8 +1,10 @@
-﻿@using Tharga.Team
+﻿@using Microsoft.Extensions.Options
+@using Tharga.Team
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ITeamStateService TeamStateService
 @inject ITeamService TeamService
 @inject IThargaTextProvider TextProvider
+@inject IOptions<ThargaBlazorOptions> BlazorOptions
 
 <AuthorizeView>
     <Authorized>
@@ -14,7 +16,14 @@
         }
         else if (_teams.Length == 0)
         {
-            <RadzenLink Text="@_createTeamText" Path="/team" />
+            @if (CreateTeamRequested.HasDelegate)
+            {
+                <a href="" class="rz-link" @onclick="InvokeCreateTeamRequested" @onclick:preventDefault>@_createTeamText</a>
+            }
+            else
+            {
+                <RadzenLink Text="@_createTeamText" Path="@_createTeamPath" />
+            }
         }
         else if (_teams.Length == 1 && SelectedTeam != null)
         {
@@ -30,10 +39,19 @@
 </AuthorizeView>
 
 @code {
+    /// <summary>
+    /// Optional callback invoked when a teamless user activates the built-in "Create team" link.
+    /// When set, it takes precedence over <see cref="ThargaBlazorOptions.CreateTeamPath"/> and the
+    /// default <c>/team</c> navigation — letting a host launch its own onboarding flow (e.g. a dialog).
+    /// When unset, the link navigates to <c>CreateTeamPath</c> (if configured) or <c>/team</c>.
+    /// </summary>
+    [Parameter] public EventCallback CreateTeamRequested { get; set; }
+
     private ITeam[] _teams;
     private ITeam _selectedTeam;
     private string _loadingText = TeamMenuText.Loading.Default;
     private string _createTeamText = TeamMenuText.CreateTeam.Default;
+    private string _createTeamPath = "/team";
 
     private ITeam SelectedTeam
     {
@@ -50,6 +68,9 @@
     {
         _loadingText = await TextProvider.GetAsync(TeamMenuText.Loading);
         _createTeamText = await TextProvider.GetAsync(TeamMenuText.CreateTeam);
+
+        var configuredPath = BlazorOptions.Value.CreateTeamPath;
+        if (!string.IsNullOrWhiteSpace(configuredPath)) _createTeamPath = configuredPath;
 
         TeamStateService.SelectedTeamChangedEvent += async (_, e) =>
         {
@@ -82,5 +103,10 @@
         var selectedTeam = await TeamStateService.GetSelectedTeamAsync();
         SelectedTeam ??= selectedTeam;
         StateHasChanged();
+    }
+
+    private async Task InvokeCreateTeamRequested()
+    {
+        if (CreateTeamRequested.HasDelegate) await CreateTeamRequested.InvokeAsync();
     }
 }

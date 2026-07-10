@@ -254,6 +254,15 @@ else
     /// <summary>When true (and an <see cref="ITenantRoleRegistry"/> is registered), shows the per-member tenant-role editor column. Default false.</summary>
     [Parameter] public bool ShowRoles { get; set; }
 
+    /// <summary>
+    /// Optional callback invoked when the user activates the built-in "Create new Team" button.
+    /// When set, it takes precedence over <see cref="ThargaBlazorOptions.CreateTeamPath"/> and the
+    /// built-in create — letting a host launch its own onboarding flow (e.g. a dialog or wizard).
+    /// When unset, the button navigates to <c>CreateTeamPath</c> (if configured), otherwise it
+    /// performs the built-in <see cref="ITeamManagementService.CreateTeamAsync"/>.
+    /// </summary>
+    [Parameter] public EventCallback CreateTeamRequested { get; set; }
+
     private string _editingMemberKey;
     private string _editingMemberName;
 
@@ -266,6 +275,7 @@ else
     private bool _canManage;
     private bool _canManageMembers;
     private bool _allowTeamCreation;
+    private string _createTeamPath;
     private bool _showConsentToggle;
     private string[] _consentRoles;
     private string[] _allScopeNames = Array.Empty<string>();
@@ -288,6 +298,7 @@ else
         _roleVisibilityProvider = ServiceProvider.GetService<ITenantRoleVisibilityProvider>();
 
         _allowTeamCreation = BlazorOptions.Value.AllowTeamCreation;
+        _createTeamPath = BlazorOptions.Value.CreateTeamPath;
         _showConsentToggle = BlazorOptions.Value.Consent.ShowToggle;
         _consentRoles = BlazorOptions.Value.Consent.Roles ?? [];
         if (_tenantRoleRegistry != null)
@@ -364,8 +375,19 @@ else
 
     private async Task CreateTeam()
     {
-        await TeamManagementService.CreateTeamAsync();
-        await ReloadTeams();
+        switch (CreateTeamActionResolver.Resolve(CreateTeamRequested.HasDelegate, _createTeamPath))
+        {
+            case CreateTeamAction.Callback:
+                await CreateTeamRequested.InvokeAsync();
+                return;
+            case CreateTeamAction.Navigate:
+                NavigationManager.NavigateTo(_createTeamPath);
+                return;
+            default:
+                await TeamManagementService.CreateTeamAsync();
+                await ReloadTeams();
+                return;
+        }
     }
 
     private async Task RenameTeam(ITeam team)
