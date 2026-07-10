@@ -44,6 +44,10 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Last session
 
-2026-07-10 — Feature started. Branch `feature/create-team-override` created from `master`.
-`dotnet outdated` clean (step 1 done). Plan files written. Next: baseline build+test (step 2),
-then implement options + components (steps 3-5).
+2026-07-10 — Implementation complete (steps 1-9). Two commits on the branch:
+`feat: host override for the Create team action (#123)` and
+`docs: document Create team override (...)`. Full suite green (559 tests).
+**Awaiting:** explicit approval to push the branch, then user testing from origin.
+**Next (step 10, only after user confirms done):** re-run `dotnet outdated`, archive
+`plan/feature.md` → external `done/`, `git rm -r plan`, final commit
+`feat: create-team-override complete`, push, open PR to `master`.
