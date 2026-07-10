@@ -23,10 +23,13 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
       over the precedence resolver). Extracted precedence into `internal CreateTeamActionResolver`
       (mirrors `LoginDisplay.ShouldShowTeamMenuItem`) so the decision is unit-testable without bUnit.
 - [x] **7. Verify.** Full solution green: 559 tests (was 550; +9). Build clean (pre-existing warnings only).
-- [~] **8. Docs (`docs:` commit).** Update `Tharga.Team.Blazor/README.md` and
-      `docs/articles/` (getting-started / implementation-guide) with `CreateTeamPath` +
-      `CreateTeamRequested` and a FortDocs-style onboarding example.
-- [ ] **9. Sample (optional).** Demonstrate an override on `Tharga.Platform.Sample`.
+- [x] **8. Docs (`docs:` commit).** Added an "Overriding the Create team action" section to
+      `Tharga.Team.Blazor/README.md`; added `o.CreateTeamPath` to the options example, a
+      `CreateTeamRequested` row to the component-parameter table, and an override subsection in
+      `docs/articles/implementation-guide.md`. `getting-started.md` needed no change (component
+      list only).
+- [x] **9. Sample (optional) — skipped.** Wiring `CreateTeamRequested`/`CreateTeamPath` into the
+      sample would replace its real create flow with a stub, degrading the sample. Docs cover usage.
 - [ ] **10. Close-out (only on user confirmation).** Re-run `dotnet outdated`; archive
       `plan/feature.md` to the external `done/`; `git rm -r plan`; final commit
       `feat: create-team-override complete`; push; open PR to `master`.

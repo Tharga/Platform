@@ -113,6 +113,40 @@ builder.AddThargaPlatform(o =>
 - **Uniform surfacing** — when enabled, a member assigned a custom role receives that role's scopes as claims (server, WASM, and API-key paths). Custom roles also appear alongside code roles in the role pickers of `TeamComponent` (respecting `ITenantRoleVisibilityProvider`) and, with `ShowRoles="true"`, `ApiKeyView` — so a custom role can be assigned to a team API key.
 - **Off by default** — with `EnableDynamicRoles = false` (the default) only code roles apply and behaviour is unchanged.
 
+### Overriding the "Create team" action
+
+By default a teamless user's **Create team** link (in `TeamSelector`) navigates to `/team`, and the **Create new Team** button (in `TeamComponent`) calls `ITeamManagementService.CreateTeamAsync()` directly. A host that wants team creation to run through its own onboarding flow (collect organization type, working language, seed templates, …) can override where these built-in entry points lead — **without** setting `AllowTeamCreation = false`, which hides the button but also blocks the programmatic create API.
+
+Two override points, evaluated in this order (**callback → path → built-in**):
+
+**1. `CreateTeamPath` (global, declarative).** Point the built-in entry points at your own page:
+
+```csharp
+builder.AddThargaPlatform(o =>
+{
+    o.Blazor.CreateTeamPath = "/get-started";   // TeamSelector link + TeamComponent button navigate here
+});
+```
+
+Your `/get-started` page runs the wizard and calls `CreateTeamAsync()` itself (works because `AllowTeamCreation` stays `true`), then runs onboarding.
+
+**2. `CreateTeamRequested` (per component, imperative).** Handle the create in place — e.g. open a dialog — and skip navigation entirely. Takes precedence over `CreateTeamPath`:
+
+```razor
+<TeamSelector CreateTeamRequested="LaunchOnboardingAsync" />
+<TeamComponent TMember="MyMember" CreateTeamRequested="LaunchOnboardingAsync" />
+
+@code {
+    private async Task LaunchOnboardingAsync()
+    {
+        var team = await OnboardingWizard.RunAsync();   // your flow: collect info + CreateTeamAsync + seed
+        // navigate / refresh as needed
+    }
+}
+```
+
+When neither is set, behavior is unchanged. `CreateTeamPath` is `null` and both `CreateTeamRequested` callbacks are unset by default, so this is additive and non-breaking. Note the override applies to the built-in UI entry points only; teams created programmatically or via `AutoCreateFirstTeam` are unaffected.
+
 ## Dependencies
 
 - [Tharga.Blazor](https://www.nuget.org/packages/Tharga.Blazor) - Generic UI components.
