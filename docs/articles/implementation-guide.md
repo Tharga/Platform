@@ -397,6 +397,7 @@ builder.Services.AddThargaTeamBlazor(o =>
 {
     o.Title = "My App";
     o.AutoCreateFirstTeam = true;          // default: false — auto-creates a team for first-time users
+    o.CreateTeamPath = "/get-started";     // default: null — built-in "Create team" entry points navigate here instead of the bare create (see "Overriding the Create team action")
     o.ShowMemberRoles = false;             // default: false — shows tenant role assignment in team UI
     o.ShowScopeOverrides = false;          // default: false — shows scope override controls in TeamComponent (team-member UI). For ApiKeyView, opt in via the [Parameter] ShowScopeOverrides on the component itself; the two flags are intentionally independent.
     o.RegisterTeamService<MyTeamService, MyUserService>();
@@ -965,11 +966,29 @@ o.Blazor.Consent.AccessLevel = AccessLevel.Viewer; // default level when the con
 
 The team admin picks the access level when consenting (Viewer/User/Administrator); a consented user gains that team's scopes at that level. The granted level is `team.ConsentAccessLevel ?? Consent.AccessLevel`.
 
+### Overriding the "Create team" action
+
+By default the teamless **Create team** link (`TeamSelector`) navigates to `/team` and the **Create new Team** button (`TeamComponent`) calls `CreateTeamAsync()` directly. To route team creation through your own onboarding flow — instead of `AllowTeamCreation = false`, which hides the button *and* blocks the programmatic create API — use one of two override points, evaluated **callback → path → built-in**:
+
+```csharp
+// 1. Global, declarative — both entry points navigate to your page (which runs the wizard + CreateTeamAsync):
+o.CreateTeamPath = "/get-started";
+```
+
+```razor
+@* 2. Per component, imperative — handle in place (e.g. a dialog); takes precedence over CreateTeamPath: *@
+<TeamSelector CreateTeamRequested="LaunchOnboardingAsync" />
+<TeamComponent TMember="MyMember" CreateTeamRequested="LaunchOnboardingAsync" />
+```
+
+Both default to unset, so behavior is unchanged unless you opt in. The override applies to the built-in UI entry points only — teams created programmatically or via `AutoCreateFirstTeam` are unaffected.
+
 ### Component parameter reference
 
 | Component | Parameters |
 |-----------|-----------|
-| `<TeamComponent>` | `ShowScopeTooltip` (default true), `ShowScopeOverrides`, `ShowRoles` |
+| `<TeamSelector>` | `CreateTeamRequested` (intercept the teamless "Create team" link) |
+| `<TeamComponent>` | `ShowScopeTooltip` (default true), `ShowScopeOverrides`, `ShowRoles`, `CreateTeamRequested` (intercept the "Create new Team" button) |
 | `<ApiKeyView>` | `ShowScopeTooltip` (true), `ShowScopeOverrides`, `ShowRoles`, `ShowLastUsed` (true), `ShowExpiryDatePicker`, `ShowTags` (`bool?`, null=auto), `ChipTagKeys`, `ShowAuditLogButton` |
 | `<SystemApiKeyView>` | `ShowScopeTooltip` (true), `ShowScopeOverrides` (true), `ShowLastUsed` (true), `ShowExpiryDatePicker`, `ShowAuditLogButton` |
 

@@ -27,6 +27,17 @@ public record ThargaBlazorOptions : BlazorOptions
     public bool AllowTeamCreation { get; set; } = true;
 
     /// <summary>
+    /// Optional route that the built-in "Create team" entry points navigate to instead of
+    /// performing the bare create. When set, the teamless "Create team" link in
+    /// <c>TeamSelector</c> and the "Create new Team" button in <c>TeamComponent</c> redirect
+    /// here — letting a host route team creation into its own onboarding flow while keeping
+    /// <see cref="AllowTeamCreation"/> <c>true</c> so the programmatic create API still works.
+    /// A per-component <c>CreateTeamRequested</c> callback, when supplied, takes precedence
+    /// over this path. When <c>null</c> (default), the built-in behavior is unchanged.
+    /// </summary>
+    public string CreateTeamPath { get; set; }
+
+    /// <summary>
     /// Data-access consent options (cross-team access granted by a team to global roles).
     /// </summary>
     public ConsentOptions Consent { get; set; } = new();
