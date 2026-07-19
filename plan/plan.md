@@ -51,15 +51,34 @@ scope and acceptance criteria.
   - `AuditingTeamServiceDecorator`: plain pass-through (no audit — user decision).
   - Tests: decorator allows with the scope, denies without; base default returns empty.
 
-- [ ] **4. Team-list resolution helper**
+- [x] **4. Team-list resolution helper** — done as `Features/Team/TeamVisibility.cs` (+14 tests):
+  `CanSeeAllTeams(principal)` keyed on the **scope**, and `Resolve`/`Label`/`BadgeStyle` reducing a
+  team's consent to the three UI states. `BadgeStyle` returns a string so the helper stays free of a
+  Radzen dependency and unit-testable. Note the enum is `internal`, so tests compare `.ToString()` —
+  same workaround `CreateTeamOverrideTests` uses (an internal type can't sit in a public test signature).
+
+  Original step text:
   One pure function — "holder of `teams:read` → all teams, otherwise own teams" — so the three
   listing surfaces share one tested decision instead of repeating a claims check. Follows the
   `TeamActionGate` / `CreateTeamActionResolver` precedent (no bUnit in this project).
 
-- [ ] **5. Wire the listing surfaces**
-  `TeamComponent.ReloadTeams()`, `TeamsListView` and `TeamSelector` call the helper.
-  Verify the `_selectedTeam` logic in `TeamComponent` still holds when the selected team is one the
-  user isn't a member of.
+- [ ] **5. Wire the listing surfaces + fix selection for non-member teams**
+  Scope grew after tracing the selection path (2026-07-19). Listing alone is not enough:
+  - `TeamComponent.ReloadTeams()`, `TeamsListView`, `TeamSelector` call the step-4 helper.
+  - **`TeamStateService.GetSelectedTeamAsync` must use the widened set too.** It currently reads the
+    membership-scoped list (`:46`), finds the selected non-member team absent (`:48`), and falls back
+    to `teams.FirstOrDefault()` (`:53`) — silently reverting the selection. Without this the feature
+    does not work at all.
+  - **`TeamComponent:29` gates the whole `@foreach` on `_selectedTeam != null`.** A `teams:read`
+    holder who belongs to *no* team — the core persona — would see an empty page. Render the list
+    when there are teams, whether or not one is selected.
+  - **Null-guard `AssignTeamAsync`** — it dereferences `_selectedTeam.Key` under `refresh: true`
+    (`:88`). Unreachable today; reachable once the team set widens.
+
+  **Hard requirement (user, 2026-07-19): Platform must not throw** when a `teams:read` holder selects
+  a team that is neither theirs nor consented. Verified safe already: `TeamServerClaimsTransformation`
+  adds no claims and returns the principal (`:79-106`), and `SetMemberLastSeenAsync` is an ungated
+  pass-through whose repository call `PickOneOrDefault`s to null and early-returns.
 
 - [ ] **6. Consent badge / indicator**
   - `RadzenBadge` with `Variant.Flat`, text = level name, `BadgeStyle` = `Danger` (no access) /
