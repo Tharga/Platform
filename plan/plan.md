@@ -68,8 +68,12 @@ scope and acceptance criteria.
   `AutoCreateFirstTeam` therefore behaves exactly as before — **no silent behaviour change**.
   `GetVisibleTeamsAsync` falls back to own teams on `UnauthorizedAccessException` so a claims/enforcement
   mismatch degrades instead of breaking the page. `AssignTeamAsync` null-guarded.
-  `SetSelectedTeamAsync` writes local storage **only** for a team the caller belongs to — a non-member
-  selection is cookie-only, so it dies with the session instead of parking them there.
+  `SetSelectedTeamAsync` remembers every explicit selection, member or not (**revised by the user
+  2026-07-19** — originally cookie-only/session-scoped). Restoring it required more than persisting:
+  the restore path looked the remembered key up in *own* teams, so a non-member team would never have
+  resolved. Resolution is now uniform — current cookie → remembered key → own-teams fallback — via
+  `TeamSelectionResolver`, replacing the old branch-per-case structure. The security guard is unchanged
+  in substance: a *chosen* team is honoured, a team never chosen is never defaulted to.
   `TeamComponent:29` now gates on `_teams.Any()` rather than `_selectedTeam != null`.
   All three surfaces (`TeamComponent`, `TeamSelector`, `TeamsListView`) pick the widened list.
 

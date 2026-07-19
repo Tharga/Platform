@@ -44,36 +44,26 @@ internal class TeamStateService : ITeamStateService
         {
             await _semaphore.WaitAsync();
 
-            // Two sets, two purposes. `teams` (own memberships) drives every *automatic* choice below;
-            // `visibleTeams` only decides whether an existing selection is still legitimate. Defaulting
-            // from the widened set would silently park an oversight caller inside an arbitrary tenant.
+            // Two sets, two purposes. `visibleTeams` (widened for a teams:read holder) decides which
+            // *chosen* team is still legitimate; `teams` (own memberships) is the only source for the
+            // fallback, so nobody is ever defaulted into a tenant they didn't pick.
             var teams = await _teamService.GetTeamsAsync().ToArrayAsync();
             var visibleTeams = await GetVisibleTeamsAsync(authState.User, teams);
 
             if (_selectedTeam == null || visibleTeams.All(x => x.Key != _selectedTeam.Key) || visibleTeams.FirstOrDefault(x => x.Key == _selectedTeam.Key)?.Name != _selectedTeam.Name)
             {
-                var t = authState.User.Claims.FirstOrDefault(x => x.Type == Constants.TeamKeyCookie);
-                if (t != null)
+                var currentTeamKey = authState.User.Claims.FirstOrDefault(x => x.Type == Constants.TeamKeyCookie)?.Value;
+                var rememberedTeamKey = await _localStorageService.GetItemAsStringAsync(Constants.SelectedTeamLocalStorageKey);
+                var team = TeamSelectionResolver.Resolve(currentTeamKey, rememberedTeamKey, visibleTeams, teams);
+
+                if (team == null && !teams.Any() && _options.AutoCreateFirstTeam)
                 {
-                    await AssignTeamAsync(TeamSelectionResolver.Resolve(t.Value, visibleTeams, teams));
+                    team = await _teamService.CreateTeamAsync();
                 }
-                else if (!teams.Any())
-                {
-                    if (_options.AutoCreateFirstTeam)
-                    {
-                        var team = await _teamService.CreateTeamAsync();
-                        await AssignTeamAsync(team, true);
-                    }
-                }
-                else if (teams.Length == 1)
-                {
-                    await AssignTeamAsync(teams.Single(), true);
-                }
-                else
-                {
-                    var teamKey = await _localStorageService.GetItemAsStringAsync(Constants.SelectedTeamLocalStorageKey);
-                    await AssignTeamAsync(teams.FirstOrDefault(x => x.Key == teamKey) ?? teams.FirstOrDefault(), true);
-                }
+
+                // Refresh only when the cookie doesn't already name this team — otherwise the claims for
+                // it have been applied on this request and a reload would be pointless.
+                await AssignTeamAsync(team, team != null && team.Key != currentTeamKey);
             }
 
             return _selectedTeam;
@@ -125,13 +115,10 @@ internal class TeamStateService : ITeamStateService
 
         _selectedTeam = selectedTeam;
 
-        // Only remember a team the caller actually belongs to. An oversight caller viewing someone else's
-        // team gets a session-scoped selection (cookie only) rather than being parked there indefinitely.
-        var ownTeams = await _teamService.GetTeamsAsync().ToArrayAsync();
-        if (ownTeams.Any(x => x.Key == selectedTeam.Key))
-        {
-            await _localStorageService.SetItemAsStringAsync(Constants.SelectedTeamLocalStorageKey, selectedTeam.Key);
-        }
+        // Remembered across visits whether or not the caller is a member — an explicit choice is theirs
+        // to keep. Selection carries no access on its own: a non-member gets scopes only where the team
+        // has consented to a role they hold.
+        await _localStorageService.SetItemAsStringAsync(Constants.SelectedTeamLocalStorageKey, selectedTeam.Key);
 
         await _jSRuntime.InvokeVoidAsync("eval", $"document.cookie = '{Constants.SelectedTeamKeyCookie}={_selectedTeam?.Key}; path=/'");
         _navigationManager.Refresh(true);
