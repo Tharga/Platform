@@ -179,6 +179,18 @@ scope and acceptance criteria.
    the 3.1 line only if the gated release is approved **before** this merges; otherwise all three
    land together as 3.2.0. Flag to the user at close-out.
 
+## Follow-ups filed
+
+- **[#127](https://github.com/Tharga/Platform/issues/127) — team claims go stale for the life of a
+  Blazor Server circuit.** Filed 2026-07-19. Pre-existing, not caused by this feature, but this feature
+  widened who it affects. Consent revocation is the *weakest* case (a team switch forces a full reload,
+  so claims refresh); member removal and access downgrade are stronger, having no natural refresh point.
+  Also affects the service layer, not just the UI — `BlazorTeamPrincipalAccessor` falls back to the
+  circuit's frozen authentication state. Suggested fix is a `RevalidatingServerAuthenticationStateProvider`
+  on a configurable interval; deliberately **not** folded in here, since it changes authentication
+  behaviour for every consumer and needs its own testing pass.
+  Current behaviour is now documented in `implementation-guide.md` (claims-enricher section).
+
 ## Last session
 
 **2026-07-19.** Branch created off `master`; `dotnet outdated` clean so step 1 was a no-op. Plan

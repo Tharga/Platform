@@ -615,6 +615,8 @@ builder.AddThargaPlatform(o =>
 
 The enricher runs **once per request** inside `TeamServerClaimsTransformation`, before member lookup and consent evaluation. It supports full dependency injection (constructor injection). Duplicate claims are automatically prevented.
 
+> **When team claims refresh.** `TeamServerClaimsTransformation` is an `IClaimsTransformation`, so it runs during **HTTP authentication** — a page load or the establishment of a Blazor Server circuit — not on every interaction within a live circuit. In practice team claims are re-evaluated on page load and on team switch (switching teams forces a full reload). They are **not** re-evaluated while a user sits on a page: if a member is removed, their access level is lowered, or a team revokes consent, the affected user keeps their existing claims until their circuit is replaced — a reload, a team switch, a new tab, or re-authentication. This applies to the service-layer checks too, since `BlazorTeamPrincipalAccessor` falls back to the circuit's authentication state when there is no `HttpContext`. Hosts needing prompt revocation can register a [`RevalidatingServerAuthenticationStateProvider`](https://learn.microsoft.com/aspnet/core/blazor/security/server/) to revalidate the circuit on an interval.
+
 **Use cases:**
 - Assign global roles (e.g. `Developer`, `SystemAdministrator`) based on user identity
 - Add custom claims from external systems before team consent is evaluated
