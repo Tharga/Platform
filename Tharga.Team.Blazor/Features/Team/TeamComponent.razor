@@ -32,7 +32,7 @@ else
             {
                 <ExpandableCard Text="@team.Name" Selected="@(_selectedTeam.Key == team.Key)">
                     <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" AlignItems="AlignItems.Center">
-                        @if (_showConsentToggle && HasAccessLevel(team, AccessLevel.Administrator))
+                        @if (_showConsentToggle)
                         {
                             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
                                 <RadzenLabel Text="@($"Consent access for {string.Join(", ", _consentRoles)}")" Style="font-size: 0.85em;" />
@@ -40,14 +40,15 @@ else
                                                 Value="@(team.ConsentedRoles is { Length: > 0 } ? team.ConsentAccessLevel ?? AccessLevel.Viewer : (AccessLevel?)null)"
                                                 Data="@_consentLevels"
                                                 AllowClear="true"
+                                                Disabled="@(!CanEditConsent(team))"
                                                 Placeholder="No access"
                                                 Change="@(async args => await SetConsent(team, (AccessLevel?)args))" />
                             </RadzenStack>
                         }
-                        <RadzenButton icon="edit" Text="Rename" Click="@(async () => { await RenameTeam(team); })" Visible="@(_canManage)"/>
-                        <ActionButton icon="delete" Text="Delete" Click="@(async () => { await DeleteTeam(team); })" Visible="@(_canManage && _allowTeamCreation && HasAccessLevel(team, AccessLevel.Owner))"/>
+                        <RadzenButton icon="edit" Text="Rename" Click="@(async () => { await RenameTeam(team); })" Visible="@(CanRenameTeam(team))"/>
+                        <ActionButton icon="delete" Text="Delete" Click="@(async () => { await DeleteTeam(team); })" Visible="@(CanDeleteTeam(team))"/>
                         <RadzenButton icon="swap_horiz" Text="Transfer Ownership" Click="@(async () => { await TransferOwnership(team); })" Visible="@(HasAccessLevel(team, AccessLevel.Owner) && team.Members.Length > 1)"/>
-                        <RadzenButton icon="remove" Text="Leave" Click="@(async () => { await RemoveUserFromTeam(team, _user.Key); })" Visible="@(!HasAccessLevel(team, AccessLevel.Owner))"/>
+                        <RadzenButton icon="remove" Text="Leave" Click="@(async () => { await RemoveUserFromTeam(team, _user.Key); })" Visible="@(CanLeaveTeam(team))"/>
                     </RadzenStack>
                     <RadzenRow>
                         <RadzenColumn>
@@ -636,6 +637,31 @@ else
         var member = team.Members.PickOneOrDefault(x => x.Key == _user.Key, Logger, team.Key, _user.Key);
         if (member == null) return false;
         return member.AccessLevel <= accessLevel;
+    }
+
+    private bool IsMemberOf(ITeam<TMember> team)
+    {
+        return team.Members.Any(x => x.Key == _user.Key && x.State == MembershipState.Member);
+    }
+
+    private bool CanRenameTeam(ITeam<TMember> team)
+    {
+        return TeamActionGate.CanRename(_canManage, _selectedTeam?.Key, team.Key);
+    }
+
+    private bool CanDeleteTeam(ITeam<TMember> team)
+    {
+        return TeamActionGate.CanDelete(_canManage, _selectedTeam?.Key, team.Key, _allowTeamCreation, HasAccessLevel(team, AccessLevel.Owner));
+    }
+
+    private bool CanLeaveTeam(ITeam<TMember> team)
+    {
+        return TeamActionGate.CanLeave(IsMemberOf(team), HasAccessLevel(team, AccessLevel.Owner));
+    }
+
+    private bool CanEditConsent(ITeam<TMember> team)
+    {
+        return TeamActionGate.CanEditConsent(HasAccessLevel(team, AccessLevel.Administrator));
     }
 
     private async Task ReloadTeams()

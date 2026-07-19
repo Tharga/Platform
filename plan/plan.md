@@ -2,54 +2,50 @@
 
 Branch `feature/per-team-action-gating` off `master`. See `feature.md` for goal and acceptance criteria.
 
+Scope confirmed with the user: **four gate fixes only**. The issue's optional hardening (try/catch on
+the `DeleteTeam`/`SetConsent`/`RemoveUserFromTeam` handlers, and surfacing Delete for holders of the
+system `teams:delete` scope) is deliberately excluded — recorded as follow-ups at the bottom.
+
 ## Steps
 
-- [x] **1. NuGet updates (up front, whole solution)** — done. All 10 applied via `dotnet outdated -u`.
-  `dotnet build -c Release` clean (9 pre-existing warnings, 0 errors); full suite **559 passed, 0 failed**
-  (MongoDB 9, Mcp 51, Service 305, Blazor 194). **The NSubstitute 5.3.0 → 6.0.0 major bump required no
-  code changes** — no breaking usage in the three consuming test projects.
-  Run `dotnet outdated -u` across the solution and verify build + full test suite **before** any
-  feature code. 10 updates pending:
-  - `Microsoft.Extensions.DependencyInjection` / `.Abstractions` 10.0.9 → 10.0.10
-  - `Microsoft.AspNetCore.Components.Authorization` 9.0.17 → 9.0.18 (net9), 10.0.9 → 10.0.10 (net10)
-  - `Microsoft.AspNetCore.OpenApi` 9.0.17 → 9.0.18 (net9), 10.0.9 → 10.0.10 (net10)
-  - `Microsoft.NET.Test.Sdk` 18.7.0 → 18.8.1
-  - **`NSubstitute` 5.3.0 → 6.0.0 — MAJOR**, used by `Tharga.Platform.Mcp.Tests`,
-    `Tharga.Team.MongoDB.Tests`, `Tharga.Team.Service.Tests` (the Blazor test project uses Moq).
-    Breaking changes possible; if the suite breaks, fix forward on this branch.
-  Commit separately (`chore:`) so the feature diff stays clean.
+- [x] **1. NuGet updates (up front, whole solution)**
+  All 10 applied via `dotnet outdated -u`: `Extensions.DependencyInjection(.Abstractions)` 10.0.9→10.0.10,
+  `Components.Authorization` (9.0.18 / 10.0.10), `AspNetCore.OpenApi` (9.0.18 / 10.0.10),
+  `NET.Test.Sdk` 18.7.0→18.8.1, `NSubstitute` 5.3.0→6.0.0.
+  Release build clean (9 pre-existing warnings, 0 errors); suite **559 passed, 0 failed**.
+  **The NSubstitute major bump required no code changes** — no breaking usage in the three consuming
+  test projects. Committed as `chore:` separately from the feature diff.
 
-- [~] **2. Write the gate tests first** (`Tharga.Team.Blazor.Tests/TeamActionGateTests.cs`)
-  `[Theory]` truth tables for each gate, written against the not-yet-existing `TeamActionGate`:
-  - `CanManage(hasManageScope, selectedTeamKey, teamKey)` — true only when scope held **and** keys match.
-  - `CanRename` — same as `CanManage`.
-  - `CanDelete(hasManageScope, selectedTeamKey, teamKey, allowTeamCreation, isOwner)` — all four must hold.
-  - `CanLeave(isMember, isOwner)` — member and not owner.
-  - `CanEditConsent(isAdministrator)` — visibility vs. enablement kept separate.
-  Include null/empty team-key cases (never authorize on a null match).
+- [x] **2. Gate tests written first** (`Tharga.Team.Blazor.Tests/TeamActionGateTests.cs`)
+  22 tests: `[Theory]` truth tables for `CanManage` / `CanRename` / `CanDelete` / `CanLeave` /
+  `CanEditConsent`, including null and empty team-key cases (never authorize on a null "match") and
+  an ordinal case-sensitivity check on the team key.
 
-- [ ] **3. Implement `TeamActionGate`** (`Tharga.Team.Blazor/Framework/TeamActionGate.cs`)
-  Pure static functions, no component/DI dependency. XML doc comments on the public surface
-  explaining *why* the selected-team check exists (claims are per-selected-team). Tests from step 2 pass.
+- [x] **3. Implement `TeamActionGate`**
+  Placed in `Features/Team/` — **not** `Framework/` as originally drafted — to match
+  `CreateTeamActionResolver` and the "keep feature-specific code under its feature" rule. `internal`
+  static, no DI dependency, reached by tests via the existing `InternalsVisibleTo`. XML docs explain
+  *why* the selected-team check exists (the scope is only issued for the selected team).
 
-- [ ] **4. Wire the gates into `TeamComponent.razor`**
-  Add private `CanManageTeam(team)` / `IsMemberOf(team)` helpers delegating to `TeamActionGate`
-  (`_selectedTeam?.Key`, `_user.Key`, `MembershipState.Member`), then the four markup changes:
-  - `:35` Consent — drop `HasAccessLevel(...)` from the `@if`, add
-    `Disabled="@(!HasAccessLevel(team, AccessLevel.Administrator))"` on the dropdown.
-  - `:47` Rename — `Visible="@(CanManageTeam(team))"`.
-  - `:48` Delete — `Visible="@(CanManageTeam(team) && _allowTeamCreation && HasAccessLevel(team, AccessLevel.Owner))"`.
-  - `:50` Leave — `Visible="@(IsMemberOf(team) && !HasAccessLevel(team, AccessLevel.Owner))"`.
-  - `:49` Transfer Ownership — unchanged.
+- [x] **4. Wire the gates into `TeamComponent.razor`**
+  Four private helpers (`CanRenameTeam`, `CanDeleteTeam`, `CanLeaveTeam`, `CanEditConsent`) plus
+  `IsMemberOf`, delegating to `TeamActionGate`. Markup:
+  - Consent — `@if (_showConsentToggle)` only; dropdown gains `Disabled="@(!CanEditConsent(team))"`.
+  - Rename — `Visible="@(CanRenameTeam(team))"`.
+  - Delete — `Visible="@(CanDeleteTeam(team))"`.
+  - Leave — `Visible="@(CanLeaveTeam(team))"`.
+  - Transfer Ownership — unchanged.
 
-- [ ] **5. Build + full test suite**
-  `dotnet build -c Release` then `dotnet test -c Release`. No failing tests before commit.
+- [x] **5. Build + full test suite**
+  Release build clean (8 warnings, all pre-existing, 0 errors); suite **581 passed, 0 failed** (+22).
 
-- [ ] **6. Docs review**
-  Check `Tharga.Team.Blazor/README.md` and `docs/articles/implementation-guide.md` for statements
-  about who sees which team action. This is a bug fix, so new content is likely unnecessary — but
-  the review is mandatory, and the outcome gets stated either way. Land as a separate `docs:` commit
-  if anything changes.
+- [~] **6. Docs review**
+  `Tharga.Team.Blazor/README.md` — no statement about per-team action visibility; nothing contradicted.
+  `docs/articles/implementation-guide.md` — the authorization tables (`:803-823`) already document the
+  server rule this change makes the UI honour ("team scopes authorize only the caller's **own** team"),
+  so nothing there is wrong. **One genuine addition needed:** the consent selector's
+  hidden → visible-but-disabled change is consumer-visible and belongs in the Consent section.
+  Land as a separate `docs:` commit.
 
 - [ ] **7. Push branch, hand to user for testing**
   Do **not** open the PR yet (close-out commit must land last).
@@ -65,7 +61,20 @@ Branch `feature/per-team-action-gating` off `master`. See `feature.md` for goal 
   `create-team-override` feature set the precedent (`CreateTeamActionResolver`).
 - **Consent stays visible-but-disabled** per the issue's desired behaviour #1 — a viewer should see
   the consented level without being able to change it.
+- **`CanEditConsent` is currently an identity function.** Kept as a named gate anyway so the
+  visible-vs-enabled split is expressed and tested in one place rather than inline in markup.
+
+## Follow-ups (deliberately out of scope)
+
+- Wrap `DeleteTeam` / `SetConsent` / `RemoveUserFromTeam` in try/catch so any residual authorization
+  denial surfaces as a notification rather than the Blazor error UI (mirrors `TeamDialog.OnSubmit`).
+- Surface Delete for holders of the system `teams:delete` scope — the new gate hides it from
+  cross-team admins who have no `team:manage` on the team in question. Needs a system-scope check in
+  the component. Only matters once a consumer actually uses `teams:delete` from the UI.
 
 ## Last session
 
-Not yet started — plan awaiting confirmation.
+**2026-07-19.** Branch created off `master`; plan confirmed with the user (four gate fixes only).
+Steps 1–5 complete: packages updated (NSubstitute 6.0 clean), `TeamActionGate` + 22 tests added,
+four markup gates wired, suite green at 581. Step 6 (docs) in progress — one consent-behaviour
+addition to the implementation guide, then push for user testing (step 7).
