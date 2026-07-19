@@ -62,7 +62,25 @@ scope and acceptance criteria.
   listing surfaces share one tested decision instead of repeating a claims check. Follows the
   `TeamActionGate` / `CreateTeamActionResolver` precedent (no bUnit in this project).
 
-- [ ] **5. Wire the listing surfaces + fix selection for non-member teams**
+- [x] **5. Wire the listing surfaces + fix selection for non-member teams** — done. Suite 615 green.
+  `TeamStateService` now resolves two sets: `teams` (own) drives every automatic choice,
+  `visibleTeams` (widened when the caller holds `teams:read`) only validates an existing selection.
+  `AutoCreateFirstTeam` therefore behaves exactly as before — **no silent behaviour change**.
+  `GetVisibleTeamsAsync` falls back to own teams on `UnauthorizedAccessException` so a claims/enforcement
+  mismatch degrades instead of breaking the page. `AssignTeamAsync` null-guarded.
+  `SetSelectedTeamAsync` writes local storage **only** for a team the caller belongs to — a non-member
+  selection is cookie-only, so it dies with the session instead of parking them there.
+  `TeamComponent:29` now gates on `_teams.Any()` rather than `_selectedTeam != null`.
+  All three surfaces (`TeamComponent`, `TeamSelector`, `TeamsListView`) pick the widened list.
+
+- [x] **6. Consent badge / indicator** — done alongside step 5.
+  `TeamComponent`: consent badge + a "Not a member" badge, both only for `teams:read` holders.
+  `TeamSelector`: tinted dot with the level as a tooltip. `TeamsListView`: a Consent column.
+  `ConsentVisibility` had to become **public** — `TeamViewModel` is public API (consumers template
+  against it via `TeamActionsTemplate`), so an internal enum could not sit on it. `TeamVisibility`
+  itself stays internal.
+
+  Original step text for 5–6:
   Scope grew after tracing the selection path (2026-07-19). Listing alone is not enough:
   - `TeamComponent.ReloadTeams()`, `TeamsListView`, `TeamSelector` call the step-4 helper.
   - **`TeamStateService.GetSelectedTeamAsync` must use the widened set too.** It currently reads the

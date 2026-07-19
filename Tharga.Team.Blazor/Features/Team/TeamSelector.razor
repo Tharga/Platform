@@ -33,7 +33,15 @@
         else if (_teams.Length > 1 && SelectedTeam != null)
         {
             <RadzenImage Path="@SelectedTeam.Icon" class="rz-gravatar" Visible="@(!string.IsNullOrEmpty(SelectedTeam.Icon))" />
-            <RadzenDropDown @bind-Value=@SelectedTeam Data="@(_teams.OrderBy(f => f.Name))" TextProperty="Name" />
+            <RadzenDropDown @bind-Value=@SelectedTeam Data="@(_teams.OrderBy(f => f.Name))" TextProperty="Name">
+                <Template Context="team">
+                    @if (_canSeeAllTeams)
+                    {
+                        <span style="@ConsentDotStyle((ITeam)team)" title="@TeamVisibility.Label(TeamVisibility.Resolve(((ITeam)team).ConsentedRoles, ((ITeam)team).ConsentAccessLevel))"></span>
+                    }
+                    @(((ITeam)team).Name)
+                </Template>
+            </RadzenDropDown>
         }
     </Authorized>
 </AuthorizeView>
@@ -48,6 +56,7 @@
     [Parameter] public EventCallback CreateTeamRequested { get; set; }
 
     private ITeam[] _teams;
+    private bool _canSeeAllTeams;
     private ITeam _selectedTeam;
     private string _loadingText = TeamMenuText.Loading.Default;
     private string _createTeamText = TeamMenuText.CreateTeam.Default;
@@ -99,10 +108,21 @@
 
     private async Task ReloadTeams()
     {
-        _teams = await TeamService.GetTeamsAsync().ToArrayAsync();
+        var current = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        _canSeeAllTeams = TeamVisibility.CanSeeAllTeams(current.User);
+        _teams = _canSeeAllTeams
+            ? await TeamService.GetAllTeamsAsync().ToArrayAsync()
+            : await TeamService.GetTeamsAsync().ToArrayAsync();
         var selectedTeam = await TeamStateService.GetSelectedTeamAsync();
         SelectedTeam ??= selectedTeam;
         StateHasChanged();
+    }
+
+    private string ConsentDotStyle(ITeam team)
+    {
+        var visibility = TeamVisibility.Resolve(team.ConsentedRoles, team.ConsentAccessLevel);
+        var token = TeamVisibility.BadgeStyle(visibility).ToLowerInvariant();
+        return $"display:inline-block; width:.5rem; height:.5rem; border-radius:50%; background: var(--rz-{token}); margin-right:.4rem;";
     }
 
     private async Task InvokeCreateTeamRequested()

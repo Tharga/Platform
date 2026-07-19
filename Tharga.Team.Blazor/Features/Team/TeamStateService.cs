@@ -1,4 +1,5 @@
-﻿using Blazored.LocalStorage;
+﻿using System.Security.Claims;
+using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Options;
@@ -43,14 +44,18 @@ internal class TeamStateService : ITeamStateService
         {
             await _semaphore.WaitAsync();
 
+            // Two sets, two purposes. `teams` (own memberships) drives every *automatic* choice below;
+            // `visibleTeams` only decides whether an existing selection is still legitimate. Defaulting
+            // from the widened set would silently park an oversight caller inside an arbitrary tenant.
             var teams = await _teamService.GetTeamsAsync().ToArrayAsync();
+            var visibleTeams = await GetVisibleTeamsAsync(authState.User, teams);
 
-            if (_selectedTeam == null || teams.All(x => x.Key != _selectedTeam.Key) || teams.FirstOrDefault(x => x.Key == _selectedTeam.Key)?.Name != _selectedTeam.Name)
+            if (_selectedTeam == null || visibleTeams.All(x => x.Key != _selectedTeam.Key) || visibleTeams.FirstOrDefault(x => x.Key == _selectedTeam.Key)?.Name != _selectedTeam.Name)
             {
                 var t = authState.User.Claims.FirstOrDefault(x => x.Type == Constants.TeamKeyCookie);
                 if (t != null)
                 {
-                    var team = teams.FirstOrDefault(x => x.Key == t.Value) ?? teams.FirstOrDefault();
+                    var team = visibleTeams.FirstOrDefault(x => x.Key == t.Value) ?? teams.FirstOrDefault();
                     await AssignTeamAsync(team);
                 }
                 else if (!teams.Any())
@@ -80,13 +85,32 @@ internal class TeamStateService : ITeamStateService
         }
     }
 
+    /// <summary>
+    /// Teams the caller may legitimately have selected: their own, widened to every team when they hold
+    /// <see cref="SystemTeamScopes.Read"/>. Falls back to own teams if the widened read is refused, so a
+    /// claims/enforcement mismatch degrades to today's behaviour instead of breaking the page.
+    /// </summary>
+    private async Task<ITeam[]> GetVisibleTeamsAsync(ClaimsPrincipal principal, ITeam[] ownTeams)
+    {
+        if (!TeamVisibility.CanSeeAllTeams(principal)) return ownTeams;
+
+        try
+        {
+            return await _teamService.GetAllTeamsAsync().ToArrayAsync();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return ownTeams;
+        }
+    }
+
     private async Task AssignTeamAsync(ITeam team, bool refresh = false)
     {
         _selectedTeam = team;
 
-        if (refresh)
+        if (refresh && team != null)
         {
-            await _jSRuntime.InvokeVoidAsync("eval", $"document.cookie = 'selected_team_id={_selectedTeam.Key}; path=/'");
+            await _jSRuntime.InvokeVoidAsync("eval", $"document.cookie = 'selected_team_id={team.Key}; path=/'");
             _navigationManager.Refresh(true);
             return;
         }
@@ -101,7 +125,14 @@ internal class TeamStateService : ITeamStateService
         if (_selectedTeam?.Key == selectedTeam.Key) return;
 
         _selectedTeam = selectedTeam;
-        await _localStorageService.SetItemAsStringAsync(Constants.SelectedTeamLocalStorageKey, selectedTeam.Key);
+
+        // Only remember a team the caller actually belongs to. An oversight caller viewing someone else's
+        // team gets a session-scoped selection (cookie only) rather than being parked there indefinitely.
+        var ownTeams = await _teamService.GetTeamsAsync().ToArrayAsync();
+        if (ownTeams.Any(x => x.Key == selectedTeam.Key))
+        {
+            await _localStorageService.SetItemAsStringAsync(Constants.SelectedTeamLocalStorageKey, selectedTeam.Key);
+        }
 
         await _jSRuntime.InvokeVoidAsync("eval", $"document.cookie = '{Constants.SelectedTeamKeyCookie}={_selectedTeam?.Key}; path=/'");
         _navigationManager.Refresh(true);

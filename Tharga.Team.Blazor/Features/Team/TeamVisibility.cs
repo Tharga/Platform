@@ -7,7 +7,7 @@ namespace Tharga.Team.Blazor.Features.Team;
 /// How much access a team has consented to grant an oversight caller, reduced to the three states the
 /// UI distinguishes.
 /// </summary>
-internal enum ConsentVisibility
+public enum ConsentVisibility
 {
     /// <summary>The team has consented to nothing — visible, but no access.</summary>
     None,
