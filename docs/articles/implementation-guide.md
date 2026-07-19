@@ -806,6 +806,7 @@ The `ScopeProxy<T>` automatically checks that the current user has the required 
 | `team:manage` | team | `TeamScopes.Manage` | Rename, delete, transfer ownership |
 | `member:manage` | team | `TeamScopes.MemberManage` | Invite/remove members, change access level/roles/scope-overrides, edit display names |
 | `teams:delete` | **system** | `SystemTeamScopes.Delete` | Delete **any** team (cross-team) |
+| `teams:read` | **system** | `SystemTeamScopes.Read` | See **every** team (cross-team discovery) |
 | `apikey:manage` | team | `ApiKeyScopes.Manage` | Create/refresh/lock/delete API keys |
 
 #### Team-operation authorization
@@ -967,6 +968,45 @@ o.Blazor.Consent.AccessLevel = AccessLevel.Viewer; // default level when the con
 The team admin picks the access level when consenting (Viewer/User/Administrator); a consented user gains that team's scopes at that level. The granted level is `team.ConsentAccessLevel ?? Consent.AccessLevel`.
 
 When `ShowToggle` is on, the picker is shown to every member of the team but is **disabled** for anyone below `AccessLevel.Administrator` — so an ordinary member can see what the team has consented to without being able to change it.
+
+### Cross-team visibility for oversight roles
+
+Support and administration roles often need to see the whole estate. The `teams:read` system scope
+grants exactly that — **discovery, and nothing else**:
+
+- **Discovery is global.** A caller holding `teams:read` sees every team in `TeamComponent`,
+  `TeamSelector` and the developer `UsersView` → Teams tab.
+- **Access stays per-team and consent-governed.** Selecting a team they are not a member of grants only
+  the scopes that team has consented to. A team that consented to nothing yields no access — the team is
+  visible, its data is not.
+
+Grant it either explicitly, or with the opt-in convenience flag:
+
+```csharp
+o.ConfigureSystemRoles = roles => roles.Map("Developer", SystemTeamScopes.Read);
+// or, to reuse the consent role list:
+o.Blazor.Consent.Roles = ["Developer"];
+o.Blazor.Consent.GrantTeamsRead = true;   // default false
+```
+
+`GrantTeamsRead` is off by default on purpose. `Consent.Roles` means "roles a team *may grant access to*"
+— a per-team, inbound opt-in. Turning that into a global enumeration privilege automatically would widen
+access for existing hosts on upgrade, so it must be opted into. The flag composes with any
+`ConfigureSystemRoles` mapping for the same role rather than conflicting with it.
+
+**What a `teams:read` holder sees.** Each team carries a consent badge — *No access* (red), *Partial
+access* (yellow, Viewer/User) or *Full access* (green, Administrator) — plus a **Not a member** badge on
+teams they don't belong to. The `TeamSelector` shows the same state as a tinted dot.
+
+**Selection is session-scoped for non-member teams.** An oversight caller may deliberately select
+someone else's team, but that choice is written only to the session cookie, never to the long-term
+local-storage preference — so it ends with the session instead of parking them in another tenant
+indefinitely. Automatic team selection (including `AutoCreateFirstTeam` and the
+single-team shortcut) always draws from the caller's **own** memberships, so nobody is ever defaulted
+into a team they don't belong to.
+
+Team enumeration is deliberately **not audited** — it is a read with no side effect. Mutations performed
+inside a team are audited as usual.
 
 ### Overriding the "Create team" action
 

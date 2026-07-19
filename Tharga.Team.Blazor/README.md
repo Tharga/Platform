@@ -147,6 +147,34 @@ Your `/get-started` page runs the wizard and calls `CreateTeamAsync()` itself (w
 
 When neither is set, behavior is unchanged. `CreateTeamPath` is `null` and both `CreateTeamRequested` callbacks are unset by default, so this is additive and non-breaking. Note the override applies to the built-in UI entry points only; teams created programmatically or via `AutoCreateFirstTeam` are unaffected.
 
+### Cross-team visibility for oversight roles
+
+Support and administration roles usually need to see every team, not just the ones they belong to. The
+`teams:read` system scope grants **discovery only** — access inside a team still depends on that team's
+consent.
+
+```csharp
+builder.AddThargaPlatform(o =>
+{
+    // Explicit:
+    o.ConfigureSystemRoles = roles => roles.Map("Developer", SystemTeamScopes.Read);
+
+    // Or reuse the consent role list (opt-in, default false):
+    o.Blazor.Consent.Roles = ["Developer"];
+    o.Blazor.Consent.GrantTeamsRead = true;
+});
+```
+
+`GrantTeamsRead` defaults to `false` deliberately: `Consent.Roles` means "roles a team may grant access
+to", and silently promoting that to a global enumeration privilege would widen access for existing hosts
+on upgrade.
+
+A holder of `teams:read` sees every team in `TeamComponent`, `TeamSelector` and `UsersView` → Teams,
+each tagged with what that team has consented to — **No access**, **Partial access** or **Full access** —
+plus a **Not a member** badge where applicable. Selecting a team you don't belong to lasts for the
+session only; automatic team selection always draws from your own memberships, so you are never
+defaulted into someone else's team. Enumeration is not audited; mutations still are.
+
 ## Dependencies
 
 - [Tharga.Blazor](https://www.nuget.org/packages/Tharga.Blazor) - Generic UI components.
