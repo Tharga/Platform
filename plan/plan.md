@@ -39,13 +39,15 @@ system `teams:delete` scope) is deliberately excluded — recorded as follow-ups
 - [x] **5. Build + full test suite**
   Release build clean (8 warnings, all pre-existing, 0 errors); suite **581 passed, 0 failed** (+22).
 
-- [~] **6. Docs review**
+- [x] **6. Docs review**
   `Tharga.Team.Blazor/README.md` — no statement about per-team action visibility; nothing contradicted.
   `docs/articles/implementation-guide.md` — the authorization tables (`:803-823`) already document the
   server rule this change makes the UI honour ("team scopes authorize only the caller's **own** team"),
   so nothing there is wrong. **One genuine addition needed:** the consent selector's
   hidden → visible-but-disabled change is consumer-visible and belongs in the Consent section.
-  Land as a separate `docs:` commit.
+  Two additions made: the consent visible-but-disabled note in the Consent section, and a sentence in
+  the team-operation authorization section explaining that Rename/Delete appear only on the selected
+  team's card (the likely "why is the button gone?" support question after this ships).
 
 - [ ] **7. Push branch, hand to user for testing**
   Do **not** open the PR yet (close-out commit must land last).
