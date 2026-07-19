@@ -820,7 +820,7 @@ Team mutations are enforced in the **service layer** (`AuthorizationTeamServiceD
 | Member invite/remove/role/overrides/display-name | `member:manage` on the team |
 | Transfer ownership | Owner only |
 
-Team scopes (`team:*`, `member:manage`) authorize only the caller's **own** team — the `TeamKey` claim must match the team being acted on, so an admin of one team can't act on another. **`teams:delete`** is a **system** scope (toolkit-defined) that authorizes deleting *any* team regardless of membership and regardless of `AllowTeamCreation` — grant it to your support/dev tooling via `o.ConfigureSystemRoles` (e.g. map `Developer` → `teams:delete`) or to a system API key. Setting `AllowTeamCreation = false` disables the self-service create and in-team delete paths but never blocks `teams:delete`.
+Team scopes (`team:*`, `member:manage`) authorize only the caller's **own** team — the `TeamKey` claim must match the team being acted on, so an admin of one team can't act on another. `TeamComponent` mirrors this in the UI: because the scope is issued for the **selected** team only, the Rename and Delete buttons appear on the selected team's card and not on the other teams you belong to. Select a team to manage it. **`teams:delete`** is a **system** scope (toolkit-defined) that authorizes deleting *any* team regardless of membership and regardless of `AllowTeamCreation` — grant it to your support/dev tooling via `o.ConfigureSystemRoles` (e.g. map `Developer` → `teams:delete`) or to a system API key. Setting `AllowTeamCreation = false` disables the self-service create and in-team delete paths but never blocks `teams:delete`.
 
 ### Alternative: Access level enforcement
 
@@ -965,6 +965,8 @@ o.Blazor.Consent.AccessLevel = AccessLevel.Viewer; // default level when the con
 ```
 
 The team admin picks the access level when consenting (Viewer/User/Administrator); a consented user gains that team's scopes at that level. The granted level is `team.ConsentAccessLevel ?? Consent.AccessLevel`.
+
+When `ShowToggle` is on, the picker is shown to every member of the team but is **disabled** for anyone below `AccessLevel.Administrator` — so an ordinary member can see what the team has consented to without being able to change it.
 
 ### Overriding the "Create team" action
 
