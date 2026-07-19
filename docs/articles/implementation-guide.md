@@ -998,12 +998,16 @@ access for existing hosts on upgrade, so it must be opted into. The flag compose
 access* (yellow, Viewer/User) or *Full access* (green, Administrator) — plus a **Not a member** badge on
 teams they don't belong to. The `TeamSelector` shows the same state as a tinted dot.
 
-**Selection is session-scoped for non-member teams.** An oversight caller may deliberately select
-someone else's team, but that choice is written only to the session cookie, never to the long-term
-local-storage preference — so it ends with the session instead of parking them in another tenant
-indefinitely. Automatic team selection (including `AutoCreateFirstTeam` and the
-single-team shortcut) always draws from the caller's **own** memberships, so nobody is ever defaulted
-into a team they don't belong to.
+**Selecting a team you don't belong to.** An oversight caller can select any team they can see, and that
+choice is remembered across visits like any other — returning to the site re-selects it. Selection on its
+own carries **no access**: the claims transformation still grants only what that team has consented to, to
+a role the caller holds. No consent, or a role the team hasn't consented to, means no team scopes at all.
+
+The distinction that matters is *chosen* versus *defaulted*. A team the caller picked is restored; a team
+they never picked is never selected for them. When there is no current or remembered selection, the
+fallback always comes from the caller's **own** memberships — so a support user with no memberships and no
+prior choice lands on no team, rather than inside whichever tenant happens to sort first. A remembered team
+that is no longer visible (deleted, consent revoked, scope removed) falls back the same way.
 
 Team enumeration is deliberately **not audited** — it is a read with no side effect. Mutations performed
 inside a team are audited as usual.
