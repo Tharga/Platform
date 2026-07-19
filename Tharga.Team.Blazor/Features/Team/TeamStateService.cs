@@ -55,8 +55,7 @@ internal class TeamStateService : ITeamStateService
                 var t = authState.User.Claims.FirstOrDefault(x => x.Type == Constants.TeamKeyCookie);
                 if (t != null)
                 {
-                    var team = visibleTeams.FirstOrDefault(x => x.Key == t.Value) ?? teams.FirstOrDefault();
-                    await AssignTeamAsync(team);
+                    await AssignTeamAsync(TeamSelectionResolver.Resolve(t.Value, visibleTeams, teams));
                 }
                 else if (!teams.Any())
                 {

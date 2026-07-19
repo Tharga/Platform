@@ -107,7 +107,27 @@ scope and acceptance criteria.
   - Gated on holding `teams:read` — **not** on a role-name string.
   - Level→style/label mapping lives in the step-4 helper class so it is unit-tested.
 
-- [ ] **7. Non-member selection behaviour**
+- [x] **7. Non-member selection behaviour** — done. `TeamStateService` is internal with heavy Blazor
+  dependencies (`NavigationManager`, `IJSRuntime`, `ILocalStorageService`) and the project has no bUnit
+  or any precedent for testing it, so the security-critical decision was extracted to a pure
+  `TeamSelectionResolver` and tested directly (9 tests) rather than left on reasoning. The guard it
+  encodes: an explicit selection of a visible team is honoured, but the **fallback always comes from
+  own memberships** — including the "scope but no memberships" case, which resolves to *nothing*
+  rather than the first tenant in the list.
+  Graceful-degradation verified by inspection earlier: claims transformation adds nothing and returns
+  the principal; `SetMemberLastSeenAsync` is an ungated pass-through that early-returns for non-members.
+
+- [x] **8. Build + full test suite** — Release build clean; suite **624 passed, 0 failed** (was 559 at
+  branch start; +65).
+
+- [x] **9. Docs** — `implementation-guide.md`: `teams:read` in the system-scope table plus a
+  "Cross-team visibility for oversight roles" section covering the discovery-vs-access split, the
+  opt-in flag and why it defaults off, the badges, and the session-scoped selection rule.
+  `Tharga.Team.Blazor/README.md`: matching section.
+
+- [x] **9b. Version line** — `MAJOR_MINOR: '3.2'`.
+
+  Original step text for 7:
   Confirm the existing consent branch fires for a `teams:read` holder selecting a non-member team,
   and that a team with **no** consent degrades cleanly (team visible, no team scopes, no exception
   and no blank page). This is verification of existing code, plus any guard the check turns up.
