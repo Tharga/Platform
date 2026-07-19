@@ -4,7 +4,10 @@ Branch `feature/per-team-action-gating` off `master`. See `feature.md` for goal 
 
 ## Steps
 
-- [ ] **1. NuGet updates (up front, whole solution)**
+- [x] **1. NuGet updates (up front, whole solution)** — done. All 10 applied via `dotnet outdated -u`.
+  `dotnet build -c Release` clean (9 pre-existing warnings, 0 errors); full suite **559 passed, 0 failed**
+  (MongoDB 9, Mcp 51, Service 305, Blazor 194). **The NSubstitute 5.3.0 → 6.0.0 major bump required no
+  code changes** — no breaking usage in the three consuming test projects.
   Run `dotnet outdated -u` across the solution and verify build + full test suite **before** any
   feature code. 10 updates pending:
   - `Microsoft.Extensions.DependencyInjection` / `.Abstractions` 10.0.9 → 10.0.10
@@ -16,7 +19,7 @@ Branch `feature/per-team-action-gating` off `master`. See `feature.md` for goal 
     Breaking changes possible; if the suite breaks, fix forward on this branch.
   Commit separately (`chore:`) so the feature diff stays clean.
 
-- [ ] **2. Write the gate tests first** (`Tharga.Team.Blazor.Tests/TeamActionGateTests.cs`)
+- [~] **2. Write the gate tests first** (`Tharga.Team.Blazor.Tests/TeamActionGateTests.cs`)
   `[Theory]` truth tables for each gate, written against the not-yet-existing `TeamActionGate`:
   - `CanManage(hasManageScope, selectedTeamKey, teamKey)` — true only when scope held **and** keys match.
   - `CanRename` — same as `CanManage`.
