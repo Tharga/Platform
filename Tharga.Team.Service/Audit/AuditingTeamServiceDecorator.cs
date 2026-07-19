@@ -43,6 +43,12 @@ public class AuditingTeamServiceDecorator : ITeamService
     public Task<ITeamMember> GetTeamMemberAsync(string teamKey, string userKey) => _inner.GetTeamMemberAsync(teamKey, userKey);
     public IAsyncEnumerable<ITeamMember> GetMembersAsync(string teamKey) => _inner.GetMembersAsync(teamKey);
     public IAsyncEnumerable<ITeam> GetConsentedTeamsAsync(string[] userRoles) => _inner.GetConsentedTeamsAsync(userRoles);
+
+    // Not audited by design: enumeration is a read with no side effect. Mutations a cross-team caller
+    // performs inside a team still flow through the audited methods below.
+    public IAsyncEnumerable<ITeam> GetAllTeamsAsync() => _inner.GetAllTeamsAsync();
+
+    public IAsyncEnumerable<ITeam<TMember>> GetAllTeamsAsync<TMember>() where TMember : ITeamMember => _inner.GetAllTeamsAsync<TMember>();
     public Task SetMemberLastSeenAsync(string teamKey) => _inner.SetMemberLastSeenAsync(teamKey);
     public Task<IReadOnlyList<TenantRoleDefinition>> GetTeamCustomRolesAsync(string teamKey) => _inner.GetTeamCustomRolesAsync(teamKey);
 

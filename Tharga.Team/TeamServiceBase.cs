@@ -59,6 +59,26 @@ public abstract class TeamServiceBase : ITeamService
         }
     }
 
+    /// <summary>
+    /// Backs <see cref="GetAllTeamsAsync()"/>. Virtual rather than abstract so existing derived services
+    /// keep compiling; the default returns nothing, and storage-backed bases override it.
+    /// </summary>
+    protected virtual async IAsyncEnumerable<ITeam> GetAllTeamsInternalAsync()
+    {
+        await Task.CompletedTask;
+        yield break;
+    }
+
+    public virtual IAsyncEnumerable<ITeam> GetAllTeamsAsync() => GetAllTeamsInternalAsync();
+
+    public virtual async IAsyncEnumerable<ITeam<TMember>> GetAllTeamsAsync<TMember>() where TMember : ITeamMember
+    {
+        await foreach (var team in GetAllTeamsInternalAsync())
+        {
+            yield return (ITeam<TMember>)team;
+        }
+    }
+
     public async Task<ITeam<TMember>> GetTeamAsync<TMember>(string teamKey) where TMember : ITeamMember
     {
         var team = await GetTeamAsync(teamKey);

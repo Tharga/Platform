@@ -22,4 +22,18 @@ public interface ITeamRepository<TTeamEntity, TMember> : IRepository
     Task SetConsentAsync(string teamKey, string[] consentedRoles, AccessLevel? accessLevel = null);
     Task SetCustomRolesAsync(string teamKey, IReadOnlyList<TenantRoleDefinition> customRoles);
     IAsyncEnumerable<TTeamEntity> GetTeamsByConsentAsync(string[] roles);
+
+    /// <summary>
+    /// Every team, regardless of membership — backs the cross-team discovery path authorized by
+    /// <see cref="SystemTeamScopes.Read"/>.
+    /// </summary>
+    /// <remarks>
+    /// Declared with a default implementation so existing custom repositories keep compiling. The default
+    /// throws rather than returning empty: a silently empty cross-team list is indistinguishable from a
+    /// working feature that happens to have nothing to show, which hides the missing implementation.
+    /// </remarks>
+    IAsyncEnumerable<TTeamEntity> GetAllTeamsAsync()
+        => throw new NotSupportedException(
+            $"'{GetType().Name}' does not implement {nameof(GetAllTeamsAsync)}. Implement it to support " +
+            $"cross-team listing (the '{SystemTeamScopes.Read}' system scope).");
 }

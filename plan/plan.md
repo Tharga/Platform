@@ -27,7 +27,15 @@ scope and acceptance criteria.
   - Tests: default-off changes nothing; on, each consent role gains the scope; a role already mapped
     isn't duplicated; empty/null `Consent.Roles` is safe.
 
-- [ ] **3. Service layer — the widened read path**
+- [x] **3. Service layer — the widened read path** — done. Suite **601 green** (+6). All non-breaking
+  shapes landed as planned: `TeamServiceBase.GetAllTeamsInternalAsync` is `virtual` (the pre-existing
+  `TestTeamService` compiles untouched and yields empty — asserted as a test), `ITeamRepository<,>`
+  got a throwing default interface method, `ISystemRoleRegistry` was not touched.
+  **Snag:** `AsyncEnumerable.Empty<T>()` resolves on net10 but **not** net9, and `Tharga.Team`
+  multi-targets both — replaced with a plain `await Task.CompletedTask; yield break;` iterator, which
+  is framework-independent and warning-free.
+
+  Original step text:
   Non-breaking shape matters here; consumers derive from `TeamServiceRepositoryBase` (confirmed in
   the sample) and could implement `ITeamRepository<,>` themselves.
   - `ITeamService.GetAllTeamsAsync()` + generic `GetAllTeamsAsync<TMember>()`.
@@ -79,6 +87,10 @@ scope and acceptance criteria.
 - [ ] **9b. Version line** — set `MAJOR_MINOR: '3.2'` in `.github/workflows/build.yml`.
 
 - [ ] **10. Push branch, hand to user for testing** — do **not** open the PR yet.
+
+- [ ] **11b. Correct the `Requests.md` follow-up wording.** The #123 / #125 follow-up rows say "next
+  release on the 3.1 line". User decided 2026-07-19 that all three ship together as **3.2.0** and
+  there will be no 3.1.8 — update those rows to name 3.2.0.
 
 - [ ] **11. Close-out** — only after the user confirms. Re-run `dotnet outdated`, archive
   `feature.md` to the Plan directory `done/`, `git rm -r plan`, final commit

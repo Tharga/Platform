@@ -54,6 +54,25 @@ public sealed class AuthorizationTeamServiceDecorator : ITeamService
     public Task<ITeamMember> GetTeamMemberAsync(string teamKey, string userKey) => _inner.GetTeamMemberAsync(teamKey, userKey);
     public IAsyncEnumerable<ITeamMember> GetMembersAsync(string teamKey) => _inner.GetMembersAsync(teamKey);
     public IAsyncEnumerable<ITeam> GetConsentedTeamsAsync(string[] userRoles) => _inner.GetConsentedTeamsAsync(userRoles);
+
+    // Cross-team discovery — the only read gated here (teams:read). Enumeration is deliberately not audited.
+    public async IAsyncEnumerable<ITeam> GetAllTeamsAsync()
+    {
+        await RequireAllTeamsReadAsync();
+        await foreach (var team in _inner.GetAllTeamsAsync())
+        {
+            yield return team;
+        }
+    }
+
+    public async IAsyncEnumerable<ITeam<TMember>> GetAllTeamsAsync<TMember>() where TMember : ITeamMember
+    {
+        await RequireAllTeamsReadAsync();
+        await foreach (var team in _inner.GetAllTeamsAsync<TMember>())
+        {
+            yield return team;
+        }
+    }
     public Task<IReadOnlyList<TenantRoleDefinition>> GetTeamCustomRolesAsync(string teamKey) => _inner.GetTeamCustomRolesAsync(teamKey);
     public Task SetMemberLastSeenAsync(string teamKey) => _inner.SetMemberLastSeenAsync(teamKey);
     public Task SetInvitationResponseAsync(string teamKey, string userKey, string inviteCode, bool accept) => _inner.SetInvitationResponseAsync(teamKey, userKey, inviteCode, accept);
@@ -135,6 +154,13 @@ public sealed class AuthorizationTeamServiceDecorator : ITeamService
             throw new UnauthorizedAccessException("Team creation is disabled (AllowTeamCreation = false).");
         if (!await _authorizer.IsAuthenticatedAsync())
             throw new UnauthorizedAccessException("Authentication is required to create a team.");
+    }
+
+    private async Task RequireAllTeamsReadAsync()
+    {
+        if (await _authorizer.HasSystemScopeAsync(SystemTeamScopes.Read)) return;
+        throw new UnauthorizedAccessException(
+            $"Listing all teams requires the '{SystemTeamScopes.Read}' system scope.");
     }
 
     private async Task RequireDeleteAsync(string teamKey)
