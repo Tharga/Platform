@@ -111,10 +111,22 @@ public static class ThargaPlatformRegistration
             builder.Services.AddThargaSystemScopes(options.ConfigureSystemScopes);
         }
 
-        // System roles (opt-in) — map app/global roles to system scopes for privileged users
-        if (options.ConfigureSystemRoles != null)
+        // System roles (opt-in) — map app/global roles to system scopes for privileged users.
+        // Consent.GrantTeamsRead composes on top of any consumer mapping rather than replacing it.
+        var grantTeamsRead = options.Blazor.Consent is { GrantTeamsRead: true, Roles.Length: > 0 };
+        if (options.ConfigureSystemRoles != null || grantTeamsRead)
         {
-            builder.Services.AddThargaSystemRoles(options.ConfigureSystemRoles);
+            builder.Services.AddThargaSystemRoles(roles =>
+            {
+                options.ConfigureSystemRoles?.Invoke(roles);
+
+                if (!grantTeamsRead) return;
+
+                foreach (var role in options.Blazor.Consent.Roles)
+                {
+                    roles.Grant(role, SystemTeamScopes.Read);
+                }
+            });
         }
 
         // Audit logging (opt-in)

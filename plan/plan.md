@@ -9,7 +9,16 @@ scope and acceptance criteria.
   "No outdated dependencies were detected" (the previous feature applied all 10 an hour earlier).
   Re-check at close-out per the workflow.
 
-- [ ] **2. `teams:read` scope constant + opt-in registration**
+- [x] **2. `teams:read` scope constant + opt-in registration** — done. Suite 595 green (+14).
+  **Finding worth keeping:** `SystemRoleRegistry.Map` *throws* on an already-mapped role, so composing
+  the grant onto a consumer's existing `ConfigureSystemRoles` mapping would have crashed at startup —
+  in exactly the most likely configuration (host maps `Developer`, consent roles default to
+  `["Developer"]`). Added `SystemRoleRegistry.Grant`, a merge-capable sibling that unions scopes and
+  never throws; `Map` stays strict so duplicate *consumer* config is still reported. `Grant` went on
+  the concrete class only — `ConfigureSystemRoles` is `Action<SystemRoleRegistry>`, so
+  `ISystemRoleRegistry` did not need to change and no implementer breaks.
+
+  Original step text:
   - Add `SystemTeamScopes.Read = "teams:read"` with XML docs contrasting it against the in-team
     `TeamScopes.Read`.
   - Add `ConsentOptions.GrantTeamsRead` (bool, default `false`). When true, registration maps every
