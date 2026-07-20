@@ -13,4 +13,16 @@ public static class SystemTeamScopes
     /// <c>AllowTeamCreation</c> self-service option. The unconditional, cross-team delete path.
     /// </summary>
     public const string Delete = "teams:delete";
+
+    /// <summary>
+    /// Authorizes enumerating <b>any</b> team via <c>ITeamService.GetAllTeamsAsync</c>, regardless of
+    /// membership — the discovery path for oversight roles (support, administration).
+    /// </summary>
+    /// <remarks>
+    /// Discovery only. Holding this grants no access <i>inside</i> a team: selecting a team the caller
+    /// is not a member of still yields only the scopes that team has consented to, and none if it has
+    /// consented to nothing. Contrast with the in-team <see cref="TeamScopes.Read"/>, which authorizes
+    /// reading the caller's own team.
+    /// </remarks>
+    public const string Read = "teams:read";
 }

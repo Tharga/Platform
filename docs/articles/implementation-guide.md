@@ -615,6 +615,8 @@ builder.AddThargaPlatform(o =>
 
 The enricher runs **once per request** inside `TeamServerClaimsTransformation`, before member lookup and consent evaluation. It supports full dependency injection (constructor injection). Duplicate claims are automatically prevented.
 
+> **When team claims refresh.** `TeamServerClaimsTransformation` is an `IClaimsTransformation`, so it runs during **HTTP authentication** — a page load or the establishment of a Blazor Server circuit — not on every interaction within a live circuit. In practice team claims are re-evaluated on page load and on team switch (switching teams forces a full reload). They are **not** re-evaluated while a user sits on a page: if a member is removed, their access level is lowered, or a team revokes consent, the affected user keeps their existing claims until their circuit is replaced — a reload, a team switch, a new tab, or re-authentication. This applies to the service-layer checks too, since `BlazorTeamPrincipalAccessor` falls back to the circuit's authentication state when there is no `HttpContext`. Hosts needing prompt revocation can register a [`RevalidatingServerAuthenticationStateProvider`](https://learn.microsoft.com/aspnet/core/blazor/security/server/) to revalidate the circuit on an interval.
+
 **Use cases:**
 - Assign global roles (e.g. `Developer`, `SystemAdministrator`) based on user identity
 - Add custom claims from external systems before team consent is evaluated
@@ -806,6 +808,7 @@ The `ScopeProxy<T>` automatically checks that the current user has the required 
 | `team:manage` | team | `TeamScopes.Manage` | Rename, delete, transfer ownership |
 | `member:manage` | team | `TeamScopes.MemberManage` | Invite/remove members, change access level/roles/scope-overrides, edit display names |
 | `teams:delete` | **system** | `SystemTeamScopes.Delete` | Delete **any** team (cross-team) |
+| `teams:read` | **system** | `SystemTeamScopes.Read` | See **every** team (cross-team discovery) |
 | `apikey:manage` | team | `ApiKeyScopes.Manage` | Create/refresh/lock/delete API keys |
 
 #### Team-operation authorization
@@ -967,6 +970,49 @@ o.Blazor.Consent.AccessLevel = AccessLevel.Viewer; // default level when the con
 The team admin picks the access level when consenting (Viewer/User/Administrator); a consented user gains that team's scopes at that level. The granted level is `team.ConsentAccessLevel ?? Consent.AccessLevel`.
 
 When `ShowToggle` is on, the picker is shown to every member of the team but is **disabled** for anyone below `AccessLevel.Administrator` — so an ordinary member can see what the team has consented to without being able to change it.
+
+### Cross-team visibility for oversight roles
+
+Support and administration roles often need to see the whole estate. The `teams:read` system scope
+grants exactly that — **discovery, and nothing else**:
+
+- **Discovery is global.** A caller holding `teams:read` sees every team in `TeamComponent`,
+  `TeamSelector` and the developer `UsersView` → Teams tab.
+- **Access stays per-team and consent-governed.** Selecting a team they are not a member of grants only
+  the scopes that team has consented to. A team that consented to nothing yields no access — the team is
+  visible, its data is not.
+
+Grant it either explicitly, or with the opt-in convenience flag:
+
+```csharp
+o.ConfigureSystemRoles = roles => roles.Map("Developer", SystemTeamScopes.Read);
+// or, to reuse the consent role list:
+o.Blazor.Consent.Roles = ["Developer"];
+o.Blazor.Consent.GrantTeamsRead = true;   // default false
+```
+
+`GrantTeamsRead` is off by default on purpose. `Consent.Roles` means "roles a team *may grant access to*"
+— a per-team, inbound opt-in. Turning that into a global enumeration privilege automatically would widen
+access for existing hosts on upgrade, so it must be opted into. The flag composes with any
+`ConfigureSystemRoles` mapping for the same role rather than conflicting with it.
+
+**What a `teams:read` holder sees.** Each team carries a consent badge — *No access* (red), *Partial
+access* (yellow, Viewer/User) or *Full access* (green, Administrator) — plus a **Not a member** badge on
+teams they don't belong to. The `TeamSelector` shows the same state as a tinted dot.
+
+**Selecting a team you don't belong to.** An oversight caller can select any team they can see, and that
+choice is remembered across visits like any other — returning to the site re-selects it. Selection on its
+own carries **no access**: the claims transformation still grants only what that team has consented to, to
+a role the caller holds. No consent, or a role the team hasn't consented to, means no team scopes at all.
+
+The distinction that matters is *chosen* versus *defaulted*. A team the caller picked is restored; a team
+they never picked is never selected for them. When there is no current or remembered selection, the
+fallback always comes from the caller's **own** memberships — so a support user with no memberships and no
+prior choice lands on no team, rather than inside whichever tenant happens to sort first. A remembered team
+that is no longer visible (deleted, consent revoked, scope removed) falls back the same way.
+
+Team enumeration is deliberately **not audited** — it is a read with no side effect. Mutations performed
+inside a team are audited as usual.
 
 ### Overriding the "Create team" action
 

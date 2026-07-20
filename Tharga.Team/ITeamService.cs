@@ -7,6 +7,19 @@ public interface ITeamService
 
     IAsyncEnumerable<ITeam> GetTeamsAsync();
     IAsyncEnumerable<ITeam<TMember>> GetTeamsAsync<TMember>() where TMember : ITeamMember;
+
+    /// <summary>
+    /// Every team, regardless of membership. Requires the <see cref="SystemTeamScopes.Read"/> system scope.
+    /// </summary>
+    /// <remarks>
+    /// Discovery only — the returned teams carry no implied access. Acting inside a team the caller is not
+    /// a member of still depends on that team's consent. Use <see cref="GetTeamsAsync()"/> for the caller's
+    /// own teams; this method is for oversight surfaces (support, administration).
+    /// </remarks>
+    IAsyncEnumerable<ITeam> GetAllTeamsAsync();
+
+    /// <inheritdoc cref="GetAllTeamsAsync()"/>
+    IAsyncEnumerable<ITeam<TMember>> GetAllTeamsAsync<TMember>() where TMember : ITeamMember;
     Task<ITeam<TMember>> GetTeamAsync<TMember>(string teamKey) where TMember : ITeamMember;
     Task<ITeam> CreateTeamAsync(string name = null);
     Task RenameTeamAsync<TMember>(string teamKey, string name) where TMember : ITeamMember;

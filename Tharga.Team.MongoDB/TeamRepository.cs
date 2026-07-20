@@ -212,4 +212,9 @@ internal class TeamRepository<TTeamEntity, TMember> : ITeamRepository<TTeamEntit
         return _collection.GetAsync(x => x.ConsentedRoles != null && x.ConsentedRoles.Any(r => roles.Contains(r)));
     }
 
+    public IAsyncEnumerable<TTeamEntity> GetAllTeamsAsync()
+    {
+        return _collection.GetAsync(x => true);
+    }
+
 }

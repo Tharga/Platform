@@ -25,6 +25,12 @@ builder.AddThargaPlatform(o =>
     o.Blazor.AddClaimsEnricher<DeveloperRoleEnricher>();
     o.Blazor.Consent.ShowToggle = true;
 
+    // Cross-team visibility: grant the consent roles the teams:read system scope, so a Developer sees
+    // every team (not just their own) with a badge showing what each has consented to. Discovery only —
+    // access inside a team still depends on that team's consent.
+    o.Blazor.Consent.Roles = ["Developer"];
+    o.Blazor.Consent.GrantTeamsRead = true;
+
     // Demo: localize the team menu strings (here to Swedish). A real app would bridge to its content system.
     o.Blazor.AddTextProvider<SampleMenuTextProvider>();
 
@@ -63,15 +69,17 @@ builder.AddThargaPlatform(o =>
     // Demo system scopes (global capabilities for system API keys; separate from team scopes).
     o.ConfigureSystemScopes = scopes =>
     {
-        scopes.Register("system:teams:read", "Read any team's data (cross-tenant).");
+        scopes.Register(SystemTeamScopes.Read, "See every team (cross-team discovery).");
         scopes.Register("system:metrics:read", "Read infrastructure metrics.");
         scopes.Register("mcp:discover", "Discover MCP tools and resources.");
     };
 
     // Map app/global roles to system scopes — a Developer user gains these as claims (team-independent).
+    // Note teams:read is NOT listed here: Consent.GrantTeamsRead adds it on top of this mapping, which is
+    // the composition case (Map would throw on an already-mapped role; the toolkit-side grant merges).
     o.ConfigureSystemRoles = roles =>
     {
-        roles.Map("Developer", "system:teams:read", "system:metrics:read", "mcp:discover", "apikey:manage", "audit:read");
+        roles.Map("Developer", "system:metrics:read", "mcp:discover", "apikey:manage", "audit:read");
     };
 
     o.Audit = new AuditOptions();

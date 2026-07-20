@@ -26,12 +26,26 @@ else
 {
     <RadzenStack Gap="1rem">
         <TeamInviteView TMember="TMember" />
-        @if (_selectedTeam != null)
+        @if (_teams.Any())
         {
             @foreach (var team in _teams)
             {
-                <ExpandableCard Text="@team.Name" Selected="@(_selectedTeam.Key == team.Key)">
+                <ExpandableCard Text="@team.Name" Selected="@(_selectedTeam?.Key == team.Key)">
                     <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" AlignItems="AlignItems.Center">
+                        @if (_canSeeAllTeams)
+                        {
+                            <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(TeamVisibility.BadgeStyle(ConsentOf(team))))"
+                                         Variant="Variant.Flat"
+                                         Text="@TeamVisibility.Label(ConsentOf(team))"
+                                         title="What this team has consented to grant you."
+                                         class="rz-mr-2" />
+                            @if (!IsMemberOf(team))
+                            {
+                                <RadzenBadge BadgeStyle="BadgeStyle.Light" Variant="Variant.Flat" Text="Not a member"
+                                             title="You are viewing this team through cross-team access, not membership."
+                                             class="rz-mr-2" />
+                            }
+                        }
                         @if (_showConsentToggle)
                         {
                             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
@@ -275,6 +289,7 @@ else
     private ITenantRoleService _tenantRoleService;
     private bool _canManage;
     private bool _canManageMembers;
+    private bool _canSeeAllTeams;
     private bool _allowTeamCreation;
     private string _createTeamPath;
     private bool _showConsentToggle;
@@ -292,6 +307,7 @@ else
         var claims = authState.User;
         _canManage = claims.HasClaim(TeamClaimTypes.Scope, TeamScopes.Manage);
         _canManageMembers = claims.HasClaim(TeamClaimTypes.Scope, TeamScopes.MemberManage);
+        _canSeeAllTeams = TeamVisibility.CanSeeAllTeams(claims);
 
         _scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
         _tenantRoleRegistry = ServiceProvider.GetService<ITenantRoleRegistry>();
@@ -668,9 +684,16 @@ else
     {
         _teams = null;
         _selectedTeam = await TeamStateService.GetSelectedTeamAsync();
-        _teams = await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
+        _teams = _canSeeAllTeams
+            ? await TeamService.GetAllTeamsAsync<TMember>().ToArrayAsync()
+            : await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
         await BuildVisibleRolesAsync();
         StateHasChanged();
+    }
+
+    private ConsentVisibility ConsentOf(ITeam<TMember> team)
+    {
+        return TeamVisibility.Resolve(team.ConsentedRoles, team.ConsentAccessLevel);
     }
 
     private async Task BuildVisibleRolesAsync()

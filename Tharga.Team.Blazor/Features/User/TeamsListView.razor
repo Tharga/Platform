@@ -1,7 +1,10 @@
 @using Tharga.Team
+@using Microsoft.AspNetCore.Components.Authorization
+@using Tharga.Team.Blazor.Features.Team
 @typeparam TMember where TMember : class, Tharga.Team.ITeamMember
 @inject ITeamService TeamService
 @inject IUserService UserService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 @if (_loaded)
 {
@@ -10,6 +13,16 @@
         <Columns>
             <RadzenDataGridColumn Title="Name" Property="Name" />
             <RadzenDataGridColumn Title="Members" Property="MemberCount" Width="100px" />
+            @if (_canSeeAllTeams)
+            {
+                <RadzenDataGridColumn Title="Consent" Property="Consent" Width="140px">
+                    <Template Context="team">
+                        <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(TeamVisibility.BadgeStyle(team.Consent)))"
+                                     Variant="Variant.Flat"
+                                     Text="@TeamVisibility.Label(team.Consent)" />
+                    </Template>
+                </RadzenDataGridColumn>
+            }
             @if (TeamActionsTemplate != null)
             {
                 <RadzenDataGridColumn Title="" Sortable="false" Filterable="false">
@@ -74,14 +87,20 @@ else
     private bool _loaded;
     private IUser[] _users;
     private ITeam<TMember>[] _teams;
+    private bool _canSeeAllTeams;
 
     private List<TeamViewModel> _teamViewModels = new();
     private TeamViewModel _selectedTeam;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        _canSeeAllTeams = TeamVisibility.CanSeeAllTeams(authState.User);
+
         _users = await UserService.GetAsync().ToArrayAsync();
-        _teams = await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
+        _teams = _canSeeAllTeams
+            ? await TeamService.GetAllTeamsAsync<TMember>().ToArrayAsync()
+            : await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
 
         BuildViewModels();
         _loaded = true;
@@ -96,6 +115,7 @@ else
             Key = t.Key,
             Name = t.Name,
             MemberCount = t.Members?.Length ?? 0,
+            Consent = TeamVisibility.Resolve(t.ConsentedRoles, t.ConsentAccessLevel),
             Members = (t.Members ?? []).Select(m =>
             {
                 var user = _users.FirstOrDefault(u => u.Key == m.Key);
