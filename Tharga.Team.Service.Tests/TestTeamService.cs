@@ -98,6 +98,7 @@ internal record TestTeam : ITeam<TestMember>
     public string Name { get; init; }
     public string Icon { get; init; }
     public string[] ConsentedRoles { get; init; }
+    public AccessLevel? ConsentAccessLevel { get; init; }
     public IReadOnlyList<TenantRoleDefinition> CustomRoles { get; init; }
     public TestMember[] Members { get; init; } = [];
 }

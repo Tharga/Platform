@@ -23,7 +23,22 @@ acceptance criteria.
   behaviour change yet — every existing call site keeps working, metadata stays null.
   Tests: an entry built without metadata is unchanged; with metadata, it round-trips.
 
-- [ ] **3. Populate metadata on built-in operations**
+- [x] **3. Populate metadata on built-in operations** — done. Suite **644 green** (+12).
+  Three best-effort read helpers (`TryGetTeamAsync<TMember>`, `TryFindTeamAsync`, `TryGetMemberAsync`)
+  that swallow failures — audit detail must never fail the operation it describes. A failed read omits
+  its key rather than recording a misleading null; asserted by a test.
+  **Judgement call to confirm:** `delete` also reads the team name first, which wasn't in the agreed
+  four. The name is unrecoverable once the team is gone, so it seemed the clearest case of a read
+  earning its cost — easy to drop if you disagree.
+  **Limitation:** `SetTeamConsentAsync` isn't generic, so there's no exact team read available; it scans
+  the caller's own teams. A non-member changing consent through consent-granted access finds nothing and
+  the `.old` key is omitted. Exact reads used everywhere `TMember` is in scope.
+  Sentinels: consent cleared records `"none"`, a cleared display-name override records `""` — both stay
+  distinguishable from a failed read (key absent).
+  **Snag:** NSubstitute can't proxy `ITeam<TestMember>` while `TestMember` is internal — added
+  `<InternalsVisibleTo Include="DynamicProxyGenAssembly2" />` to the test project.
+
+  Original step text:
   Depends on the answer to open question 2. Baseline (old value cheap or already in hand):
   - `CreateTeamAsync` — team name (key is already on the entry).
   - `RenameTeamAsync` — old + new name. **Requires a read before the mutation.**
