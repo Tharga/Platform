@@ -562,6 +562,8 @@ This setting controls whether the client-side enrichment path is also registered
 
 > **Warning:** Setting `SkipAuthStateDecoration = false` on a Server/SSR app will cause a blank page (silent deadlock from JS interop during prerendering).
 
+> **Unproven:** the `false` path has never been verified against a real standalone WebAssembly app — there is no WASM sample in the repository. If you are the first to use it, expect to validate it yourself, and please report what you find. Automatic hosting-model detection was investigated so this option could disappear entirely, but four separate approaches all produced the same silent SSR hang, and the work was dropped: the evidence pointed at the `AuthenticationStateProvider` decoration pattern itself rather than at when it gets applied.
+
 #### Which setting do I need?
 
 | App type | Setting |

@@ -55,6 +55,13 @@ public record ThargaBlazorOptions : BlazorOptions
     /// apps with no server-side HTTP pipeline. Setting this to false on a Server/SSR app will cause
     /// a blank page (silent deadlock from JS interop during prerendering).
     /// </para>
+    /// <para>
+    /// <b>Note:</b> the <c>false</c> path has never been verified against a real standalone WebAssembly
+    /// app — no WASM sample exists in this repository. Treat it as unproven. Automatic hosting-model
+    /// detection was investigated so this option could be removed entirely, but four approaches all
+    /// produced the same silent SSR hang and the work was dropped; the evidence pointed at the
+    /// <c>AuthenticationStateProvider</c> decoration pattern itself rather than at when it is applied.
+    /// </para>
     /// </summary>
     public bool SkipAuthStateDecoration { get; set; } = true;
 
