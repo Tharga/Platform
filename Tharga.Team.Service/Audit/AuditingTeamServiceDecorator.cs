@@ -277,9 +277,9 @@ public class AuditingTeamServiceDecorator : ITeamService
         }
     }
 
-    private void Log(string action, string methodName, long durationMs, bool success, string errorMessage = null, string teamKey = null)
+    private void Log(string action, string methodName, long durationMs, bool success, string errorMessage = null, string teamKey = null, IReadOnlyDictionary<string, string> metadata = null)
     {
-        var entry = AuditHelper.BuildEntry(_httpContextAccessor, Feature, action, methodName, durationMs, success, errorMessage, teamKey);
+        var entry = AuditHelper.BuildEntry(_httpContextAccessor, Feature, action, methodName, durationMs, success, errorMessage, teamKey, metadata);
         _auditLogger.Log(entry);
     }
 }

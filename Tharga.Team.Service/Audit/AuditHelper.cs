@@ -18,7 +18,8 @@ internal static class AuditHelper
         long durationMs,
         bool success,
         string errorMessage = null,
-        string teamKey = null)
+        string teamKey = null,
+        IReadOnlyDictionary<string, string> metadata = null)
     {
         var user = httpContextAccessor?.HttpContext?.User;
         var identity = user?.Identity;
@@ -54,6 +55,7 @@ internal static class AuditHelper
             TeamKey = teamKey ?? user?.FindFirst(TeamClaimTypes.TeamKey)?.Value,
             AccessLevel = user?.FindFirst(TeamClaimTypes.AccessLevel)?.Value,
             CallerSource = callerSource,
+            Metadata = metadata is { Count: > 0 } ? new Dictionary<string, string>(metadata) : null,
         };
     }
 }

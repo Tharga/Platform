@@ -8,7 +8,16 @@ acceptance criteria.
 - [x] **1. NuGet updates (up front, whole solution)** — no-op. `dotnet outdated` reports "No outdated
   dependencies were detected" (checked 2026-07-20, after 3.2.0). Re-check at close-out per the workflow.
 
-- [ ] **2. Thread metadata through the entry builder**
+- [x] **2. Thread metadata through the entry builder** — done. Suite **632 green** (+5).
+  `AuditHelper.BuildEntry` takes an optional `IReadOnlyDictionary<string, string> metadata`;
+  `AuditingTeamServiceDecorator.Log` passes it through. Two normalizations chosen while writing:
+  an **empty** dictionary stores as `null` (so renderers and exporters handle one "nothing here"
+  representation, not two), and the entry **copies** the dictionary rather than aliasing it (a decorator
+  reusing its builder after logging would otherwise retroactively rewrite a recorded entry). Both are
+  asserted. Added `AuditMetadataKeys` — the key vocabulary as constants, since these become part of the
+  audit record's public shape.
+
+  Original step text:
   `AuditHelper.BuildEntry` gains an optional `IReadOnlyDictionary<string, string> metadata = null`;
   `AuditingTeamServiceDecorator.Log` and the API-key decorator's equivalent pass it through. No
   behaviour change yet — every existing call site keeps working, metadata stays null.
