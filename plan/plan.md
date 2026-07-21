@@ -48,6 +48,18 @@ Branch `feature/highlight-current-member` off `master`. See `feature.md`.
 - **Row tint + "You" chip** (user, 2026-07-21) — colour for fast scanning, chip for accessibility/clarity.
 - **Member list only**, no config, on by default (see feature.md non-goals).
 
+## Fix (2026-07-21) — highlight was invisible: styled the row, not the cells
+
+User saw no highlight at all. Real cause: Radzen `<td>` cells carry their own background and paint over a
+`background` set on the `<tr>` via `RowRender` — so a row-level tint is never visible. Fixed by marking the
+row with a `data-tharga-current-member` attribute in `RowRender` and styling the **cells** via a `<style>`
+block (`tr[...] > td { background-color: rgba(37,99,235,.16) !important }` + an inset left accent on the
+first cell). Translucent colour composites correctly on light and dark. This is why the earlier inline-style
+attempts (even with a visible colour) showed nothing.
+
+Separately found the sample had no theme switching at all (loaded `material-base.css` with no `<RadzenTheme>`
+or theme service), so dark theme was untestable — fixed under the sample changes below.
+
 ## Change (2026-07-21) — dropped the inline marker; row highlight only
 
 Two iterations on the marker: a "You" text chip needs localization, then a `person_pin` icon read as

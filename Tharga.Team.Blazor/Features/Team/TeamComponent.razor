@@ -18,6 +18,19 @@
 @inject IServiceProvider ServiceProvider
 @inject ILogger<TeamComponent<TMember>> Logger
 
+@* Current-user row highlight. Applied to the cells (not the <tr>) so Radzen's own cell backgrounds
+   don't paint over it. The translucent blue composites correctly on both light and dark themes;
+   colour-mix keeps the left accent visible against either. *@
+<style>
+    tr[data-tharga-current-member] > td {
+        background-color: rgba(37, 99, 235, 0.16) !important;
+    }
+
+    tr[data-tharga-current-member] > td:first-child {
+        box-shadow: inset 3px 0 0 0 var(--rz-primary, #2563eb);
+    }
+</style>
+
 @if (_teams == null)
 {
     <Loading />
@@ -659,10 +672,10 @@ else
     {
         if (MemberHighlight.IsCurrentMember(args.Data?.Key, _user?.Key))
         {
-            // A translucent blue reads on both light and dark theme; a left accent makes the row
-            // unmistakable even where cell backgrounds would flatten a plain tint. Direct color rather
-            // than a theme token — the pale `--rz-*-lighter` shades are near-invisible on a white grid.
-            args.Attributes["style"] = "background: rgba(59,130,246,.14); box-shadow: inset 3px 0 0 0 var(--rz-primary, #3b82f6);";
+            // Marker attribute only — the tint must be applied to the cells (see the <style> block at the
+            // top of this component). Radzen's <td> cells carry their own background and would paint over
+            // a background set on the <tr> here, so a row-level style is invisible.
+            args.Attributes["data-tharga-current-member"] = "true";
         }
     }
 
