@@ -6,7 +6,17 @@ Branch `feature/highlight-current-member` off `master`. See `feature.md`.
 
 - [x] **1. NuGet updates (up front)** — no-op. `dotnet outdated` clean (checked 2026-07-21). Re-check at close-out.
 
-- [ ] **2. Pure helper + tests**
+- [x] **2. Pure helper + tests** — done, `MemberHighlight.IsCurrentMember` (+8 tests).
+- [x] **3. Wire the row tint** — done. `RowRender="@OnMemberRowRender"` on the member grid sets an inline
+  row background (`var(--rz-primary-lighter, rgba(59,130,246,.12))` — theme token with a theme-neutral
+  translucent fallback, since the project has no scoped CSS and no guaranteed token). Inline style beats
+  Radzen's class-based stripe.
+- [x] **4. "You" chip** — done. `RadzenBadge` "You" (Info, Flat) after the name in the read-only branch,
+  gated on `MemberHighlight.IsCurrentMember`.
+  Suite **669 green** (+8); sample boots and serves with the change. Visual (tint + chip on `/team`)
+  is the user's manual test — needs Azure AD + browser.
+
+  Original step text for 2–4:
   `Features/Team/MemberHighlight.cs` — `internal static bool IsCurrentMember(string memberKey, string userKey)`,
   false on null/empty either side, ordinal match. Tests cover match, non-match, and both-null (must not match).
 

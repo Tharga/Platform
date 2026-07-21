@@ -67,7 +67,7 @@ else
                     <RadzenRow>
                         <RadzenColumn>
                             @* <RadzenDataGrid Data="@team.Members" Visible="@(HasAccessLevel(team, AccessLevel.Administrator))" TItem="TMember"> *@
-                            <RadzenDataGrid Data="@team.Members" TItem="TMember">
+                            <RadzenDataGrid Data="@team.Members" TItem="TMember" RowRender="@OnMemberRowRender">
                                 <Columns>
                                     @* <RadzenDataGridColumn Title="Key" Property="@nameof(ITeamMember.Key)" /> *@
                                     <RadzenDataGridColumn Title="EMail" SortOrder="SortOrder.Ascending">
@@ -123,6 +123,10 @@ else
 
                                                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
                                                     <span title="@tooltip" style="@(hasOverride ? "font-style: italic;" : "")">@displayName</span>
+                                                    @if (MemberHighlight.IsCurrentMember(member.Key, _user?.Key))
+                                                    {
+                                                        <RadzenBadge Text="You" BadgeStyle="BadgeStyle.Info" Variant="Variant.Flat" class="rz-ml-1" />
+                                                    }
                                                     @if (canEditThisRow)
                                                     {
                                                         <RadzenButton Icon="edit" Variant="Variant.Text" Size="ButtonSize.Small"
@@ -653,6 +657,15 @@ else
         var member = team.Members.PickOneOrDefault(x => x.Key == _user.Key, Logger, team.Key, _user.Key);
         if (member == null) return false;
         return member.AccessLevel <= accessLevel;
+    }
+
+    private void OnMemberRowRender(RowRenderEventArgs<TMember> args)
+    {
+        if (MemberHighlight.IsCurrentMember(args.Data?.Key, _user?.Key))
+        {
+            // Theme token when present; a semi-transparent fallback that reads on light or dark otherwise.
+            args.Attributes["style"] = "background: var(--rz-primary-lighter, rgba(59,130,246,.12));";
+        }
     }
 
     private bool IsMemberOf(ITeam<TMember> team)
