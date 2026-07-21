@@ -102,7 +102,16 @@ acceptance criteria.
   Representation decision: a single JSON-encoded column is the obvious option; must survive the existing
   `Escape` treatment. Verify JSON export is unaffected.
 
-- [ ] **8. Revive `ConsentAuditWiringTests`**
+- [x] **8. Revive `ConsentAuditWiringTests`** — done (661 green). More than the expected one-line fix:
+  besides adding the missing `SetTeamCustomRolesInternalAsync` override, the chain had changed —
+  `AuthorizationTeamServiceDecorator` is now outermost (3.1.2), so (a) the old exact-type assertion
+  (`IsType<AuditingTeamServiceDecorator>`) was stale and gave no #95 protection, dropped in favour of
+  the behavioural guard; and (b) the end-to-end call now hits authorization first, so the stub principal
+  had to be made authorized (`team:manage` bound to `team-1`) to reach the audit decorator. Extended
+  with an assertion of the new consent metadata (`.new` level + roles; `.old` omitted here, matching the
+  non-member limitation, since the fake user resolves null).
+
+  Original step text:
   Take `730f188` from `origin/investigate/consent-audit`, add the missing
   `SetTeamCustomRolesInternalAsync` override to `FakeTeamService`, confirm it passes. Extend it to
   assert the new consent metadata while it's in hand.
