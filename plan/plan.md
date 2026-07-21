@@ -118,8 +118,11 @@ acceptance criteria.
 
 - [ ] **9. Build + full test suite** — `dotnet build -c Release`, `dotnet test -c Release`.
 
-- [ ] **10. Docs** — `implementation-guide.md` (audit section: what metadata the toolkit records, the
-  enricher hook, the Logger-mode caveat) and `Tharga.Team.Blazor/README.md`. Separate `docs:` commit.
+- [x] **9. Build + full test suite** — clean, 661 green (covered across steps).
+- [x] **10. Docs** — done. `implementation-guide.md`: an operation-metadata table (every key), the
+  non-member consent gap as a callout, and the `IAuditEnricher` section with the safety/merge rules.
+  `Tharga.Team.Service/README.md` (the audit section's home, not the Blazor README): shorter versions of
+  both. Landing as a `docs:` commit.
 
 - [ ] **11. Push branch, hand to user for testing** — do **not** open the PR yet.
 
