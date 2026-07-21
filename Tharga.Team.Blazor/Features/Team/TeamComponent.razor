@@ -125,7 +125,8 @@ else
                                                     <span title="@tooltip" style="@(hasOverride ? "font-style: italic;" : "")">@displayName</span>
                                                     @if (MemberHighlight.IsCurrentMember(member.Key, _user?.Key))
                                                     {
-                                                        <RadzenBadge Text="You" BadgeStyle="BadgeStyle.Info" Variant="Variant.Flat" class="rz-ml-1" />
+                                                        @* Language-neutral "this is you" marker — an icon avoids a translatable string. *@
+                                                        <RadzenIcon Icon="person_pin" Style="color: var(--rz-primary, #3b82f6); font-size: 1.1rem;" />
                                                     }
                                                     @if (canEditThisRow)
                                                     {

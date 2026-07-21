@@ -48,6 +48,13 @@ Branch `feature/highlight-current-member` off `master`. See `feature.md`.
 - **Row tint + "You" chip** (user, 2026-07-21) — colour for fast scanning, chip for accessibility/clarity.
 - **Member list only**, no config, on by default (see feature.md non-goals).
 
+## Change (2026-07-21) — icon instead of "You" text chip
+
+User flagged that a text chip needs localization. Replaced the `RadzenBadge` "You" with a language-neutral
+`person_pin` icon in the accent colour — no translatable string, still accessible (shape, not colour
+alone). The toolkit's `IThargaTextProvider`/`TextKey` hook could have localized the text, but the user
+chose to avoid the string entirely. Row tint + left accent unchanged.
+
 ## Fix (2026-07-21) — tint was invisible
 
 User couldn't see the highlight on the sample. Root cause: the tint used `var(--rz-primary-lighter, …)`,
