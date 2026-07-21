@@ -18,6 +18,19 @@
 @inject IServiceProvider ServiceProvider
 @inject ILogger<TeamComponent<TMember>> Logger
 
+@* Current-user row highlight. Applied to the cells (not the <tr>) so Radzen's own cell backgrounds
+   don't paint over it. The translucent blue composites correctly on both light and dark themes;
+   colour-mix keeps the left accent visible against either. *@
+<style>
+    tr[data-tharga-current-member] > td {
+        background-color: rgba(37, 99, 235, 0.16) !important;
+    }
+
+    tr[data-tharga-current-member] > td:first-child {
+        box-shadow: inset 3px 0 0 0 var(--rz-primary, #2563eb);
+    }
+</style>
+
 @if (_teams == null)
 {
     <Loading />
@@ -67,7 +80,7 @@ else
                     <RadzenRow>
                         <RadzenColumn>
                             @* <RadzenDataGrid Data="@team.Members" Visible="@(HasAccessLevel(team, AccessLevel.Administrator))" TItem="TMember"> *@
-                            <RadzenDataGrid Data="@team.Members" TItem="TMember">
+                            <RadzenDataGrid Data="@team.Members" TItem="TMember" RowRender="@OnMemberRowRender">
                                 <Columns>
                                     @* <RadzenDataGridColumn Title="Key" Property="@nameof(ITeamMember.Key)" /> *@
                                     <RadzenDataGridColumn Title="EMail" SortOrder="SortOrder.Ascending">
@@ -653,6 +666,17 @@ else
         var member = team.Members.PickOneOrDefault(x => x.Key == _user.Key, Logger, team.Key, _user.Key);
         if (member == null) return false;
         return member.AccessLevel <= accessLevel;
+    }
+
+    private void OnMemberRowRender(RowRenderEventArgs<TMember> args)
+    {
+        if (MemberHighlight.IsCurrentMember(args.Data?.Key, _user?.Key))
+        {
+            // Marker attribute only — the tint must be applied to the cells (see the <style> block at the
+            // top of this component). Radzen's <td> cells carry their own background and would paint over
+            // a background set on the <tr> here, so a row-level style is invisible.
+            args.Attributes["data-tharga-current-member"] = "true";
+        }
     }
 
     private bool IsMemberOf(ITeam<TMember> team)

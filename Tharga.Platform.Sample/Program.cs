@@ -15,6 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddRadzenComponents();
+builder.Services.AddRadzenCookieThemeService();
 
 builder.AddThargaPlatform(o =>
 {

@@ -1,74 +1,25 @@
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Platform Sample</a>
-    </div>
-</div>
+@using Microsoft.AspNetCore.Authorization
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+<RadzenStack Orientation="Orientation.Vertical" Gap="0" class="rz-h-100">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" class="rz-p-3">
+        <RadzenIcon Icon="hub" />
+        <RadzenText TextStyle="TextStyle.H6" class="rz-m-0">Platform Sample</RadzenText>
+    </RadzenStack>
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="team">
-                <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Team
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="api-keys">
-                <span class="bi bi-key-fill-nav-menu" aria-hidden="true"></span> API Keys
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="scopes">
-                <span class="bi bi-shield-lock-fill-nav-menu" aria-hidden="true"></span> Scopes
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="roles">
-                <span class="bi bi-shield-lock-fill-nav-menu" aria-hidden="true"></span> Custom roles
-            </NavLink>
-        </div>
-
+    <RadzenPanelMenu>
+        <RadzenPanelMenuItem Text="Home" Path="" Icon="home" />
+        <RadzenPanelMenuItem Text="Team" Path="team" Icon="groups" />
+        <RadzenPanelMenuItem Text="API Keys" Path="api-keys" Icon="key" />
+        <RadzenPanelMenuItem Text="Scopes" Path="scopes" Icon="shield" />
+        <RadzenPanelMenuItem Text="Custom roles" Path="roles" Icon="admin_panel_settings" />
         <AuthorizeView Roles="@Tharga.Team.Blazor.Framework.Roles.Developer">
             <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="system-api-keys">
-                        <span class="bi bi-key-fill-nav-menu" aria-hidden="true"></span> System API Keys
-                    </NavLink>
-                </div>
+                <RadzenPanelMenuItem Text="System API Keys" Path="system-api-keys" Icon="vpn_key" />
             </Authorized>
         </AuthorizeView>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="audit">
-                <span class="bi bi-journal-text-nav-menu" aria-hidden="true"></span> Audit
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="profile">
-                <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Profile
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="users">
-                <span class="bi bi-person-lines-fill-nav-menu" aria-hidden="true"></span> Users
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="invites">
-                <span class="bi bi-envelope-fill-nav-menu" aria-hidden="true"></span> Invites
-            </NavLink>
-        </div>
-    </nav>
-</div>
+        <RadzenPanelMenuItem Text="Audit" Path="audit" Icon="receipt_long" />
+        <RadzenPanelMenuItem Text="Profile" Path="profile" Icon="person" />
+        <RadzenPanelMenuItem Text="Users" Path="users" Icon="people" />
+        <RadzenPanelMenuItem Text="Invites" Path="invites" Icon="mail" />
+    </RadzenPanelMenu>
+</RadzenStack>
