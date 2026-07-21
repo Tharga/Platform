@@ -34,8 +34,8 @@ Branch `feature/highlight-current-member` off `master`. See `feature.md`.
 
 - [ ] **5. Build + full suite** — `dotnet build -c Release`, `dotnet test -c Release`.
 
-- [ ] **6. Docs** — review `Tharga.Team.Blazor/README.md` member-list line; add a short mention only if it
-  helps. No API to document. Separate `docs:` commit if anything changes.
+- [x] **6. Docs** — added a one-line note to the README "Team management" bullet (tints own row + "You"
+  chip). No API, no config, so nothing else to document; the implementation guide needs no change.
 
 - [ ] **7. Push, hand to user for testing in the sample** — do NOT open the PR yet. The sample already
   renders `TeamComponent`, so the current dev user's row should highlight with no sample change.
