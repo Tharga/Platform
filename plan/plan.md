@@ -84,7 +84,16 @@ acceptance criteria.
   Include it in the structured output. Note this is the **default** `StorageMode`, so this is where most
   consumers would otherwise silently lose everything this feature adds.
 
-- [ ] **6. `AuditLogView` — render metadata**
+- [x] **6. `AuditLogView` — render metadata** — done. Radzen row-detail `<Template>` (auto-adds an
+  expander column); rows with metadata show a key-ordered two-column table, rows without show a muted
+  "No additional details." (the agreed "expands to nothing" behaviour). Empty values render "(empty)".
+  Verified by build only — no bUnit in the project.
+- [x] **7. CSV export** — done (+5 tests, 659 green). Added a `Metadata` column, JSON-encoded so the CSV
+  stays rectangular; the existing `Escape` then quotes it (JSON has commas/quotes). Extracted
+  `AuditLogView.FormatMetadata` as `internal static` so the JSON-encoding decision is unit-tested
+  (valid JSON, key-ordered, awkward values survive). JSON export already carried metadata — unchanged.
+
+  Original step text for 6–7:
   Depends on the answer to open question 1. Whichever shape, entries with `Metadata == null` or empty
   must render exactly as today.
 

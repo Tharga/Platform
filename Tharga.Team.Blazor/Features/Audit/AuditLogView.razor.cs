@@ -376,13 +376,13 @@ public partial class AuditLogView : ComponentBase
                 var sb = new System.Text.StringBuilder();
                 var includeTeam = string.IsNullOrEmpty(TeamKey);
                 sb.AppendLine(includeTeam
-                    ? "Timestamp,Team,Caller,CallerID,Source,Feature,Action,Method,Duration,Success,EventType,Scope,ScopeResult,ErrorMessage"
-                    : "Timestamp,Caller,CallerID,Source,Feature,Action,Method,Duration,Success,EventType,Scope,ScopeResult,ErrorMessage");
+                    ? "Timestamp,Team,Caller,CallerID,Source,Feature,Action,Method,Duration,Success,EventType,Scope,ScopeResult,ErrorMessage,Metadata"
+                    : "Timestamp,Caller,CallerID,Source,Feature,Action,Method,Duration,Success,EventType,Scope,ScopeResult,ErrorMessage,Metadata");
                 foreach (var e in exportEntries)
                 {
                     var team = includeTeam ? $"{Escape(e.TeamKey)}," : "";
                     var callerName = Escape(GetCallerDisplayName(e));
-                    sb.AppendLine($"{e.Timestamp:O},{team}{callerName},{Escape(e.CallerIdentity)},{e.CallerSource},{Escape(e.Feature)},{Escape(e.Action)},{Escape(e.MethodName)},{e.DurationMs},{e.Success},{e.EventType},{Escape(e.ScopeChecked)},{e.ScopeResult},{Escape(e.ErrorMessage)}");
+                    sb.AppendLine($"{e.Timestamp:O},{team}{callerName},{Escape(e.CallerIdentity)},{e.CallerSource},{Escape(e.Feature)},{Escape(e.Action)},{Escape(e.MethodName)},{e.DurationMs},{e.Success},{e.EventType},{Escape(e.ScopeChecked)},{e.ScopeResult},{Escape(e.ErrorMessage)},{Escape(FormatMetadata(e.Metadata))}");
                 }
                 content = sb.ToString();
                 mimeType = "text/csv";
@@ -405,6 +405,16 @@ public partial class AuditLogView : ComponentBase
         if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
             return $"\"{value.Replace("\"", "\"\"")}\"";
         return value;
+    }
+
+    // Metadata is arbitrary key/values; a single JSON-encoded column keeps the CSV rectangular and
+    // round-trips cleanly. Escape() then quotes it, since JSON contains commas and quotes.
+    internal static string FormatMetadata(IReadOnlyDictionary<string, string> metadata)
+    {
+        if (metadata is not { Count: > 0 }) return "";
+        var ordered = metadata.OrderBy(x => x.Key, StringComparer.Ordinal)
+            .ToDictionary(x => x.Key, x => x.Value);
+        return System.Text.Json.JsonSerializer.Serialize(ordered);
     }
 
     private string GetTeamName(string teamKey)
