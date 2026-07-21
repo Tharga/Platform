@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
     <link rel="stylesheet" href="@Assets["app.css"]" />
     <link rel="stylesheet" href="@Assets["Tharga.Platform.Sample.styles.css"]" />
-    <link rel="stylesheet" href="_content/Radzen.Blazor/css/material-base.css" />
+    <RadzenTheme Theme="material" @rendermode="new InteractiveServerRenderMode(prerender: false)" />
     <ImportMap />
     <link rel="icon" type="image/png" href="favicon.png" />
     <HeadOutlet @rendermode="new InteractiveServerRenderMode(prerender: false)" />
