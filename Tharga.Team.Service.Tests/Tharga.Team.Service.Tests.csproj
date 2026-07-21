@@ -21,6 +21,10 @@
     <ProjectReference Include="..\Tharga.Team.Service\Tharga.Team.Service.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <!-- NSubstitute proxies interfaces closed over internal test types (e.g. ITeam<TestMember>). -->
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
+  <ItemGroup>
     <Using Include="Xunit" />
     <Using Include="NSubstitute" />
   </ItemGroup>

@@ -1119,7 +1119,60 @@ consider noise.
 
 ### Audit entry fields
 
-Each audit entry captures: timestamp, correlation ID, event type, feature/action, caller identity, team key, access level, scope check results, duration, and custom metadata.
+Each audit entry captures: timestamp, correlation ID, event type, feature/action, caller identity, team key, access level, scope check results, duration, and a `Metadata` dictionary.
+
+### Operation metadata (what changed)
+
+Built-in operations record *what* changed in `AuditEntry.Metadata`, not just that they happened — so the
+log answers "renamed to what, from what?" without a second lookup. Keys are defined on `AuditMetadataKeys`;
+before/after pairs are captured where the previous value is needed to read the entry:
+
+| Operation | Metadata keys |
+|-----------|---------------|
+| Create team | `team.name` |
+| Rename team | `team.name.old`, `team.name.new` |
+| Delete team | `team.name` (unrecoverable afterward, so captured) |
+| Invite member | `member.email` |
+| Remove member | `member.key` |
+| Change role | `member.key`, `member.accesslevel.old`, `member.accesslevel.new` |
+| Set tenant roles / scope overrides | `member.key`, `member.tenantroles` / `member.scopeoverrides` |
+| Set display name | `member.key`, `member.name.old`, `member.name.new` (`""` = cleared override) |
+| Set consent | `consent.accesslevel.old`, `consent.accesslevel.new` (`"none"` = cleared), `consent.roles` |
+| Set custom roles | `customroles.names` |
+| Transfer ownership | `team.newowner.key` |
+
+Capturing a "before" value is best-effort: if the read fails it is omitted rather than recorded as a
+misleading blank, and it never fails the operation. Metadata shows as an expandable detail row in
+`<AuditLogView />`, in the CSV export (a JSON-encoded `Metadata` column) and JSON export, and — since the
+3.2.x line — in `LoggerAuditLogger` output.
+
+> One gap: a caller changing consent on a team they are **not** a member of doesn't get the
+> `consent.accesslevel.old` value (the "before" read is scoped to the caller's own teams). The new value
+> and roles are still recorded.
+
+### Adding your own metadata
+
+Register an `IAuditEnricher` to attach host-defined metadata (a request id, a ticket number, anything from
+`IHttpContextAccessor`) to every entry the toolkit writes:
+
+```csharp
+public sealed class RequestIdAuditEnricher(IHttpContextAccessor http) : IAuditEnricher
+{
+    public void Enrich(AuditEntry entry, IDictionary<string, string> metadata)
+    {
+        var requestId = http.HttpContext?.TraceIdentifier;
+        if (requestId != null) metadata["request.id"] = requestId;
+    }
+}
+
+builder.Services.AddThargaAuditEnricher<RequestIdAuditEnricher>();
+```
+
+Enrichers run for every entry that passes the audit filters, in registration order. The merge is
+**add-only**: an enricher augments the record but cannot overwrite a key the toolkit set (nor one an
+earlier enricher set), so the authoritative "who did what" can't be forged. An enricher is resolved as a
+**singleton** — read per-request state through `IHttpContextAccessor`, not a scoped dependency — and one
+that throws is logged and skipped, so enrichment can never fail the operation being audited.
 
 ### Event types
 

@@ -15,6 +15,7 @@ public class AuditingTeamServiceDecorator : ITeamService
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     private const string Feature = "team";
+    private const string ConsentNone = "none";
 
     public AuditingTeamServiceDecorator(ITeamService inner, CompositeAuditLogger auditLogger, IHttpContextAccessor httpContextAccessor)
     {
@@ -61,149 +62,188 @@ public class AuditingTeamServiceDecorator : ITeamService
         {
             var result = await _inner.CreateTeamAsync(name);
             sw.Stop();
-            Log("create", nameof(CreateTeamAsync), sw.ElapsedMilliseconds, true, teamKey: result?.Key);
+            // The resolved name, not the argument — a null argument means the service generated one.
+            Log("create", nameof(CreateTeamAsync), sw.ElapsedMilliseconds, true, teamKey: result?.Key,
+                metadata: Meta((AuditMetadataKeys.TeamName, result?.Name ?? name)));
             return result;
         }
         catch (Exception ex)
         {
             sw.Stop();
-            Log("create", nameof(CreateTeamAsync), sw.ElapsedMilliseconds, false, ex.Message);
+            Log("create", nameof(CreateTeamAsync), sw.ElapsedMilliseconds, false, ex.Message,
+                metadata: Meta((AuditMetadataKeys.TeamName, name)));
             throw;
         }
     }
 
     public async Task RenameTeamAsync<TMember>(string teamKey, string name) where TMember : ITeamMember
     {
+        var previous = await TryGetTeamAsync<TMember>(teamKey);
+        var metadata = Meta(
+            (AuditMetadataKeys.TeamNameOld, previous?.Name),
+            (AuditMetadataKeys.TeamNameNew, name));
+
         var sw = Stopwatch.StartNew();
         try
         {
             await _inner.RenameTeamAsync<TMember>(teamKey, name);
             sw.Stop();
-            Log("rename", nameof(RenameTeamAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
+            Log("rename", nameof(RenameTeamAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey, metadata: metadata);
         }
         catch (Exception ex)
         {
             sw.Stop();
-            Log("rename", nameof(RenameTeamAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey);
+            Log("rename", nameof(RenameTeamAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey, metadata);
             throw;
         }
     }
 
     public async Task DeleteTeamAsync<TMember>(string teamKey) where TMember : ITeamMember
     {
+        // The name is unrecoverable once the team is gone, which is what earns the read here.
+        var previous = await TryGetTeamAsync<TMember>(teamKey);
+        var metadata = Meta((AuditMetadataKeys.TeamName, previous?.Name));
+
         var sw = Stopwatch.StartNew();
         try
         {
             await _inner.DeleteTeamAsync<TMember>(teamKey);
             sw.Stop();
-            Log("delete", nameof(DeleteTeamAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
+            Log("delete", nameof(DeleteTeamAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey, metadata: metadata);
         }
         catch (Exception ex)
         {
             sw.Stop();
-            Log("delete", nameof(DeleteTeamAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey);
+            Log("delete", nameof(DeleteTeamAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey, metadata);
             throw;
         }
     }
 
     public async Task AddMemberAsync(string teamKey, InviteUserModel model)
     {
+        // No read: the invited identity is the whole story here.
+        var inviteMetadata = Meta((AuditMetadataKeys.MemberEmail, model?.Email));
+
         var sw = Stopwatch.StartNew();
         try
         {
             await _inner.AddMemberAsync(teamKey, model);
             sw.Stop();
-            Log("invite", nameof(AddMemberAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
+            Log("invite", nameof(AddMemberAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey, metadata: inviteMetadata);
         }
         catch (Exception ex)
         {
             sw.Stop();
-            Log("invite", nameof(AddMemberAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey);
+            Log("invite", nameof(AddMemberAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey, inviteMetadata);
             throw;
         }
     }
 
     public async Task RemoveMemberAsync(string teamKey, string userKey)
     {
+        var metadata = Meta((AuditMetadataKeys.MemberKey, userKey));
+
         var sw = Stopwatch.StartNew();
         try
         {
             await _inner.RemoveMemberAsync(teamKey, userKey);
             sw.Stop();
-            Log("remove-member", nameof(RemoveMemberAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
+            Log("remove-member", nameof(RemoveMemberAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey, metadata: metadata);
         }
         catch (Exception ex)
         {
             sw.Stop();
-            Log("remove-member", nameof(RemoveMemberAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey);
+            Log("remove-member", nameof(RemoveMemberAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey, metadata);
             throw;
         }
     }
 
     public async Task SetMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel)
     {
+        var previous = await TryGetMemberAsync(teamKey, userKey);
+        var metadata = Meta(
+            (AuditMetadataKeys.MemberKey, userKey),
+            (AuditMetadataKeys.MemberAccessLevelOld, previous?.AccessLevel.ToString()),
+            (AuditMetadataKeys.MemberAccessLevelNew, accessLevel.ToString()));
+
         var sw = Stopwatch.StartNew();
         try
         {
             await _inner.SetMemberRoleAsync(teamKey, userKey, accessLevel);
             sw.Stop();
-            Log("set-role", nameof(SetMemberRoleAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
+            Log("set-role", nameof(SetMemberRoleAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey, metadata: metadata);
         }
         catch (Exception ex)
         {
             sw.Stop();
-            Log("set-role", nameof(SetMemberRoleAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey);
+            Log("set-role", nameof(SetMemberRoleAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey, metadata);
             throw;
         }
     }
 
     public async Task SetMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles)
     {
+        var metadata = Meta(
+            (AuditMetadataKeys.MemberKey, userKey),
+            (AuditMetadataKeys.MemberTenantRoles, Join(tenantRoles)));
+
         var sw = Stopwatch.StartNew();
         try
         {
             await _inner.SetMemberTenantRolesAsync(teamKey, userKey, tenantRoles);
             sw.Stop();
-            Log("set-tenant-roles", nameof(SetMemberTenantRolesAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
+            Log("set-tenant-roles", nameof(SetMemberTenantRolesAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey, metadata: metadata);
         }
         catch (Exception ex)
         {
             sw.Stop();
-            Log("set-tenant-roles", nameof(SetMemberTenantRolesAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey);
+            Log("set-tenant-roles", nameof(SetMemberTenantRolesAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey, metadata);
             throw;
         }
     }
 
     public async Task SetMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides)
     {
+        var metadata = Meta(
+            (AuditMetadataKeys.MemberKey, userKey),
+            (AuditMetadataKeys.MemberScopeOverrides, Join(scopeOverrides)));
+
         var sw = Stopwatch.StartNew();
         try
         {
             await _inner.SetMemberScopeOverridesAsync(teamKey, userKey, scopeOverrides);
             sw.Stop();
-            Log("set-scope-overrides", nameof(SetMemberScopeOverridesAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
+            Log("set-scope-overrides", nameof(SetMemberScopeOverridesAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey, metadata: metadata);
         }
         catch (Exception ex)
         {
             sw.Stop();
-            Log("set-scope-overrides", nameof(SetMemberScopeOverridesAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey);
+            Log("set-scope-overrides", nameof(SetMemberScopeOverridesAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey, metadata);
             throw;
         }
     }
 
     public async Task SetMemberNameAsync(string teamKey, string userKey, string name)
     {
+        // Empty string rather than null for a cleared override, so "was unset" and "was set to X" stay
+        // distinguishable from a failed read (which omits the key entirely).
+        var previous = await TryGetMemberAsync(teamKey, userKey);
+        var metadata = Meta(
+            (AuditMetadataKeys.MemberKey, userKey),
+            (AuditMetadataKeys.MemberNameOld, previous == null ? null : previous.Name ?? string.Empty),
+            (AuditMetadataKeys.MemberNameNew, name ?? string.Empty));
+
         var sw = Stopwatch.StartNew();
         try
         {
             await _inner.SetMemberNameAsync(teamKey, userKey, name);
             sw.Stop();
-            Log("set-member-name", nameof(SetMemberNameAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
+            Log("set-member-name", nameof(SetMemberNameAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey, metadata: metadata);
         }
         catch (Exception ex)
         {
             sw.Stop();
-            Log("set-member-name", nameof(SetMemberNameAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey);
+            Log("set-member-name", nameof(SetMemberNameAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey, metadata);
             throw;
         }
     }
@@ -228,58 +268,140 @@ public class AuditingTeamServiceDecorator : ITeamService
 
     public async Task SetTeamConsentAsync(string teamKey, string[] consentedRoles, AccessLevel? accessLevel = null)
     {
+        // "none" rather than an omitted key: consent being cleared is a fact worth recording, and is
+        // distinct from a read that failed.
+        var previous = await TryFindTeamAsync(teamKey);
+        var metadata = Meta(
+            (AuditMetadataKeys.ConsentAccessLevelOld, previous == null ? null : previous.ConsentAccessLevel?.ToString() ?? ConsentNone),
+            (AuditMetadataKeys.ConsentAccessLevelNew, accessLevel?.ToString() ?? ConsentNone),
+            (AuditMetadataKeys.ConsentRoles, Join(consentedRoles)));
+
         var sw = Stopwatch.StartNew();
         try
         {
             await _inner.SetTeamConsentAsync(teamKey, consentedRoles, accessLevel);
             sw.Stop();
-            Log("set-consent", nameof(SetTeamConsentAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
+            Log("set-consent", nameof(SetTeamConsentAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey, metadata: metadata);
         }
         catch (Exception ex)
         {
             sw.Stop();
-            Log("set-consent", nameof(SetTeamConsentAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey);
+            Log("set-consent", nameof(SetTeamConsentAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey, metadata);
             throw;
         }
     }
 
     public async Task SetTeamCustomRolesAsync(string teamKey, IReadOnlyList<TenantRoleDefinition> customRoles)
     {
+        var metadata = Meta((AuditMetadataKeys.CustomRoleNames, Join(customRoles?.Select(x => x.Name))));
+
         var sw = Stopwatch.StartNew();
         try
         {
             await _inner.SetTeamCustomRolesAsync(teamKey, customRoles);
             sw.Stop();
-            Log("set-custom-roles", nameof(SetTeamCustomRolesAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
+            Log("set-custom-roles", nameof(SetTeamCustomRolesAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey, metadata: metadata);
         }
         catch (Exception ex)
         {
             sw.Stop();
-            Log("set-custom-roles", nameof(SetTeamCustomRolesAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey);
+            Log("set-custom-roles", nameof(SetTeamCustomRolesAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey, metadata);
             throw;
         }
     }
 
     public async Task TransferOwnershipAsync<TMember>(string teamKey, string newOwnerUserKey) where TMember : ITeamMember
     {
+        var metadata = Meta((AuditMetadataKeys.NewOwnerKey, newOwnerUserKey));
+
         var sw = Stopwatch.StartNew();
         try
         {
             await _inner.TransferOwnershipAsync<TMember>(teamKey, newOwnerUserKey);
             sw.Stop();
-            Log("transfer-ownership", nameof(TransferOwnershipAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
+            Log("transfer-ownership", nameof(TransferOwnershipAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey, metadata: metadata);
         }
         catch (Exception ex)
         {
             sw.Stop();
-            Log("transfer-ownership", nameof(TransferOwnershipAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey);
+            Log("transfer-ownership", nameof(TransferOwnershipAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey, metadata);
             throw;
         }
     }
 
-    private void Log(string action, string methodName, long durationMs, bool success, string errorMessage = null, string teamKey = null)
+    /// <summary>
+    /// Builds a metadata bag, dropping pairs whose value is unknown. A failed "before" read therefore
+    /// omits its key rather than recording a misleading null.
+    /// </summary>
+    private static Dictionary<string, string> Meta(params (string Key, string Value)[] pairs)
     {
-        var entry = AuditHelper.BuildEntry(_httpContextAccessor, Feature, action, methodName, durationMs, success, errorMessage, teamKey);
+        var metadata = new Dictionary<string, string>();
+        foreach (var (key, value) in pairs)
+        {
+            if (value != null) metadata[key] = value;
+        }
+        return metadata;
+    }
+
+    private static string Join(IEnumerable<string> values) => values == null ? null : string.Join(", ", values);
+
+    /// <summary>
+    /// Reads a team by key for a "before" value. Best-effort: audit detail must never fail the operation
+    /// it describes, so any error yields null and the corresponding metadata key is simply omitted.
+    /// </summary>
+    private async Task<ITeam> TryGetTeamAsync<TMember>(string teamKey) where TMember : ITeamMember
+    {
+        try
+        {
+            return await _inner.GetTeamAsync<TMember>(teamKey);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Team lookup for call sites with no <c>TMember</c> to hand. Scans the caller's own teams, so a
+    /// non-member acting through consent finds nothing — the "before" key is then omitted.
+    /// </summary>
+    private async Task<ITeam> TryFindTeamAsync(string teamKey)
+    {
+        try
+        {
+            await foreach (var team in _inner.GetTeamsAsync())
+            {
+                if (team.Key == teamKey) return team;
+            }
+        }
+        catch
+        {
+            // Best-effort; fall through.
+        }
+
+        return null;
+    }
+
+    private async Task<ITeamMember> TryGetMemberAsync(string teamKey, string userKey)
+    {
+        try
+        {
+            await foreach (var member in _inner.GetMembersAsync(teamKey))
+            {
+                if (member.Key == userKey) return member;
+            }
+        }
+        catch
+        {
+            // Best-effort; fall through.
+        }
+
+        return null;
+    }
+
+    private void Log(string action, string methodName, long durationMs, bool success, string errorMessage = null, string teamKey = null, IReadOnlyDictionary<string, string> metadata = null)
+    {
+        var entry = AuditHelper.BuildEntry(_httpContextAccessor, Feature, action, methodName, durationMs, success, errorMessage, teamKey, metadata);
         _auditLogger.Log(entry);
     }
 }

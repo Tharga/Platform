@@ -181,6 +181,32 @@ else
                             </Template>
                         </RadzenDataGridColumn>
                     </Columns>
+                    <Template Context="entry">
+                        @if (entry.Metadata is { Count: > 0 })
+                        {
+                            <RadzenTable Class="rz-m-2" Style="max-width:600px;">
+                                <RadzenTableHeader>
+                                    <RadzenTableHeaderRow>
+                                        <RadzenTableHeaderCell>Detail</RadzenTableHeaderCell>
+                                        <RadzenTableHeaderCell>Value</RadzenTableHeaderCell>
+                                    </RadzenTableHeaderRow>
+                                </RadzenTableHeader>
+                                <RadzenTableBody>
+                                    @foreach (var pair in entry.Metadata.OrderBy(x => x.Key, StringComparer.Ordinal))
+                                    {
+                                        <RadzenTableRow>
+                                            <RadzenTableCell><code>@pair.Key</code></RadzenTableCell>
+                                            <RadzenTableCell>@(string.IsNullOrEmpty(pair.Value) ? "(empty)" : pair.Value)</RadzenTableCell>
+                                        </RadzenTableRow>
+                                    }
+                                </RadzenTableBody>
+                            </RadzenTable>
+                        }
+                        else
+                        {
+                            <span class="rz-text-muted rz-m-2" style="display:inline-block;">No additional details.</span>
+                        }
+                    </Template>
                 </RadzenDataGrid>
 
                 <RadzenText TextStyle="TextStyle.Caption" class="rz-mt-1">@_totalCount total entries</RadzenText>

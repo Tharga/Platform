@@ -82,8 +82,13 @@ builder.AddThargaPlatform(o =>
         roles.Map("Developer", "system:metrics:read", "mcp:discover", "apikey:manage", "audit:read");
     };
 
-    o.Audit = new AuditOptions();
+    // Logger | MongoDB so the audit entries are both logged and queryable by AuditLogView — the default
+    // is Logger-only, which leaves the /audit page empty.
+    o.Audit = new AuditOptions { StorageMode = AuditStorageMode.Logger | AuditStorageMode.MongoDB };
 });
+
+// Demo: attach host-defined metadata to every audit entry (visible in the /audit detail row).
+builder.Services.AddThargaAuditEnricher<SampleAuditEnricher>();
 
 builder.Services.AddThargaMcp(mcp =>
 {
