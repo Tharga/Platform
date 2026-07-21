@@ -76,7 +76,11 @@ acceptance criteria.
   - Registration mirrors `AddClaimsEnricher<T>()`.
   - Tests: enricher values reach the entry; a throwing enricher doesn't propagate; toolkit keys survive.
 
-- [ ] **5. `LoggerAuditLogger` — stop discarding metadata**
+- [x] **5. `LoggerAuditLogger` — stop discarding metadata** — done (+2 tests, 654 green). Added
+  `metadata:{Metadata}` to the template as a **structured** parameter (so it lands as a custom dimension
+  in structured sinks, not only in the message text), formatted key-ordered, `-` when empty.
+
+  Original step text:
   Include it in the structured output. Note this is the **default** `StorageMode`, so this is where most
   consumers would otherwise silently lose everything this feature adds.
 
