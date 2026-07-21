@@ -663,8 +663,10 @@ else
     {
         if (MemberHighlight.IsCurrentMember(args.Data?.Key, _user?.Key))
         {
-            // Theme token when present; a semi-transparent fallback that reads on light or dark otherwise.
-            args.Attributes["style"] = "background: var(--rz-primary-lighter, rgba(59,130,246,.12));";
+            // A translucent blue reads on both light and dark theme; a left accent makes the row
+            // unmistakable even where cell backgrounds would flatten a plain tint. Direct color rather
+            // than a theme token — the pale `--rz-*-lighter` shades are near-invisible on a white grid.
+            args.Attributes["style"] = "background: rgba(59,130,246,.14); box-shadow: inset 3px 0 0 0 var(--rz-primary, #3b82f6);";
         }
     }
 

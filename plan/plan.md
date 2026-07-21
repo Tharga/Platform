@@ -48,6 +48,16 @@ Branch `feature/highlight-current-member` off `master`. See `feature.md`.
 - **Row tint + "You" chip** (user, 2026-07-21) — colour for fast scanning, chip for accessibility/clarity.
 - **Member list only**, no config, on by default (see feature.md non-goals).
 
+## Fix (2026-07-21) — tint was invisible
+
+User couldn't see the highlight on the sample. Root cause: the tint used `var(--rz-primary-lighter, …)`,
+but Radzen's Material theme **defines** that token and it resolves to a near-white shade, so the rgba
+fallback never ran and the row was tinted imperceptibly. Data path is correct — the sample creates the
+owner's member with `Key = user.Key` and `_user` is the current user, so the match is true (the "You" chip
+was rendering). Switched to a direct translucent blue (`rgba(59,130,246,.14)`) plus an `inset` box-shadow
+left accent, so it's visible on light and dark and unmistakable even if cell backgrounds flatten the tint.
+Radzen 10.4.7; `RowRender` API confirmed correct.
+
 ## Last session
 
 **2026-07-21.** Branch created; `dotnet outdated` clean (step 1 no-op). Plan written, awaiting confirmation.
