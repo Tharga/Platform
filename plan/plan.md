@@ -51,7 +51,19 @@ acceptance criteria.
   literals scattered across call sites.
   Tests: one per operation asserting the expected keys land on the entry.
 
-- [ ] **4. `IAuditEnricher` hook**
+- [x] **4. `IAuditEnricher` hook** — done. Suite **652 green** (+8).
+  `void Enrich(AuditEntry entry, IDictionary<string,string> metadata)` — synchronous because
+  `CompositeAuditLogger.Log` is, singleton-resolved because that logger is a singleton (read request
+  state via `IHttpContextAccessor`, as the rest of the pipeline does). Applied **after** `ShouldLog`, so
+  filtered entries are never enriched (tested). **Add-only, toolkit wins, first enricher wins** on a key
+  conflict — each enricher gets a fresh bag, merged into a copy that starts from the entry's own
+  metadata. A throwing enricher is caught, logged via an optional `ILogger<CompositeAuditLogger>`, and
+  skipped; other enrichers still apply and the entry is still logged (tested — this is the core safety
+  rule). Registration: `services.AddThargaAuditEnricher<T>()`, works for Blazor and pure-service
+  consumers alike. Constructor params are optional so the existing direct-construction tests are
+  unaffected.
+
+  Original step text:
   - `IAuditEnricher` with `void Enrich(AuditEntry entry)` (or a mutable metadata bag — decide when
     writing; `AuditEntry` is an immutable record, so the enricher likely returns additions rather than
     mutating).

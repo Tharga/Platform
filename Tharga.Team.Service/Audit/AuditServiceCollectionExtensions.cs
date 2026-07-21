@@ -47,4 +47,19 @@ public static class AuditServiceCollectionExtensions
 
         return services;
     }
+
+    /// <summary>
+    /// Registers an <see cref="IAuditEnricher"/> that adds host-defined metadata to every audit entry
+    /// the toolkit writes. Multiple enrichers may be registered; they run in registration order.
+    /// </summary>
+    /// <remarks>
+    /// The enricher is resolved as a singleton (<see cref="CompositeAuditLogger"/> is a singleton), so
+    /// read per-request state through <c>IHttpContextAccessor</c> rather than a scoped dependency.
+    /// </remarks>
+    public static IServiceCollection AddThargaAuditEnricher<TEnricher>(this IServiceCollection services)
+        where TEnricher : class, IAuditEnricher
+    {
+        services.AddSingleton<IAuditEnricher, TEnricher>();
+        return services;
+    }
 }

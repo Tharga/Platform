@@ -1,31 +1,73 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Tharga.Team.Service.Audit;
 
 /// <summary>
-/// Dispatches audit entries to configured loggers based on AuditOptions filters.
+/// Dispatches audit entries to configured loggers based on AuditOptions filters, applying any
+/// registered <see cref="IAuditEnricher"/>s first.
 /// </summary>
 public class CompositeAuditLogger : IAuditLogger
 {
     private readonly IAuditLogger[] _loggers;
     private readonly AuditOptions _options;
     private readonly IAuditLogger _queryLogger;
+    private readonly IAuditEnricher[] _enrichers;
+    private readonly ILogger<CompositeAuditLogger> _logger;
 
-    public CompositeAuditLogger(IEnumerable<IAuditLogger> loggers, IOptions<AuditOptions> options)
+    public CompositeAuditLogger(IEnumerable<IAuditLogger> loggers, IOptions<AuditOptions> options, IEnumerable<IAuditEnricher> enrichers = null, ILogger<CompositeAuditLogger> logger = null)
     {
         _loggers = loggers.Where(l => l != this).ToArray();
         _options = options.Value;
         _queryLogger = _loggers.FirstOrDefault(l => l is MongoDbAuditLogger);
+        _enrichers = enrichers?.ToArray() ?? [];
+        _logger = logger;
     }
 
     public void Log(AuditEntry entry)
     {
         if (!ShouldLog(entry)) return;
 
+        entry = Enrich(entry);
+
         foreach (var logger in _loggers)
         {
             logger.Log(entry);
         }
+    }
+
+    private AuditEntry Enrich(AuditEntry entry)
+    {
+        if (_enrichers.Length == 0) return entry;
+
+        // Start from the toolkit's own metadata so it wins; then let each enricher fill only gaps, in
+        // registration order, so the first writer of a key wins over later ones.
+        var merged = entry.Metadata != null
+            ? new Dictionary<string, string>(entry.Metadata)
+            : new Dictionary<string, string>();
+        var before = merged.Count;
+
+        foreach (var enricher in _enrichers)
+        {
+            var additions = new Dictionary<string, string>();
+            try
+            {
+                enricher.Enrich(entry, additions);
+            }
+            catch (Exception ex)
+            {
+                // An audit sink must never take down the operation it records.
+                _logger?.LogWarning(ex, "Audit enricher {Enricher} threw; skipping its contribution.", enricher.GetType().Name);
+                continue;
+            }
+
+            foreach (var pair in additions)
+            {
+                if (!merged.ContainsKey(pair.Key)) merged[pair.Key] = pair.Value;
+            }
+        }
+
+        return merged.Count == before ? entry : entry with { Metadata = merged };
     }
 
     public Task<AuditQueryResult> QueryAsync(AuditQuery query)
