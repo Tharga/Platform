@@ -135,6 +135,35 @@ builder.Services.AddThargaAuditLogging(o =>
 | `RetentionDays` | `90` | `int?` → MongoDB TTL index (`Timestamp_TTL`). **`null` or `<= 0` = keep forever** (no TTL index). Changing/removing the TTL on an existing collection may need a manual index drop. |
 | `BatchSize` / `FlushIntervalSeconds` | `100` / `5` | Background MongoDB writer tuning. |
 
+### Operation metadata
+
+Audited operations record **what changed** on `AuditEntry.Metadata` — create captures the team name,
+rename the old and new name, a role change the old and new access level, consent the old and new level and
+roles, and so on (keys are defined on `AuditMetadataKeys`). Capturing a "before" value is best-effort and
+never fails the operation. Metadata is shown as an expandable row in `AuditLogView`, in CSV export (a
+JSON-encoded `Metadata` column), JSON export, and the `Logger` output.
+
+### Adding your own metadata
+
+Register an `IAuditEnricher` to attach host-defined metadata to every entry the toolkit writes:
+
+```csharp
+public sealed class RequestIdAuditEnricher(IHttpContextAccessor http) : IAuditEnricher
+{
+    public void Enrich(AuditEntry entry, IDictionary<string, string> metadata)
+    {
+        if (http.HttpContext?.TraceIdentifier is { } id) metadata["request.id"] = id;
+    }
+}
+
+builder.Services.AddThargaAuditEnricher<RequestIdAuditEnricher>();
+```
+
+Enrichers run in registration order for every entry that passes the filters. The merge is **add-only** —
+an enricher cannot overwrite a key the toolkit (or an earlier enricher) set — is resolved as a
+**singleton** (read request state via `IHttpContextAccessor`), and one that throws is logged and skipped so
+enrichment can never fail the audited operation.
+
 See the [implementation guide](https://platform.tharga.net) for the full reference.
 
 ## Capturing the private token
