@@ -87,6 +87,9 @@ builder.AddThargaPlatform(o =>
     o.Audit = new AuditOptions { StorageMode = AuditStorageMode.Logger | AuditStorageMode.MongoDB };
 });
 
+// Demo: attach host-defined metadata to every audit entry (visible in the /audit detail row).
+builder.Services.AddThargaAuditEnricher<SampleAuditEnricher>();
+
 builder.Services.AddThargaMcp(mcp =>
 {
     mcp.AddPlatform();
