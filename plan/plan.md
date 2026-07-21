@@ -48,12 +48,13 @@ Branch `feature/highlight-current-member` off `master`. See `feature.md`.
 - **Row tint + "You" chip** (user, 2026-07-21) — colour for fast scanning, chip for accessibility/clarity.
 - **Member list only**, no config, on by default (see feature.md non-goals).
 
-## Change (2026-07-21) — icon instead of "You" text chip
+## Change (2026-07-21) — dropped the inline marker; row highlight only
 
-User flagged that a text chip needs localization. Replaced the `RadzenBadge` "You" with a language-neutral
-`person_pin` icon in the accent colour — no translatable string, still accessible (shape, not colour
-alone). The toolkit's `IThargaTextProvider`/`TextKey` hook could have localized the text, but the user
-chose to avoid the string entirely. Row tint + left accent unchanged.
+Two iterations on the marker: a "You" text chip needs localization, then a `person_pin` icon read as
+another button next to the edit pencil. Removed the inline marker entirely — the row highlight
+(background tint + left accent) is now the sole cue. No translatable string, no button-like glyph.
+`MemberHighlight` and its tests are unchanged. **Watch:** the tint is now colour/position only, so if the
+background reads too subtle as the single indicator, strengthen the opacity or lean on the accent bar.
 
 ## Fix (2026-07-21) — tint was invisible
 

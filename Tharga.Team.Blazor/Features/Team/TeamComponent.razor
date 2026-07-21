@@ -123,11 +123,6 @@ else
 
                                                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
                                                     <span title="@tooltip" style="@(hasOverride ? "font-style: italic;" : "")">@displayName</span>
-                                                    @if (MemberHighlight.IsCurrentMember(member.Key, _user?.Key))
-                                                    {
-                                                        @* Language-neutral "this is you" marker — an icon avoids a translatable string. *@
-                                                        <RadzenIcon Icon="person_pin" Style="color: var(--rz-primary, #3b82f6); font-size: 1.1rem;" />
-                                                    }
                                                     @if (canEditThisRow)
                                                     {
                                                         <RadzenButton Icon="edit" Variant="Variant.Text" Size="ButtonSize.Small"

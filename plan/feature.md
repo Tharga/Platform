@@ -16,8 +16,9 @@ in the list of users."
 
 - A **row tint** on the member whose `Key` matches the current user, via the grid's `RowRender`
   callback and a theme-aware background token (must work in light and dark).
-- A small **language-neutral icon** (`person_pin`) next to that member's name in the read-only display.
-  An icon rather than a text chip so there is no string to localize (user decision 2026-07-21).
+- **No inline marker** on the name. The row highlight (background tint + left accent) is the sole cue —
+  a text chip needs localization, and an icon read as another button next to the edit pencil
+  (user decisions 2026-07-21). Purely visual row styling, no translatable string.
 - A tiny pure helper (`MemberHighlight.IsCurrentMember`) for the "is this me?" decision, unit-tested —
   the project has no bUnit, so the razor itself is verified by build + the user's manual pass, matching
   the `TeamActionGate` / `TeamVisibility` precedent.
@@ -35,7 +36,7 @@ in several places in this component, so no new data is needed.
 ## Acceptance criteria
 
 - [ ] The current user's row in the member grid is visibly tinted (light and dark theme).
-- [ ] A language-neutral icon (no translatable text) appears next to the current user's name.
+- [ ] No inline text or icon marker (nothing to localize; no button-like glyph); the row highlight carries it.
 - [ ] Other rows are unchanged; a member with a null `Key` never matches.
 - [ ] The self-detection is a pure, unit-tested function.
 - [ ] Full suite green; `dotnet build -c Release` clean.
