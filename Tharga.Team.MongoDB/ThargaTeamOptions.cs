@@ -20,6 +20,11 @@ public record ThargaTeamOptions
     public string UserCollectionName { get; set; } = "User";
 
     /// <summary>
+    /// MongoDB collection name for icon documents (the built-in <see cref="MongoIconStore"/>). Default is "Icon".
+    /// </summary>
+    public string IconCollectionName { get; set; } = "Icon";
+
+    /// <summary>
     /// Registers the User repository using the built-in <see cref="UserRepositoryCollection{TUserEntity}"/>.
     /// Use the <c>RegisterUserRepository&lt;TUserEntity, TCollection&gt;</c> overload to register a consumer
     /// subclass that declares additional per-deployment indices.

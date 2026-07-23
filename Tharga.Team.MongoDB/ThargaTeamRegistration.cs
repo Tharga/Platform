@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Tharga.MongoDB;
 
@@ -12,6 +13,14 @@ public static class ThargaTeamRegistration
         options?.Invoke(o);
 
         services.AddSingleton(Options.Create(o));
+
+        // Built-in icon store (independent of user/team registration). TryAdd so a consumer store set via
+        // o.AddIconStore<T>() wins; AddOptions ensures IOptions<IconOptions> resolves even without the
+        // Blazor platform configuring it.
+        services.AddOptions<IconOptions>();
+        services.AddTransient<IIconRepositoryCollection, IconRepositoryCollection>();
+        services.TrackMongoCollection(typeof(IIconRepositoryCollection), typeof(IconRepositoryCollection));
+        services.TryAddScoped<IIconStore, MongoIconStore>();
 
         if (o._userEntity != null)
         {

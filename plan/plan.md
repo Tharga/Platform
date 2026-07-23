@@ -12,13 +12,14 @@
   - Types: `IconKind` (`Team`, `User`); `IconContent` (`byte[] Data`, `string ContentType`); `IconOptions` (`MaxBytes` default 256 KB, `AllowedContentTypes` default png/jpeg/gif/webp/svg); `IconValidation` helper (size + content-type, clear error) shared by store and callers.
   - Tests: options defaults, validation accept/reject, resolver ordering (custom source overrides/defers, fallback to initials), StoredIconSource URL/null.
 
-- [~] **2. Built-in Mongo store (`Tharga.Team.MongoDB`)**
+- [x] **2. Built-in Mongo store (`Tharga.Team.MongoDB`)** — done 2026-07-24. `IconEntity` (own `Key` reference, `Kind` as string, `OwnerKey`, `ContentType`, `byte[] Data`, `Size`, `CreatedUtc`), `IIconRepositoryCollection` + `IconRepositoryCollection` (collection `Icon` via new `ThargaTeamOptions.IconCollectionName`, unique Key index), `MongoIconStore : IIconStore` (validate → insert → return Key; load/delete by Key; blank ref short-circuits). Registered in `AddThargaTeamRepository`: `AddOptions<IconOptions>()` (so `IOptions<IconOptions>` resolves without the Blazor layer) + collection + `TrackMongoCollection` + `TryAddScoped<IIconStore, MongoIconStore>` (consumer override wins). 9 tests. Full suite 801 green.
+  - Original detail:
   - `IconEntity : EntityBase` (`Kind`, `OwnerKey`, `ContentType`, `byte[] Data`, `Size`, `CreatedUtc`). `IIconRepositoryCollection` + `IconRepositoryCollection : DiskRepositoryCollectionBase<IconEntity>` (collection name from `ThargaTeamOptions.IconCollectionName`, default `"Icon"`).
   - `MongoIconStore : IIconStore` — save (validate → insert → return `Id` as reference), load (by id), delete (by id).
   - Register in `AddThargaTeamRepository`: add the collection + `TrackMongoCollection`, and `services.TryAddScoped<IIconStore, MongoIconStore>()` (consumer override wins). Add `IconCollectionName` to `ThargaTeamOptions`.
   - Tests: save returns a reference, load round-trips bytes+content-type, delete removes, oversize/disallowed-type rejected. (Follow existing MongoDB.Tests substitute-collection pattern.)
 
-- [ ] **3. Team-service icon operations (`Tharga.Team` + `Tharga.Team.MongoDB` + `Tharga.Team.Service`)**
+- [~] **3. Team-service icon operations (`Tharga.Team` + `Tharga.Team.MongoDB` + `Tharga.Team.Service`)**
   - `ITeamService.SetTeamIconAsync(teamKey, byte[] data, contentType)` + `ClearTeamIconAsync(teamKey)` (+ `TeamManagementService`/`ITeamManagementService` `[RequireScope(TeamScopes.Manage)]` doc entries). Implementation in `TeamServiceBase` calls `IIconStore` then persists the reference; on replace/clear deletes the previous blob.
   - Mongo team repo: `SetIconAsync(teamKey, reference)` (mirror `RenameAsync`), and expose current `Icon` for old-blob cleanup.
   - `AuthorizationTeamServiceDecorator`: gate both on `team:manage` (own team). `AuditingTeamServiceDecorator`: `icon.set` (metadata: content-type, size) / `icon.clear`. New `AuditMetadataKeys` as needed.
