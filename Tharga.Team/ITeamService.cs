@@ -39,4 +39,12 @@ public interface ITeamService
     IAsyncEnumerable<ITeam> GetConsentedTeamsAsync(string[] userRoles);
     Task<IReadOnlyList<TenantRoleDefinition>> GetTeamCustomRolesAsync(string teamKey);
     Task SetTeamCustomRolesAsync(string teamKey, IReadOnlyList<TenantRoleDefinition> customRoles);
+
+    /// <summary>
+    /// Removes the user from every team they appear in, regardless of membership state. Backs user
+    /// deletion (<see cref="IUserManagementService.DeleteUserAsync"/>); requires the
+    /// <see cref="SystemUserScopes.Manage"/> system scope. Returns the number of teams the user was
+    /// removed from.
+    /// </summary>
+    Task<int> RemoveUserFromAllTeamsAsync(string userKey);
 }

@@ -10,4 +10,8 @@ public record UserViewModel
     public string EMail { get; init; }
     public int TeamCount { get; init; }
     public UserTeamInfo[] Teams { get; init; }
+    public DateTime? LastSeen { get; init; }
+
+    /// <summary>Set when the row has been verified against the external directory; mutable so a verify updates the badge in place.</summary>
+    public DirectoryUserStatus? DirectoryStatus { get; set; }
 }

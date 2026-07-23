@@ -11,27 +11,25 @@
 
 <PageTitle>Users</PageTitle>
 
-<RadzenTabs>
-    <Tabs>
-        <RadzenTabsItem Text="Users">
-            <UsersListView TMember="TeamMember" ActionsTemplate="UserActions" />
-        </RadzenTabsItem>
-        <RadzenTabsItem Text="Teams">
-            <TeamsListView TMember="TeamMember" />
-        </RadzenTabsItem>
-    </Tabs>
-</RadzenTabs>
+@*
+    The packaged tabbed admin view: Users (with last seen, verify + delete when the caller holds
+    users:manage), Teams, and — when a directory service is registered — the "Users in directory only" tab.
+    The sample's own Edit action rides in each row's split-button dropdown via ActionItems/ActionInvoked;
+    View, Verify and Delete are built in.
+*@
+<UsersView TMember="TeamMember" ActionInvoked="OnUserActionAsync">
+    <ActionItems>
+        <RadzenSplitButtonItem Text="Edit" Value="@EditAction" Icon="edit" />
+    </ActionItems>
+</UsersView>
 
 @code {
-    private RenderFragment<UserViewModel> UserActions => u => __builder =>
+    private const string EditAction = "edit";
+
+    private async Task OnUserActionAsync(UserRowAction action)
     {
-        <RadzenButton Icon="edit" Variant="Variant.Text" Size="ButtonSize.Small"
-                      Click="@(async () => await EditUser(u))"
-                      title="Edit name and email" />
-        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Text" Size="ButtonSize.Small"
-                      Click="@(async () => await DeleteUser(u))"
-                      title="Delete user" />
-    };
+        if (action.Action == EditAction) await EditUser(action.User);
+    }
 
     private async Task EditUser(UserViewModel u)
     {
@@ -59,16 +57,6 @@
 
         await UserAdmin.UpdateAsync(u.Key, name, email);
         NotificationService.Notify(NotificationSeverity.Success, "User updated");
-        Navigation.Refresh();
-    }
-
-    private async Task DeleteUser(UserViewModel u)
-    {
-        var confirmed = await DialogService.Confirm($"Delete user '{u.Name ?? u.EMail}'? This cannot be undone.", "Confirm delete");
-        if (confirmed != true) return;
-
-        await UserAdmin.DeleteAsync(u.Key);
-        NotificationService.Notify(NotificationSeverity.Success, "User deleted");
         Navigation.Refresh();
     }
 }

@@ -32,6 +32,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tharga.Platform.Mcp.Tests",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tharga.Team.MongoDB.Tests", "Tharga.Team.MongoDB.Tests\Tharga.Team.MongoDB.Tests.csproj", "{F53219A8-CB6D-423C-9314-1397F08E1202}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tharga.Team.Entra", "Tharga.Team.Entra\Tharga.Team.Entra.csproj", "{9A309E26-2BAD-4998-9A22-9585DE26708E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tharga.Team.Entra.Tests", "Tharga.Team.Entra.Tests\Tharga.Team.Entra.Tests.csproj", "{21BA221D-3C00-41F1-85C2-8251B4E6710A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -162,6 +166,30 @@ Global
 		{F53219A8-CB6D-423C-9314-1397F08E1202}.Release|x64.Build.0 = Release|Any CPU
 		{F53219A8-CB6D-423C-9314-1397F08E1202}.Release|x86.ActiveCfg = Release|Any CPU
 		{F53219A8-CB6D-423C-9314-1397F08E1202}.Release|x86.Build.0 = Release|Any CPU
+		{9A309E26-2BAD-4998-9A22-9585DE26708E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9A309E26-2BAD-4998-9A22-9585DE26708E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9A309E26-2BAD-4998-9A22-9585DE26708E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{9A309E26-2BAD-4998-9A22-9585DE26708E}.Debug|x64.Build.0 = Debug|Any CPU
+		{9A309E26-2BAD-4998-9A22-9585DE26708E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{9A309E26-2BAD-4998-9A22-9585DE26708E}.Debug|x86.Build.0 = Debug|Any CPU
+		{9A309E26-2BAD-4998-9A22-9585DE26708E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9A309E26-2BAD-4998-9A22-9585DE26708E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9A309E26-2BAD-4998-9A22-9585DE26708E}.Release|x64.ActiveCfg = Release|Any CPU
+		{9A309E26-2BAD-4998-9A22-9585DE26708E}.Release|x64.Build.0 = Release|Any CPU
+		{9A309E26-2BAD-4998-9A22-9585DE26708E}.Release|x86.ActiveCfg = Release|Any CPU
+		{9A309E26-2BAD-4998-9A22-9585DE26708E}.Release|x86.Build.0 = Release|Any CPU
+		{21BA221D-3C00-41F1-85C2-8251B4E6710A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{21BA221D-3C00-41F1-85C2-8251B4E6710A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{21BA221D-3C00-41F1-85C2-8251B4E6710A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{21BA221D-3C00-41F1-85C2-8251B4E6710A}.Debug|x64.Build.0 = Debug|Any CPU
+		{21BA221D-3C00-41F1-85C2-8251B4E6710A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{21BA221D-3C00-41F1-85C2-8251B4E6710A}.Debug|x86.Build.0 = Debug|Any CPU
+		{21BA221D-3C00-41F1-85C2-8251B4E6710A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{21BA221D-3C00-41F1-85C2-8251B4E6710A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{21BA221D-3C00-41F1-85C2-8251B4E6710A}.Release|x64.ActiveCfg = Release|Any CPU
+		{21BA221D-3C00-41F1-85C2-8251B4E6710A}.Release|x64.Build.0 = Release|Any CPU
+		{21BA221D-3C00-41F1-85C2-8251B4E6710A}.Release|x86.ActiveCfg = Release|Any CPU
+		{21BA221D-3C00-41F1-85C2-8251B4E6710A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

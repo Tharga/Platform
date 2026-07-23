@@ -13,6 +13,7 @@
     <ProjectReference Include="..\Tharga.Team.Blazor\Tharga.Team.Blazor.csproj" />
     <ProjectReference Include="..\Tharga.Team.Service\Tharga.Team.Service.csproj" />
     <ProjectReference Include="..\Tharga.Team.MongoDB\Tharga.Team.MongoDB.csproj" />
+    <ProjectReference Include="..\Tharga.Team.Entra\Tharga.Team.Entra.csproj" />
   </ItemGroup>
 
 </Project>

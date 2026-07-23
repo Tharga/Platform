@@ -6,6 +6,11 @@ namespace Tharga.Team.MongoDB;
 internal class UserRepository<TUserEntity> : IUserRepository<TUserEntity>
     where TUserEntity : EntityBase, IUser
 {
+    // Interface default members (LastSeen, DirectoryId) only serialize when the entity declares the
+    // property; updating an undeclared member would fail at driver render time, so those writes no-op.
+    private static readonly bool _entityDeclaresLastSeen = typeof(TUserEntity).GetProperty(nameof(IUser.LastSeen)) != null;
+    private static readonly bool _entityDeclaresDirectoryId = typeof(TUserEntity).GetProperty(nameof(IUser.DirectoryId)) != null;
+
     private readonly IUserRepositoryCollection<TUserEntity> _collection;
 
     public UserRepository(IUserRepositoryCollection<TUserEntity> collection)
@@ -41,5 +46,34 @@ internal class UserRepository<TUserEntity> : IUserRepository<TUserEntity>
             .Set(x => x.Name, name);
 
         return _collection.UpdateOneAsync(filter, update);
+    }
+
+    public virtual Task SetLastSeenAsync(string userKey, DateTime lastSeen)
+    {
+        if (!_entityDeclaresLastSeen) return Task.CompletedTask;
+
+        var filter = new FilterDefinitionBuilder<TUserEntity>()
+            .Eq(x => x.Key, userKey);
+        var update = new UpdateDefinitionBuilder<TUserEntity>()
+            .Set(x => x.LastSeen, lastSeen);
+
+        return _collection.UpdateOneAsync(filter, update);
+    }
+
+    public virtual Task SetDirectoryIdAsync(string userKey, string directoryId)
+    {
+        if (!_entityDeclaresDirectoryId) return Task.CompletedTask;
+
+        var filter = new FilterDefinitionBuilder<TUserEntity>()
+            .Eq(x => x.Key, userKey);
+        var update = new UpdateDefinitionBuilder<TUserEntity>()
+            .Set(x => x.DirectoryId, directoryId);
+
+        return _collection.UpdateOneAsync(filter, update);
+    }
+
+    public virtual Task DeleteAsync(string userKey)
+    {
+        return _collection.DeleteOneAsync(x => x.Key == userKey);
     }
 }

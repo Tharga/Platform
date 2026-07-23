@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using System.Security.Claims;
 using Tharga.MongoDB;
@@ -11,8 +12,8 @@ public abstract class UserServiceRepositoryBase<TUserEntity> : UserServiceBase
 {
     private readonly IUserRepository<TUserEntity> _userRepository;
 
-    protected UserServiceRepositoryBase(AuthenticationStateProvider authenticationStateProvider, IUserRepository<TUserEntity> userRepository)
-        : base(authenticationStateProvider)
+    protected UserServiceRepositoryBase(AuthenticationStateProvider authenticationStateProvider, IUserRepository<TUserEntity> userRepository, ILogger<UserServiceBase> logger = null)
+        : base(authenticationStateProvider, logger)
     {
         _userRepository = userRepository;
     }
@@ -66,6 +67,42 @@ public abstract class UserServiceRepositoryBase<TUserEntity> : UserServiceBase
         if (user == null) return;
 
         await _userRepository.SetNameAsync(userKey, name);
+        InvalidateUserCache(user.Identity);
+    }
+
+    public override async Task<IUser> GetUserByKeyAsync(string userKey)
+    {
+        if (string.IsNullOrEmpty(userKey)) return null;
+
+        return await _userRepository.GetByKeyAsync(userKey);
+    }
+
+    public override Task SetUserLastSeenAsync(string userKey, DateTime lastSeen)
+    {
+        if (string.IsNullOrEmpty(userKey)) return Task.CompletedTask;
+
+        return _userRepository.SetLastSeenAsync(userKey, lastSeen);
+    }
+
+    public override async Task SetUserDirectoryIdAsync(string userKey, string directoryId)
+    {
+        if (string.IsNullOrEmpty(userKey)) return;
+
+        var user = await _userRepository.GetByKeyAsync(userKey);
+        if (user == null) return;
+
+        await _userRepository.SetDirectoryIdAsync(userKey, directoryId);
+        InvalidateUserCache(user.Identity);
+    }
+
+    public override async Task DeleteUserAsync(string userKey)
+    {
+        if (string.IsNullOrEmpty(userKey)) return;
+
+        var user = await _userRepository.GetByKeyAsync(userKey);
+        if (user == null) return;
+
+        await _userRepository.DeleteAsync(userKey);
         InvalidateUserCache(user.Identity);
     }
 }

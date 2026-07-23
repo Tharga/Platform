@@ -13,6 +13,7 @@ namespace Tharga.Team.Blazor.Framework;
 public class ThargaPlatformOptions
 {
     internal Type _emailSenderType;
+    internal Type _userDirectoryServiceType;
     internal readonly List<Type> _apiKeyLifecycleHandlers = [];
 
     /// <summary>
@@ -104,5 +105,16 @@ public class ThargaPlatformOptions
     public void AddApiKeyLifecycleHandler<THandler>() where THandler : class, IApiKeyLifecycleHandler
     {
         _apiKeyLifecycleHandlers.Add(typeof(THandler));
+    }
+
+    /// <summary>
+    /// Register a custom external user directory (<see cref="IUserDirectoryService"/>), enabling user
+    /// verification, the directory-only user listing, and directory deletion in user administration.
+    /// For Microsoft Entra ID, use <c>AddThargaEntraUserDirectory</c> from the Tharga.Team.Entra package
+    /// instead. When no directory is registered, those features are unavailable and their UI is hidden.
+    /// </summary>
+    public void AddUserDirectoryService<T>() where T : class, IUserDirectoryService
+    {
+        _userDirectoryServiceType = typeof(T);
     }
 }

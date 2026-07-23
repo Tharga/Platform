@@ -11,6 +11,7 @@ A suite of NuGet packages for building multi-tenant Blazor applications with tea
 | [Tharga.Team.Blazor](https://www.nuget.org/packages/Tharga.Team.Blazor) | Team management Blazor components | Yes |
 | [Tharga.Team.MongoDB](https://www.nuget.org/packages/Tharga.Team.MongoDB) | MongoDB persistence for teams and users | No |
 | [Tharga.Team.Service](https://www.nuget.org/packages/Tharga.Team.Service) | Server-side API key auth, Swagger, audit logging | No |
+| [Tharga.Team.Entra](https://www.nuget.org/packages/Tharga.Team.Entra) | Microsoft Entra ID user directory (verify / list / delete users via Graph) | No |
 | [Tharga.Platform.Mcp](https://www.nuget.org/packages/Tharga.Platform.Mcp) | MCP (Model Context Protocol) bridge — auth, scopes, audit for MCP tools | No |
 
 ## Dependency graph
@@ -22,8 +23,10 @@ Tharga.Team ── plain .NET, no external dependencies
 │       └── + Tharga.Team.Service
 ├── Tharga.Team.MongoDB ── persistence layer
 │   └── + Tharga.MongoDB
-└── Tharga.Team.Service ── server-side API + auth
-    └── + Tharga.MongoDB, ASP.NET Core
+├── Tharga.Team.Service ── server-side API + auth
+│   └── + Tharga.MongoDB, ASP.NET Core
+└── Tharga.Team.Entra ── Entra ID user directory (optional)
+    └── + Azure.Identity, Microsoft Graph REST
 ```
 
 ## Quick Start
@@ -104,6 +107,22 @@ builder.AddThargaPlatform(o =>
 ```
 
 API-key behaviour (auto-lock, expiry, and the random secret length via `MinKeyLength`/`MaxKeyLength`) is configured on `o.ApiKey`. See the [Tharga.Team.Service README](Tharga.Team.Service/README.md#api-key-options) and the [Implementation Guide](docs/articles/implementation-guide.md).
+
+## User administration & Entra directory
+
+The user store tracks per-user **last seen** (opt-in: declare `LastSeen`/`DirectoryId` on your user entity), and `IUserManagementService` provides audited administration: verify users against Microsoft Entra ID, list users that exist only in Entra, and delete users — from the app and (explicit opt-in) from Entra. Everything cross-user — including viewing the admin lists and enumerating users via `IUserService` — requires the `users:manage` system scope, enforced in the service layer:
+
+```csharp
+// dotnet add package Tharga.Team.Entra
+builder.Services.AddThargaEntraUserDirectory(builder.Configuration);   // AzureAd section + ClientSecret
+
+builder.AddThargaPlatform(o =>
+{
+    o.ConfigureSystemRoles = roles => roles.Map("Developer", SystemUserScopes.Manage);
+});
+```
+
+The `<UsersView />` admin component picks it all up automatically. See [User management & directory](docs/articles/user-management.md).
 
 ## Advanced Usage
 

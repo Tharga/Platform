@@ -526,7 +526,7 @@ public class MyTeamService : TeamServiceRepositoryBase<TeamEntity, TeamMember>
 | `<TeamSelector />` | Dropdown to switch between teams |
 | `<TeamComponent />` | Full team management (create, rename, delete, members) |
 | `<TeamInviteView />` | Pending invitation view |
-| `<UsersView />` | Admin user list |
+| `<UsersView />` | Admin user list: last seen, directory verification, user deletion, and a directory-only tab when a directory service is registered. Viewing and acting require the `users:manage` system scope — enforced in the service layer (see [User management & directory](user-management.md)) |
 | `<ApiKeyView />` | API key management (requires Step 5). Shows **Created** and **Last used** columns per key, and a **Tags** column (chips for keys in `ChipTagKeys`, plus an `(i)` tooltip of all tags). Opt-in `[Parameter]` flags: `ShowAuditLogButton`, `ShowScopeOverrides` (Scopes column + create-card multi-select + Edit-Scopes dialog per row), `ChipTagKeys` |
 | `<AuditLogView />` | Audit log viewer (requires Step 8) |
 | `Roles.TeamMember` | Role claim added to authenticated team members |
@@ -1106,9 +1106,10 @@ builder.Services.AddThargaAuditLogging(o =>
 ### What gets audited
 
 Mutations flow through auditing decorators: **team-service** operations (create/rename/delete team,
-invite/remove member, set consent, …) and **API-key management** (create/recycle/lock/delete, for team
-and system keys). Read operations pass through unaudited; use `ExcludedActions` to drop any others you
-consider noise.
+invite/remove member, set consent, …), **API-key management** (create/recycle/lock/delete, for team
+and system keys), and **user administration** (directory verify, bulk verify, user delete — see
+[User management & directory](user-management.md#audit)). Read operations pass through unaudited; use
+`ExcludedActions` to drop any others you consider noise.
 
 ### What becomes available
 
@@ -1289,4 +1290,5 @@ app.UseThargaControllers();
 | `Tharga.Team.Blazor` | Step 2 | Authentication, team UI, claims augmentation |
 | `Tharga.Team.Service` | Step 3 | API controllers, API key auth, scopes, audit |
 | `Tharga.Team.MongoDB` | Step 4 | MongoDB persistence for teams and users |
+| `Tharga.Team.Entra` | (optional) | Microsoft Entra ID user directory — verify / list / delete via Graph ([guide](user-management.md)) |
 | `Tharga.Team` | (transitive) | Domain models, authorization primitives |
