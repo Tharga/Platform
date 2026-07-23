@@ -2,9 +2,9 @@ namespace Tharga.Team;
 
 /// <summary>
 /// Default <see cref="IIconResolver"/>: returns the first non-null image from the registered
-/// <see cref="IIconSource"/>s, in registration order. Consumer sources are registered ahead of the
-/// built-in <see cref="StoredIconSource"/>, so a custom source may override — or, by returning null,
-/// defer to — an explicitly-set icon.
+/// <see cref="IIconSource"/>s, in registration order. The built-in <see cref="StoredIconSource"/> is
+/// registered first, so an explicitly-set (platform-stored) icon takes precedence; consumer sources run
+/// after it and fill in only when no icon has been set.
 /// </summary>
 public sealed class IconResolver : IIconResolver
 {

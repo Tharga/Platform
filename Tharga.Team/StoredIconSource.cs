@@ -3,7 +3,7 @@ namespace Tharga.Team;
 /// <summary>
 /// Built-in <see cref="IIconSource"/> that serves an explicitly-set icon: when the subject has an
 /// <see cref="IconSubject.IconReference"/>, it resolves to that icon's serving-endpoint URL; otherwise
-/// null. Registered last, after any consumer sources.
+/// null. Registered first, ahead of any consumer sources, so a platform-stored icon takes precedence.
 /// </summary>
 public sealed class StoredIconSource : IIconSource
 {

@@ -151,18 +151,34 @@ public class IconAbstractionsTests
     }
 
     [Fact]
-    public async Task Resolver_CustomSourceBeforeStored_CanOverride()
+    public async Task Resolver_StoredIconTakesPrecedenceOverCustom()
     {
-        // Mirrors the platform's registration order: custom sources first, StoredIconSource last.
+        // Mirrors the platform's registration order: StoredIconSource first, custom sources after —
+        // an explicitly-set (platform-stored) icon wins.
         var resolver = new IconResolver(
         [
-            new FixedSource(new IconImage("https://custom/override")),
-            new StoredIconSource()
+            new StoredIconSource(),
+            new FixedSource(new IconImage("https://custom/override"))
         ]);
 
         var subject = Team() with { IconReference = "stored-ref" };
         var image = await resolver.ResolveAsync(subject);
 
-        Assert.Equal("https://custom/override", image.Url);
+        Assert.Equal(IconRoute.Url("stored-ref"), image.Url);
+    }
+
+    [Fact]
+    public async Task Resolver_NoStoredIcon_FallsToCustomSource()
+    {
+        // With no explicitly-set icon, a custom source fills in.
+        var resolver = new IconResolver(
+        [
+            new StoredIconSource(),
+            new FixedSource(new IconImage("https://custom/fill"))
+        ]);
+
+        var image = await resolver.ResolveAsync(Team());
+
+        Assert.Equal("https://custom/fill", image.Url);
     }
 }
