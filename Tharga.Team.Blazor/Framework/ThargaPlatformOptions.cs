@@ -14,6 +14,8 @@ public class ThargaPlatformOptions
 {
     internal Type _emailSenderType;
     internal Type _userDirectoryServiceType;
+    internal Type _iconStoreType;
+    internal readonly List<Type> _iconSourceTypes = [];
     internal readonly List<Type> _apiKeyLifecycleHandlers = [];
 
     /// <summary>
@@ -116,5 +118,31 @@ public class ThargaPlatformOptions
     public void AddUserDirectoryService<T>() where T : class, IUserDirectoryService
     {
         _userDirectoryServiceType = typeof(T);
+    }
+
+    /// <summary>
+    /// Limits applied when accepting an icon (max size, allowed content types).
+    /// </summary>
+    public IconOptions Icon { get; set; } = new();
+
+    /// <summary>
+    /// Replace the icon <b>storage</b> backend (<see cref="IIconStore"/> — where icon bytes live). When
+    /// not set, the built-in <c>MongoIconStore</c> (from <c>AddThargaTeamRepository</c>) is used. Supply a
+    /// custom store (Azure Blob, S3, an existing DMS, …) here.
+    /// </summary>
+    public void AddIconStore<T>() where T : class, IIconStore
+    {
+        _iconStoreType = typeof(T);
+    }
+
+    /// <summary>
+    /// Add an icon <b>source</b> (<see cref="IIconSource"/> — where a displayed image comes from). May be
+    /// called multiple times; sources run in registration order <i>after</i> the built-in
+    /// <see cref="StoredIconSource"/>, so a platform-stored icon takes precedence and custom sources fill
+    /// in when none is set.
+    /// </summary>
+    public void AddIconSource<T>() where T : class, IIconSource
+    {
+        _iconSourceTypes.Add(typeof(T));
     }
 }

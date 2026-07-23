@@ -27,12 +27,13 @@
   - URL path: `SetTeamIconFromUrlAsync(teamKey, url)` — download server-side via injected `HttpClient` (size-capped stream), then the same save path. (team:manage gated; note SSRF is bounded by the admin scope — document.)
   - Tests in `Tharga.Team.Service.Tests`: auth matrix, audit entries, old-blob deletion on replace/clear, URL download happy/oversize.
 
-- [~] **4. Registration, options, endpoint (`Tharga.Team.Blazor`)**
+- [x] **4. Registration, options, endpoint** — done 2026-07-24. `ThargaPlatformOptions`: `Icon` (IconOptions), `AddIconStore<T>()`, `AddIconSource<T>()`. `ThargaPlatformRegistration`: `Configure<IconOptions>` from `o.Icon`; custom store via `AddScoped` (wins over the Mongo default either registration order); `StoredIconSource` registered FIRST then consumer sources; `IIconResolver`→`IconResolver`; named `HttpClient` (`tharga-icon-download`) for URL downloads. `UseThargaPlatform` maps `GET /_tharga/icon/{reference}` → resolves `IIconStore` from request services (404 if none/missing), auth-required, immutable cache header, `Results.File`. 4 wiring tests. Full suite 816 green.
+  - Original detail:
   - `ThargaPlatformOptions.AddIconStore<T>()`, `AddIconSource<T>()` (list — multiple, ordered), and `IconOptions` config; register in `ThargaPlatformRegistration`. Register `IIconResolver` + built-in `StoredIconSource` **first**, then the consumer sources (so a platform-stored icon takes precedence, custom sources fill in after); custom store via `AddScoped`. Register a named `HttpClient` for URL downloads.
   - `UseThargaPlatform`: map `GET /_tharga/icon/{reference}` → `IIconStore.LoadAsync` → `Results.File(bytes, contentType)` with cache headers; 404 on null; require authenticated user.
   - Tests: endpoint returns bytes/404; `AddIconStore<T>` / `AddIconSource<T>` overrides resolve and order correctly; default store resolves to `MongoIconStore` when the Mongo repo is registered.
 
-- [ ] **5. UI (`Tharga.Team.Blazor`)**
+- [~] **5. UI (`Tharga.Team.Blazor`)**
   - `<TeamAvatar>` component: builds an `IconSubject` from the team and resolves via `IIconResolver` → renders `<img src>` (endpoint URL or a custom source's URL) or an initials badge fallback. `TeamInitials` pure helper (tested).
   - `TeamComponent`: show the team avatar; add a "Set icon" control (file upload + URL field) and "Remove icon", gated by `team:manage`; call the service; refresh on success; notifications on error.
   - `TeamsListView` (admin): show `<TeamAvatar>` in the team row.

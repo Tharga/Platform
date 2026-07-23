@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Tharga.Team;
@@ -14,6 +15,9 @@ namespace Tharga.Team.Blazor.Framework;
 /// </summary>
 public static class ThargaPlatformRegistration
 {
+    /// <summary>Named <see cref="System.Net.Http.HttpClient"/> used to download icons supplied by URL.</summary>
+    internal const string IconHttpClientName = "tharga-icon-download";
+
     /// <summary>
     /// Registers all Tharga Platform services with sensible defaults.
     /// Call <see cref="UseThargaPlatform"/> on the built WebApplication to configure middleware.
@@ -151,6 +155,26 @@ public static class ThargaPlatformRegistration
             builder.Services.AddScoped(typeof(IUserDirectoryService), options._userDirectoryServiceType);
         }
 
+        // Icons — two seams with built-in defaults. Storage: a custom IIconStore wins over the built-in
+        // MongoIconStore (registered by AddThargaTeamRepository). Sourcing: StoredIconSource is registered
+        // FIRST so a platform-stored icon takes precedence, then the consumer sources fill in.
+        builder.Services.Configure<IconOptions>(io =>
+        {
+            io.MaxBytes = options.Icon.MaxBytes;
+            io.AllowedContentTypes = options.Icon.AllowedContentTypes;
+        });
+        if (options._iconStoreType != null)
+        {
+            builder.Services.AddScoped(typeof(IIconStore), options._iconStoreType);
+        }
+        builder.Services.AddScoped<IIconSource, StoredIconSource>();
+        foreach (var sourceType in options._iconSourceTypes)
+        {
+            builder.Services.AddScoped(typeof(IIconSource), sourceType);
+        }
+        builder.Services.AddScoped<IIconResolver, IconResolver>();
+        builder.Services.AddHttpClient(IconHttpClientName);
+
         // Email sender: custom type > SMTP (if EmailOptions set) > nothing
         if (options._emailSenderType != null)
         {
@@ -185,5 +209,31 @@ public static class ThargaPlatformRegistration
         {
             app.UseThargaControllers();
         }
+
+        MapIconEndpoint(app);
+    }
+
+    /// <summary>
+    /// Serves stored icons at <see cref="IconRoute.Base"/>/{reference} for authenticated callers. The
+    /// reference changes whenever the icon changes, so a served URL is immutable and cached aggressively.
+    /// </summary>
+    private static void MapIconEndpoint(WebApplication app)
+    {
+        app.MapGet($"{IconRoute.Base}/{{reference}}", async (string reference, HttpContext context, CancellationToken cancellationToken) =>
+        {
+            if (context.User?.Identity?.IsAuthenticated != true)
+                return Results.Unauthorized();
+
+            var store = context.RequestServices.GetService<IIconStore>();
+            if (store == null)
+                return Results.NotFound();
+
+            var content = await store.LoadAsync(reference, cancellationToken);
+            if (content == null)
+                return Results.NotFound();
+
+            context.Response.Headers.CacheControl = "private, max-age=31536000, immutable";
+            return Results.File(content.Data, content.ContentType);
+        });
     }
 }
