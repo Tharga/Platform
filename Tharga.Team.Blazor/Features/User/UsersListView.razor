@@ -47,23 +47,16 @@ else if (_loaded)
                     <DateTimeView Date="@context.LastSeen" />
                 </Template>
             </RadzenDataGridColumn>
-            @if (_showDirectory)
-            {
-                <RadzenDataGridColumn Title="Directory" Sortable="false" Filterable="false" Width="110px">
-                    <Template>
-                        @if (context.DirectoryStatus != null)
-                        {
-                            <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(DirectoryStatusBadge.Style(context.DirectoryStatus.Value)))"
-                                         Variant="Variant.Flat" Text="@DirectoryStatusBadge.Text(context.DirectoryStatus.Value)" />
-                        }
-                    </Template>
-                </RadzenDataGridColumn>
-            }
-            <RadzenDataGridColumn Title="" Sortable="false" Filterable="false">
+            <RadzenDataGridColumn Title="@(_showDirectory ? "Directory" : "")" Sortable="false" Filterable="false">
                 <Template>
                     <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem">
                         @if (_showDirectory)
                         {
+                            @if (context.DirectoryStatus != null)
+                            {
+                                <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(DirectoryStatusBadge.Style(context.DirectoryStatus.Value)))"
+                                             Variant="Variant.Flat" Text="@DirectoryStatusBadge.Text(context.DirectoryStatus.Value)" />
+                            }
                             <span title="Verify against the directory">
                                 <StandardButton Icon="person_search" Click="@(() => VerifyUserAsync(context))" />
                             </span>
@@ -71,17 +64,13 @@ else if (_loaded)
                         <span title="Delete user">
                             <StandardButton Icon="delete" Click="@(() => DeleteUserAsync(context))" />
                         </span>
+                        @if (ActionsTemplate != null)
+                        {
+                            @ActionsTemplate(context)
+                        }
                     </RadzenStack>
                 </Template>
             </RadzenDataGridColumn>
-            @if (ActionsTemplate != null)
-            {
-                <RadzenDataGridColumn Title="" Sortable="false" Filterable="false">
-                    <Template>
-                        @ActionsTemplate(context)
-                    </Template>
-                </RadzenDataGridColumn>
-            }
         </Columns>
     </RadzenDataGrid>
 
@@ -113,8 +102,8 @@ else
 
 @code {
     /// <summary>
-    /// Optional template rendered as an extra column at the right of each user row.
-    /// Use to inject row-level actions (edit, delete, custom links) without forking the component.
+    /// Optional template rendered after the built-in actions in each user row's action column.
+    /// Use to inject row-level actions (edit, custom links) without forking the component.
     /// </summary>
     [Parameter] public RenderFragment<UserViewModel> ActionsTemplate { get; set; }
 
@@ -251,6 +240,7 @@ else
             new Dictionary<string, object>
             {
                 { nameof(DeleteUserDialog.UserName), user.Name ?? user.EMail },
+                { nameof(DeleteUserDialog.UserKey), user.Key },
                 { nameof(DeleteUserDialog.ShowDirectoryOption), _showDirectory }
             });
         if (dialogResult is not bool alsoDeleteFromDirectory) return;
