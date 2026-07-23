@@ -105,6 +105,18 @@ public abstract class UserServiceBase : IUserService
 
     public virtual Task SetUserNameAsync(string userKey, string name) => Task.CompletedTask;
 
+    public virtual async Task<IUser> GetUserByKeyAsync(string userKey)
+    {
+        if (string.IsNullOrEmpty(userKey)) return null;
+
+        await foreach (var user in GetAllAsync())
+        {
+            if (user.Key == userKey) return user;
+        }
+
+        return null;
+    }
+
     public virtual Task SetUserLastSeenAsync(string userKey, DateTime lastSeen) => Task.CompletedTask;
 
     public virtual Task SetUserDirectoryIdAsync(string userKey, string directoryId) => Task.CompletedTask;

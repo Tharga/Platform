@@ -21,6 +21,22 @@ public interface IUserService
     Task SetUserNameAsync(string userKey, string name);
 
     /// <summary>
+    /// The user with the given key, or null. The default implementation scans <see cref="GetAsync"/>;
+    /// storage-backed services override it with a direct read.
+    /// </summary>
+    async Task<IUser> GetUserByKeyAsync(string userKey)
+    {
+        if (string.IsNullOrEmpty(userKey)) return null;
+
+        await foreach (var user in GetAsync())
+        {
+            if (user.Key == userKey) return user;
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Stamps when the user last made an authenticated request. Called automatically by the resolve
     /// path (throttled), so the default is a no-op — stores that track <see cref="IUser.LastSeen"/>
     /// override it.

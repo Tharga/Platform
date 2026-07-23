@@ -70,6 +70,13 @@ public abstract class UserServiceRepositoryBase<TUserEntity> : UserServiceBase
         InvalidateUserCache(user.Identity);
     }
 
+    public override async Task<IUser> GetUserByKeyAsync(string userKey)
+    {
+        if (string.IsNullOrEmpty(userKey)) return null;
+
+        return await _userRepository.GetByKeyAsync(userKey);
+    }
+
     public override Task SetUserLastSeenAsync(string userKey, DateTime lastSeen)
     {
         if (string.IsNullOrEmpty(userKey)) return Task.CompletedTask;

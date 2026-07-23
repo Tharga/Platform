@@ -65,4 +65,19 @@ public static class AuditMetadataKeys
 
     /// <summary>Number of teams a user was removed from, on a remove-from-all-teams operation.</summary>
     public const string MemberTeamCount = "member.teamcount";
+
+    /// <summary>User the operation acted on (cross-team user administration).</summary>
+    public const string UserKey = "user.key";
+
+    /// <summary>Directory verification outcome (Found / NotFound / Disabled / NotLinked).</summary>
+    public const string DirectoryStatus = "directory.status";
+
+    /// <summary>Whether a user delete also deleted the directory user.</summary>
+    public const string DirectoryDeleted = "directory.deleted";
+
+    /// <summary>Why a requested directory operation did not complete.</summary>
+    public const string DirectoryError = "directory.error";
+
+    /// <summary>Number of users processed by a bulk verification.</summary>
+    public const string VerifiedCount = "verify.count";
 }

@@ -9,4 +9,5 @@ namespace Tharga.Team;
 /// When directory deletion was requested but failed (or the user was not linked to a directory user),
 /// the reason — the local delete is not rolled back.
 /// </param>
-public sealed record UserDeleteResult(bool DirectoryDeleted = false, string DirectoryError = null);
+/// <param name="RemovedTeamCount">The number of teams the user was removed from.</param>
+public sealed record UserDeleteResult(bool DirectoryDeleted = false, string DirectoryError = null, int RemovedTeamCount = 0);

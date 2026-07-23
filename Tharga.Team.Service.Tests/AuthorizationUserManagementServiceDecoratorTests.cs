@@ -1,0 +1,99 @@
+using System.Security.Claims;
+using Tharga.Team;
+
+namespace Tharga.Team.Service.Tests;
+
+/// <summary>
+/// Every <see cref="IUserManagementService"/> operation requires the <c>users:manage</c> system scope —
+/// with it the call delegates, without it (wrong scope or anonymous) it throws before touching the inner
+/// service, including the streaming operations.
+/// </summary>
+public class AuthorizationUserManagementServiceDecoratorTests
+{
+    private static (AuthorizationUserManagementServiceDecorator Sut, IUserManagementService Inner) Build(ClaimsPrincipal principal)
+    {
+        var inner = Substitute.For<IUserManagementService>();
+        var accessor = Substitute.For<ITeamPrincipalAccessor>();
+        accessor.GetCurrentAsync().Returns(new ValueTask<ClaimsPrincipal>(principal));
+        return (new AuthorizationUserManagementServiceDecorator(inner, new TeamAuthorizer(accessor)), inner);
+    }
+
+    private static ClaimsPrincipal WithScopes(params string[] scopes)
+        => new(new ClaimsIdentity(scopes.Select(s => new Claim(TeamClaimTypes.Scope, s)), "Test"));
+
+    private static ClaimsPrincipal Anonymous() => new(new ClaimsIdentity());
+
+    [Fact]
+    public async Task Verify_WithScope_Delegates()
+    {
+        var (sut, inner) = Build(WithScopes(SystemUserScopes.Manage));
+        await sut.VerifyUserAsync("u-1");
+        await inner.Received(1).VerifyUserAsync("u-1", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Verify_WithoutScope_Throws()
+    {
+        var (sut, inner) = Build(WithScopes(TeamScopes.Manage));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => sut.VerifyUserAsync("u-1"));
+        await inner.DidNotReceiveWithAnyArgs().VerifyUserAsync(default, default);
+    }
+
+    [Fact]
+    public async Task VerifyAll_WithScope_Streams()
+    {
+        var (sut, inner) = Build(WithScopes(SystemUserScopes.Manage));
+        inner.VerifyAllAsync(Arg.Any<CancellationToken>()).Returns(new[]
+        {
+            new UserVerificationResult("u-1", new DirectoryVerificationResult(DirectoryUserStatus.Found, "oid"))
+        }.ToAsyncEnumerable());
+
+        var results = await sut.VerifyAllAsync().ToListAsync();
+
+        Assert.Single(results);
+    }
+
+    [Fact]
+    public async Task VerifyAll_WithoutScope_Throws()
+    {
+        var (sut, inner) = Build(Anonymous());
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await sut.VerifyAllAsync().ToListAsync());
+        _ = inner.DidNotReceiveWithAnyArgs().VerifyAllAsync(default);
+    }
+
+    [Fact]
+    public async Task Delete_WithScope_Delegates()
+    {
+        var (sut, inner) = Build(WithScopes(SystemUserScopes.Manage));
+        await sut.DeleteUserAsync("u-1", deleteFromDirectory: true);
+        await inner.Received(1).DeleteUserAsync("u-1", true, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Delete_WithoutScope_Throws()
+    {
+        var (sut, inner) = Build(Anonymous());
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => sut.DeleteUserAsync("u-1"));
+        await inner.DidNotReceiveWithAnyArgs().DeleteUserAsync(default, default, default);
+    }
+
+    [Fact]
+    public async Task DirectoryOnly_WithScope_Streams()
+    {
+        var (sut, inner) = Build(WithScopes(SystemUserScopes.Manage));
+        inner.GetDirectoryOnlyUsersAsync(Arg.Any<CancellationToken>())
+            .Returns(new[] { new DirectoryUser("oid-1", "N", "e@x.y", true) }.ToAsyncEnumerable());
+
+        var results = await sut.GetDirectoryOnlyUsersAsync().ToListAsync();
+
+        Assert.Single(results);
+    }
+
+    [Fact]
+    public async Task DirectoryOnly_WithoutScope_Throws()
+    {
+        var (sut, inner) = Build(WithScopes(SystemTeamScopes.Read));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await sut.GetDirectoryOnlyUsersAsync().ToListAsync());
+        _ = inner.DidNotReceiveWithAnyArgs().GetDirectoryOnlyUsersAsync(default);
+    }
+}
