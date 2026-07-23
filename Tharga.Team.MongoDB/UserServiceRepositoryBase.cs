@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using System.Security.Claims;
 using Tharga.MongoDB;
@@ -11,8 +12,8 @@ public abstract class UserServiceRepositoryBase<TUserEntity> : UserServiceBase
 {
     private readonly IUserRepository<TUserEntity> _userRepository;
 
-    protected UserServiceRepositoryBase(AuthenticationStateProvider authenticationStateProvider, IUserRepository<TUserEntity> userRepository)
-        : base(authenticationStateProvider)
+    protected UserServiceRepositoryBase(AuthenticationStateProvider authenticationStateProvider, IUserRepository<TUserEntity> userRepository, ILogger<UserServiceBase> logger = null)
+        : base(authenticationStateProvider, logger)
     {
         _userRepository = userRepository;
     }
