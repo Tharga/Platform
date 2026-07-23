@@ -28,6 +28,8 @@ public sealed class AuthorizationUserServiceDecorator : IUserService
     // Self-service — pass through.
     public Task<IUser> GetCurrentUserAsync(ClaimsPrincipal claimsPrincipal = null) => _inner.GetCurrentUserAsync(claimsPrincipal);
     public Task SeedUserNameAsync(string userKey, string name) => _inner.SeedUserNameAsync(userKey, name);
+    public Task SetOwnIconAsync(byte[] data, string contentType) => _inner.SetOwnIconAsync(data, contentType);
+    public Task ClearOwnIconAsync() => _inner.ClearOwnIconAsync();
 
     public async Task SetUserNameAsync(string userKey, string name)
     {

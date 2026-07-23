@@ -14,11 +14,13 @@ public abstract class UserServiceBase : IUserService
     private static readonly ConcurrentDictionary<string, DateTime> _lastSeenStamped = new();
     private static readonly ConcurrentDictionary<string, byte> _directoryIdBackfillAttempted = new();
     private readonly ILogger<UserServiceBase> _logger;
+    private readonly IIconStore _iconStore;
 
-    protected UserServiceBase(AuthenticationStateProvider authenticationStateProvider, ILogger<UserServiceBase> logger = null)
+    protected UserServiceBase(AuthenticationStateProvider authenticationStateProvider, ILogger<UserServiceBase> logger = null, IIconStore iconStore = null)
     {
         _authenticationStateProvider = authenticationStateProvider;
         _logger = logger;
+        _iconStore = iconStore;
     }
 
     /// <summary>
@@ -120,6 +122,51 @@ public abstract class UserServiceBase : IUserService
     public virtual Task SetUserLastSeenAsync(string userKey, DateTime lastSeen) => Task.CompletedTask;
 
     public virtual Task SetUserDirectoryIdAsync(string userKey, string directoryId) => Task.CompletedTask;
+
+    /// <summary>
+    /// Backs <see cref="SetOwnIconAsync"/> / <see cref="ClearOwnIconAsync"/> — persists the icon reference
+    /// (or null to clear) on the user document. Default no-op; stores that track <see cref="IUser.Icon"/>
+    /// override it.
+    /// </summary>
+    protected virtual Task SetUserIconReferenceAsync(string userKey, string reference) => Task.CompletedTask;
+
+    public virtual async Task SetOwnIconAsync(byte[] data, string contentType)
+    {
+        var store = RequireIconStore();
+        var user = await GetCurrentUserAsync();
+        if (user == null) throw new UnauthorizedAccessException("Authentication required.");
+
+        var previousReference = user.Icon;
+        var reference = await store.SaveAsync(IconKind.User, user.Key, data, contentType);
+        await SetUserIconReferenceAsync(user.Key, reference);
+
+        if (!string.IsNullOrEmpty(previousReference))
+            await store.DeleteAsync(previousReference);
+
+        InvalidateUserCache(user.Identity);
+    }
+
+    public virtual async Task ClearOwnIconAsync()
+    {
+        var store = RequireIconStore();
+        var user = await GetCurrentUserAsync();
+        if (user == null) throw new UnauthorizedAccessException("Authentication required.");
+
+        var previousReference = user.Icon;
+        if (string.IsNullOrEmpty(previousReference)) return;
+
+        await SetUserIconReferenceAsync(user.Key, null);
+        await store.DeleteAsync(previousReference);
+
+        InvalidateUserCache(user.Identity);
+    }
+
+    private IIconStore RequireIconStore()
+        => _iconStore ?? throw new NotSupportedException(
+            "No IIconStore is registered. User icons require a registered icon store (the built-in " +
+            "MongoIconStore is registered by AddThargaTeamRepository, or supply one via o.AddIconStore<T>()).");
+
+    private Task<IUser> GetCurrentUserAsync() => GetCurrentUserAsync(null);
 
     public virtual Task DeleteUserAsync(string userKey)
         => throw new NotSupportedException(

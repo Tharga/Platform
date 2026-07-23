@@ -172,6 +172,8 @@ public static class ThargaPlatformRegistration
         {
             builder.Services.AddScoped(typeof(IIconSource), sourceType);
         }
+        // Gravatar last: a fallback for users with no uploaded/custom icon (an upload thus overrides it).
+        builder.Services.AddScoped<IIconSource, GravatarIconSource>();
         builder.Services.AddScoped<IIconResolver, IconResolver>();
         builder.Services.AddHttpClient(IconHttpClientName);
 

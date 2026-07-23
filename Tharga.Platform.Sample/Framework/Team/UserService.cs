@@ -8,8 +8,8 @@ namespace Tharga.Platform.Sample.Framework.Team;
 
 public class UserService : UserServiceRepositoryBase<UserEntity>
 {
-    public UserService(AuthenticationStateProvider authenticationStateProvider, IUserRepository<UserEntity> userRepository)
-        : base(authenticationStateProvider, userRepository)
+    public UserService(AuthenticationStateProvider authenticationStateProvider, IUserRepository<UserEntity> userRepository, IIconStore iconStore = null)
+        : base(authenticationStateProvider, userRepository, iconStore: iconStore)
     {
     }
 

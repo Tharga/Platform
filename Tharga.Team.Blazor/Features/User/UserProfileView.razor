@@ -1,16 +1,32 @@
 @using System.Text.Json
+@using Microsoft.Extensions.DependencyInjection
 @using Microsoft.JSInterop
+@using Tharga.Team
 @using Tharga.Toolkit
 @inject IJSRuntime JS
+@inject IUserService UserService
+@inject IServiceProvider ServiceProvider
+@inject DialogService DialogService
 
 <CascadingAuthenticationState>
     <AuthorizeView>
         <Authorized>
             <RadzenStack Orientation="Orientation.Vertical" Gap="1rem">
                 <RadzenCard>
-                    <RadzenText>
-                        <RadzenGravatar Email="@context.User.GetEmail()" AlternateText="@context.User.GetEmail()"/> To change profile image register your email at <RadzenLink Path="https://gravatar.com/" Target="gravatar">Gravatar</RadzenLink>.
-                    </RadzenText>
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+                        <UserAvatar User="_user" Size="64px" />
+                        <RadzenStack Gap="0.25rem">
+                            <RadzenText TextStyle="TextStyle.Subtitle1"><strong>@(_user?.Name ?? context.User.GetEmail())</strong></RadzenText>
+                            @if (_canUpload)
+                            {
+                                <RadzenButton Text="Change picture" Icon="photo_camera" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="ChangePicture" />
+                            }
+                            else
+                            {
+                                <RadzenText TextStyle="TextStyle.Caption">To change your image, register your email at <RadzenLink Path="https://gravatar.com/" Target="gravatar">Gravatar</RadzenLink>.</RadzenText>
+                            }
+                        </RadzenStack>
+                    </RadzenStack>
                 </RadzenCard>
                 <ExpandableCard Icon="work" Text="Claims">
                     <ChildContent>
@@ -35,6 +51,28 @@
 </CascadingAuthenticationState>
 
 @code {
+    private IUser _user;
+    private bool _canUpload;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _user = await UserService.GetCurrentUserAsync();
+        _canUpload = ServiceProvider.GetService<IIconStore>() != null;
+    }
+
+    private async Task ChangePicture()
+    {
+        var result = await DialogService.OpenAsync<UserIconDialog>("Profile picture",
+            new Dictionary<string, object> { { nameof(UserIconDialog.HasIcon), !string.IsNullOrEmpty(_user?.Icon) } },
+            new DialogOptions { Width = "480px" });
+
+        if (result is true)
+        {
+            _user = await UserService.GetCurrentUserAsync();
+            StateHasChanged();
+        }
+    }
+
     private async Task CopyClaimsAsync(System.Security.Claims.ClaimsPrincipal principal)
     {
         var data = new

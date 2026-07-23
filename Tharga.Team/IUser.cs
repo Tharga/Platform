@@ -26,4 +26,11 @@ public interface IUser
     /// within that interval. Distinct from the per-team-member LastSeen, which tracks team selection.
     /// </summary>
     public DateTime? LastSeen => null;
+
+    /// <summary>
+    /// Reference to the user's uploaded icon (from <see cref="IIconStore"/>), or null. When set, it takes
+    /// precedence over Gravatar in avatar resolution. Opt-in: declare the property on the user entity to
+    /// persist it (the same shape-based opt-in as <see cref="DirectoryId"/> / <see cref="LastSeen"/>).
+    /// </summary>
+    public string Icon => null;
 }

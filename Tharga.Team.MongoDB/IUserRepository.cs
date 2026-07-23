@@ -26,6 +26,12 @@ public interface IUserRepository<TUserEntity> : IRepository
     Task SetDirectoryIdAsync(string userKey, string directoryId) => Task.CompletedTask;
 
     /// <summary>
+    /// Sets <see cref="IUser.Icon"/> (the icon reference) on the user document. Same opt-in-by-entity-shape
+    /// contract as <see cref="SetDirectoryIdAsync"/>: a no-op unless the entity declares an <c>Icon</c> property.
+    /// </summary>
+    Task SetIconAsync(string userKey, string reference) => Task.CompletedTask;
+
+    /// <summary>
     /// Deletes the user document.
     /// </summary>
     /// <remarks>

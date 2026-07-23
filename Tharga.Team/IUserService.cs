@@ -64,6 +64,18 @@ public interface IUserService
     Task SetUserDirectoryIdAsync(string userKey, string directoryId) => Task.CompletedTask;
 
     /// <summary>
+    /// Sets the current user's own icon from raw image bytes (self-service): stores them via the
+    /// registered <see cref="IIconStore"/>, persists the reference on the user, and deletes any previous
+    /// icon. Requires a registered icon store and an authenticated caller.
+    /// </summary>
+    Task SetOwnIconAsync(byte[] data, string contentType) => Task.CompletedTask;
+
+    /// <summary>
+    /// Clears the current user's own icon and deletes the stored bytes (self-service).
+    /// </summary>
+    Task ClearOwnIconAsync() => Task.CompletedTask;
+
+    /// <summary>
     /// Deletes the user record from the store, with no team-membership cleanup — call through
     /// <see cref="IUserManagementService.DeleteUserAsync"/>, which removes team memberships and audits.
     /// </summary>

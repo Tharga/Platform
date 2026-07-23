@@ -1,0 +1,54 @@
+@using Tharga.Team
+@inject IIconResolver IconResolver
+
+@if (_url != null)
+{
+    <img src="@_url" alt="@_alt" title="@_alt"
+         style="width:@Size;height:@Size;border-radius:50%;object-fit:cover;display:inline-block;vertical-align:middle;" />
+}
+else
+{
+    <span title="@_alt"
+          style="width:@Size;height:@Size;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--rz-primary-lighter,#e0e7ff);color:var(--rz-primary,#3730a3);font-size:calc(@Size * 0.4);font-weight:600;vertical-align:middle;">
+        @_initials
+    </span>
+}
+
+@code {
+    /// <summary>The user to render an avatar for.</summary>
+    [Parameter] public IUser User { get; set; }
+
+    /// <summary>CSS size (width and height) of the avatar. Default 40px.</summary>
+    [Parameter] public string Size { get; set; } = "40px";
+
+    private string _url;
+    private string _initials = "?";
+    private string _alt = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (User == null)
+        {
+            _url = null;
+            _initials = "?";
+            _alt = "";
+            return;
+        }
+
+        var display = User.Name ?? User.EMail;
+        _alt = display;
+        _initials = IconInitials.From(display);
+
+        var subject = new IconSubject
+        {
+            Kind = IconKind.User,
+            Key = User.Key,
+            Name = display,
+            EMail = User.EMail,
+            IconReference = User.Icon
+        };
+
+        var image = await IconResolver.ResolveAsync(subject);
+        _url = image?.Url;
+    }
+}
