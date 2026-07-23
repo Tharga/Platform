@@ -75,13 +75,21 @@ public static class ThargaBlazorRegistration
                 });
             }
 
-            // Built-in system scope: teams:delete authorizes deleting any team (cross-team). Merge-safe with
-            // any consumer ConfigureSystemScopes; grant it via ConfigureSystemRoles or a system API key.
+            // Built-in system scopes: teams:delete authorizes deleting any team (cross-team), users:manage
+            // authorizes user administration. Merge-safe with any consumer ConfigureSystemScopes; grant
+            // them via ConfigureSystemRoles or a system API key.
             services.AddThargaSystemScopes(scopes =>
             {
                 if (scopes.All.All(s => s.Name != SystemTeamScopes.Delete))
                     scopes.Register(SystemTeamScopes.Delete, "Delete any team (cross-team), regardless of membership or the AllowTeamCreation option.");
+                if (scopes.All.All(s => s.Name != SystemUserScopes.Manage))
+                    scopes.Register(SystemUserScopes.Manage, "Administer users (cross-team): verify against the external directory, list directory-only users, and delete users.");
             });
+
+            services.AddScoped<IUserManagementService>(sp => new UserManagementService(
+                sp.GetRequiredService<IUserService>(),
+                sp.GetRequiredService<ITeamService>(),
+                sp.GetService<IUserDirectoryService>()));
 
             // Server-side claims enrichment — always registered, reads selected_team_id cookie
             services.AddHttpContextAccessor();
@@ -134,6 +142,11 @@ public static class ThargaBlazorRegistration
             // rules protect the Blazor circuit and any consumer's REST controller calling ITeamService.
             services.TryAddScoped<TeamAuthorizer>();
             DecorateWithAuthorization(services, new TeamLifecycleOptions { AllowTeamCreation = o.AllowTeamCreation });
+
+            // User management gets the same treatment: audit inside, authorization outermost.
+            DecorateWithAudit<IUserManagementService>(services,
+                (inner, logger, http) => new AuditingUserManagementServiceDecorator(inner, logger, http));
+            DecorateUserManagementWithAuthorization(services);
         }
 
         services.AddSingleton(Options.Create(o));
@@ -161,6 +174,27 @@ public static class ThargaBlazorRegistration
             var tenantRoleRegistry = sp.GetService<ITenantRoleRegistry>();
             var dynamicRoleOptions = sp.GetService<DynamicTenantRoleOptions>();
             return new AuthorizationTeamServiceDecorator(inner, authorizer, lifecycle, scopeRegistry, tenantRoleRegistry, dynamicRoleOptions?.ManageScope);
+        });
+    }
+
+    private static void DecorateUserManagementWithAuthorization(IServiceCollection services)
+    {
+        var existing = services.LastOrDefault(d => d.ServiceType == typeof(IUserManagementService));
+        if (existing == null) return;
+
+        services.Remove(existing);
+
+        services.AddScoped<IUserManagementService>(sp =>
+        {
+            IUserManagementService inner;
+            if (existing.ImplementationFactory != null)
+                inner = (IUserManagementService)existing.ImplementationFactory(sp);
+            else if (existing.ImplementationType != null)
+                inner = (IUserManagementService)ActivatorUtilities.CreateInstance(sp, existing.ImplementationType);
+            else
+                throw new InvalidOperationException("Cannot resolve inner IUserManagementService for authorization decoration.");
+
+            return new AuthorizationUserManagementServiceDecorator(inner, sp.GetRequiredService<TeamAuthorizer>());
         });
     }
 

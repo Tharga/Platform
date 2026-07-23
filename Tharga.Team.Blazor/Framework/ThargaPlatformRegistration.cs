@@ -145,6 +145,12 @@ public static class ThargaPlatformRegistration
             });
         }
 
+        // Custom user directory provider (opt-in). Entra consumers call AddThargaEntraUserDirectory instead.
+        if (options._userDirectoryServiceType != null)
+        {
+            builder.Services.AddScoped(typeof(IUserDirectoryService), options._userDirectoryServiceType);
+        }
+
         // Email sender: custom type > SMTP (if EmailOptions set) > nothing
         if (options._emailSenderType != null)
         {
