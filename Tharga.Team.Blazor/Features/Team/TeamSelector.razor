@@ -27,12 +27,12 @@
         }
         else if (_teams.Length == 1 && SelectedTeam != null)
         {
-            <RadzenImage Path="@SelectedTeam.Icon" class="rz-gravatar" Visible="@(!string.IsNullOrEmpty(SelectedTeam.Icon))" />
+            <TeamAvatar Team="SelectedTeam" Size="24px" />
             <span>@SelectedTeam.Name</span>
         }
         else if (_teams.Length > 1 && SelectedTeam != null)
         {
-            <RadzenImage Path="@SelectedTeam.Icon" class="rz-gravatar" Visible="@(!string.IsNullOrEmpty(SelectedTeam.Icon))" />
+            <TeamAvatar Team="SelectedTeam" Size="24px" />
             <RadzenDropDown @bind-Value=@SelectedTeam Data="@(_teams.OrderBy(f => f.Name))" TextProperty="Name">
                 <Template Context="team">
                     @if (_canSeeAllTeams)

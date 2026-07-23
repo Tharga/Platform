@@ -44,6 +44,10 @@ else
             @foreach (var team in _teams)
             {
                 <ExpandableCard Text="@team.Name" Selected="@(_selectedTeam?.Key == team.Key)">
+                    <TopMenu>
+                        <TeamAvatar Team="team" Size="24px" />
+                    </TopMenu>
+                    <ChildContent>
                     <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" AlignItems="AlignItems.Center">
                         @if (_canSeeAllTeams)
                         {
@@ -72,7 +76,6 @@ else
                                                 Change="@(async args => await SetConsent(team, (AccessLevel?)args))" />
                             </RadzenStack>
                         }
-                        <TeamAvatar Team="team" Size="28px" />
                         <RadzenButton icon="image" Text="Icon" Click="@(async () => { await SetTeamIcon(team); })" Visible="@(CanRenameTeam(team))"/>
                         <RadzenButton icon="edit" Text="Rename" Click="@(async () => { await RenameTeam(team); })" Visible="@(CanRenameTeam(team))"/>
                         <ActionButton icon="delete" Text="Delete" Click="@(async () => { await DeleteTeam(team); })" Visible="@(CanDeleteTeam(team))"/>
@@ -245,6 +248,7 @@ else
                     <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right">
                         <RadzenButton Icon="add" Text="Invite User" Click="@(() => AddUser(team))" Visible="@(_canManageMembers)"/>
                     </RadzenStack>
+                    </ChildContent>
                 </ExpandableCard>
             }
         }
