@@ -33,13 +33,14 @@
   - `UseThargaPlatform`: map `GET /_tharga/icon/{reference}` → `IIconStore.LoadAsync` → `Results.File(bytes, contentType)` with cache headers; 404 on null; require authenticated user.
   - Tests: endpoint returns bytes/404; `AddIconStore<T>` / `AddIconSource<T>` overrides resolve and order correctly; default store resolves to `MongoIconStore` when the Mongo repo is registered.
 
-- [~] **5. UI (`Tharga.Team.Blazor`)**
+- [x] **5. UI (`Tharga.Team.Blazor`)** — done 2026-07-24. `<TeamAvatar>` resolves via `IIconResolver` → `<img>` or initials span (`IconInitials`). `TeamIconDialog` (file upload via `InputFile` or URL download via the named `HttpClient`, size read-capped; Remove; goes through `ITeamManagementService` = team:manage) . `TeamComponent`: avatar + "Icon" button in each team's header, gated by `CanRenameTeam` (team:manage), opens the dialog, `ReloadTeams` on change. No bUnit tests (repo convention — thin components; logic covered by the abstraction/service tests).
+  - Original detail:
   - `<TeamAvatar>` component: builds an `IconSubject` from the team and resolves via `IIconResolver` → renders `<img src>` (endpoint URL or a custom source's URL) or an initials badge fallback. `TeamInitials` pure helper (tested).
   - `TeamComponent`: show the team avatar; add a "Set icon" control (file upload + URL field) and "Remove icon", gated by `team:manage`; call the service; refresh on success; notifications on error.
   - `TeamsListView` (admin): show `<TeamAvatar>` in the team row.
   - Tests: `TeamInitials`/resolution pure-function tests (repo convention — no bUnit).
 
-- [ ] **6. Sample (`Tharga.Platform.Sample`)** — built-in store auto-registers via existing `AddThargaTeamRepository`; verify a team icon can be set (upload + URL) and renders. Manual smoke test.
+- [x] **6. Sample (`Tharga.Platform.Sample`)** — done 2026-07-24. No new sample code needed: `AddThargaPlatform` registers the resolver/endpoint/options, `AddThargaTeamRepository` registers the built-in `MongoIconStore`, and the sample `TeamService` ctor (updated in step 3) receives it. The icon UI appears on `/team` (the sample's `TeamPage` → `TeamComponent`) for any team the user can manage. Runtime smoke test = user's testing pass (needs Mongo).
 
 - [ ] **7. Full build + test pass** — `dotnet build -c Release && dotnet test -c Release`; push branch for user testing; ask for feedback. Do NOT open the PR yet.
 

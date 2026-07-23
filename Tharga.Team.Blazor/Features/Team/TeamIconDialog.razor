@@ -1,0 +1,115 @@
+@using System.Net.Http
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.Extensions.Options
+@using Tharga.Team
+@using Tharga.Team.Blazor.Framework
+@inject ITeamManagementService TeamManagementService
+@inject IHttpClientFactory HttpClientFactory
+@inject IOptions<IconOptions> IconOptions
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+@*
+    Sets a team's icon from a file upload or an image URL (downloaded server-side), or removes it. All
+    paths go through ITeamManagementService (team:manage) and the pluggable IIconStore.
+*@
+<RadzenStack Gap="1rem">
+    <RadzenText TextStyle="TextStyle.Body2">Upload an image, or provide an image URL to download. Maximum @_maxKb KB.</RadzenText>
+
+    <RadzenStack Gap="0.25rem">
+        <RadzenLabel Text="Upload a file" />
+        <InputFile OnChange="OnFileSelected" accept="image/*" disabled="@_busy" />
+    </RadzenStack>
+
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="0.5rem">
+        <RadzenStack Gap="0.25rem" Style="flex:1;">
+            <RadzenLabel Text="…or image URL" />
+            <RadzenTextBox @bind-Value="_url" Placeholder="https://…/logo.png" Style="width:100%;" Disabled="@_busy" />
+        </RadzenStack>
+        <RadzenButton Text="Download" Icon="download" Click="OnFetchUrl" Disabled="@(_busy || string.IsNullOrWhiteSpace(_url))" />
+    </RadzenStack>
+
+    @if (_busy)
+    {
+        <RadzenProgressBarCircular ProgressBarStyle="ProgressBarStyle.Primary" Mode="ProgressBarMode.Indeterminate" Style="width:24px;height:24px;" ShowValue="false" />
+    }
+
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+        <RadzenButton Text="Remove icon" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Click="OnRemove" Visible="@HasIcon" Disabled="@_busy" />
+        <RadzenButton Text="Close" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat" Click="@(() => DialogService.Close(_changed))" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    /// <summary>The team whose icon is being set.</summary>
+    [Parameter] public string TeamKey { get; set; }
+
+    /// <summary>Whether the team currently has an icon (controls the Remove button).</summary>
+    [Parameter] public bool HasIcon { get; set; }
+
+    private string _url;
+    private bool _busy;
+    private bool _changed;
+    private int _maxKb;
+
+    protected override void OnInitialized() => _maxKb = IconOptions.Value.MaxBytes / 1024;
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        _busy = true;
+        try
+        {
+            var max = IconOptions.Value.MaxBytes;
+            using var stream = new MemoryStream();
+            await file.OpenReadStream(max + 1).CopyToAsync(stream);
+            await SaveAsync(stream.ToArray(), file.ContentType);
+        }
+        catch (Exception ex) { NotifyError(ex); }
+        finally { _busy = false; }
+    }
+
+    private async Task OnFetchUrl()
+    {
+        if (string.IsNullOrWhiteSpace(_url)) return;
+
+        _busy = true;
+        try
+        {
+            var client = HttpClientFactory.CreateClient(ThargaPlatformRegistration.IconHttpClientName);
+            using var response = await client.GetAsync(_url);
+            response.EnsureSuccessStatusCode();
+            var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+            var bytes = await response.Content.ReadAsByteArrayAsync();
+            await SaveAsync(bytes, contentType);
+        }
+        catch (Exception ex) { NotifyError(ex); }
+        finally { _busy = false; }
+    }
+
+    private async Task SaveAsync(byte[] data, string contentType)
+    {
+        await TeamManagementService.SetTeamIconAsync(TeamKey, data, contentType);
+        _changed = true;
+        NotificationService.Notify(NotificationSeverity.Success, "Team icon updated");
+        DialogService.Close(true);
+    }
+
+    private async Task OnRemove()
+    {
+        _busy = true;
+        try
+        {
+            await TeamManagementService.ClearTeamIconAsync(TeamKey);
+            _changed = true;
+            NotificationService.Notify(NotificationSeverity.Success, "Team icon removed");
+            DialogService.Close(true);
+        }
+        catch (Exception ex) { NotifyError(ex); }
+        finally { _busy = false; }
+    }
+
+    private void NotifyError(Exception ex) => NotificationService.Notify(NotificationSeverity.Error, "Icon update failed", ex.Message);
+}

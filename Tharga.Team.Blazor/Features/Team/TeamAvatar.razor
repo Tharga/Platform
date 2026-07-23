@@ -1,0 +1,52 @@
+@using Tharga.Team
+@inject IIconResolver IconResolver
+
+@if (_url != null)
+{
+    <img src="@_url" alt="@_alt" title="@_alt"
+         style="width:@Size;height:@Size;border-radius:6px;object-fit:cover;display:inline-block;vertical-align:middle;" />
+}
+else
+{
+    <span title="@_alt"
+          style="width:@Size;height:@Size;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;background:var(--rz-primary-lighter,#e0e7ff);color:var(--rz-primary,#3730a3);font-size:calc(@Size * 0.4);font-weight:600;vertical-align:middle;">
+        @_initials
+    </span>
+}
+
+@code {
+    /// <summary>The team to render an avatar for.</summary>
+    [Parameter] public ITeam Team { get; set; }
+
+    /// <summary>CSS size (width and height) of the avatar. Default 40px.</summary>
+    [Parameter] public string Size { get; set; } = "40px";
+
+    private string _url;
+    private string _initials = "?";
+    private string _alt = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Team == null)
+        {
+            _url = null;
+            _initials = "?";
+            _alt = "";
+            return;
+        }
+
+        _alt = Team.Name;
+        _initials = IconInitials.From(Team.Name);
+
+        var subject = new IconSubject
+        {
+            Kind = IconKind.Team,
+            Key = Team.Key,
+            Name = Team.Name,
+            IconReference = Team.Icon
+        };
+
+        var image = await IconResolver.ResolveAsync(subject);
+        _url = image?.Url;
+    }
+}

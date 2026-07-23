@@ -72,6 +72,8 @@ else
                                                 Change="@(async args => await SetConsent(team, (AccessLevel?)args))" />
                             </RadzenStack>
                         }
+                        <TeamAvatar Team="team" Size="28px" />
+                        <RadzenButton icon="image" Text="Icon" Click="@(async () => { await SetTeamIcon(team); })" Visible="@(CanRenameTeam(team))"/>
                         <RadzenButton icon="edit" Text="Rename" Click="@(async () => { await RenameTeam(team); })" Visible="@(CanRenameTeam(team))"/>
                         <ActionButton icon="delete" Text="Delete" Click="@(async () => { await DeleteTeam(team); })" Visible="@(CanDeleteTeam(team))"/>
                         <RadzenButton icon="swap_horiz" Text="Transfer Ownership" Click="@(async () => { await TransferOwnership(team); })" Visible="@(HasAccessLevel(team, AccessLevel.Owner) && team.Members.Length > 1)"/>
@@ -428,6 +430,20 @@ else
             new DialogOptions { Resizable = true, Draggable = true });
 
         if (result == true) await ReloadTeams();
+    }
+
+    private async Task SetTeamIcon(ITeam<TMember> team)
+    {
+        var result = await DialogService.OpenAsync<TeamIconDialog>(
+            $"Icon — {team.Name}",
+            new Dictionary<string, object>
+            {
+                { nameof(TeamIconDialog.TeamKey), team.Key },
+                { nameof(TeamIconDialog.HasIcon), !string.IsNullOrEmpty(team.Icon) }
+            },
+            new DialogOptions { Width = "480px" });
+
+        if (result is true) await ReloadTeams();
     }
 
     private async Task AddUser(ITeam<TMember> team)
