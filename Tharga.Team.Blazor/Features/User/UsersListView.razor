@@ -1,7 +1,13 @@
 @using Tharga.Team
+@using Microsoft.Extensions.DependencyInjection
 @typeparam TMember where TMember : class, Tharga.Team.ITeamMember
 @inject ITeamService TeamService
 @inject IUserService UserService
+@inject IUserManagementService UserManagementService
+@inject IServiceProvider ServiceProvider
+@inject AuthenticationStateProvider AuthStateProvider
+@inject DialogService DialogService
+@inject NotificationService NotificationService
 
 @if (_loaded)
 {
@@ -10,6 +16,10 @@
             <RadzenLabel Text="Search" />
             <RadzenTextBox @bind-Value="_userSearch" Placeholder="Name or email..." Change="@OnUserSearchChanged" Style="width: 250px;" />
         </RadzenStack>
+        @if (_showDirectory)
+        {
+            <RadzenButton Text="Verify all" Icon="how_to_reg" ButtonStyle="ButtonStyle.Light" Click="@VerifyAllAsync" Disabled="@_verifying" />
+        }
     </RadzenStack>
     <RadzenDataGrid Data="@_filteredUsers" TItem="UserViewModel" AllowSorting="true" AllowPaging="true" PageSize="10"
                     RowSelect="@OnUserSelected" Style="cursor: pointer;">
@@ -26,6 +36,41 @@
                     @context.TeamCount
                 </Template>
             </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Last seen" Property="@nameof(UserViewModel.LastSeen)">
+                <Template>
+                    <DateTimeView Date="@context.LastSeen" />
+                </Template>
+            </RadzenDataGridColumn>
+            @if (_showDirectory)
+            {
+                <RadzenDataGridColumn Title="Directory" Sortable="false" Filterable="false" Width="110px">
+                    <Template>
+                        @if (context.DirectoryStatus != null)
+                        {
+                            <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(DirectoryStatusBadge.Style(context.DirectoryStatus.Value)))"
+                                         Variant="Variant.Flat" Text="@DirectoryStatusBadge.Text(context.DirectoryStatus.Value)" />
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+            }
+            @if (_showUserActions)
+            {
+                <RadzenDataGridColumn Title="" Sortable="false" Filterable="false">
+                    <Template>
+                        <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem">
+                            @if (_showDirectory)
+                            {
+                                <span title="Verify against the directory">
+                                    <StandardButton Icon="person_search" Click="@(() => VerifyUserAsync(context))" />
+                                </span>
+                            }
+                            <span title="Delete user">
+                                <StandardButton Icon="delete" Click="@(() => DeleteUserAsync(context))" />
+                            </span>
+                        </RadzenStack>
+                    </Template>
+                </RadzenDataGridColumn>
+            }
             @if (ActionsTemplate != null)
             {
                 <RadzenDataGridColumn Title="" Sortable="false" Filterable="false">
@@ -71,6 +116,9 @@ else
     [Parameter] public RenderFragment<UserViewModel> ActionsTemplate { get; set; }
 
     private bool _loaded;
+    private bool _showUserActions;
+    private bool _showDirectory;
+    private bool _verifying;
     private IUser[] _users;
     private ITeam<TMember>[] _teams;
 
@@ -81,13 +129,24 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var hasUsersManage = authState.User.HasClaim(TeamClaimTypes.Scope, SystemUserScopes.Manage);
+        var directoryRegistered = ServiceProvider.GetService<IUserDirectoryService>() != null;
+        _showUserActions = UserAdminGate.ShowUserActions(hasUsersManage);
+        _showDirectory = UserAdminGate.ShowDirectoryFeatures(hasUsersManage, directoryRegistered);
+
+        await LoadDataAsync();
+        _loaded = true;
+
+        await base.OnInitializedAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
         _users = await UserService.GetAsync().ToArrayAsync();
         _teams = await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
 
         BuildViewModels();
-        _loaded = true;
-
-        await base.OnInitializedAsync();
     }
 
     private void BuildViewModels()
@@ -104,6 +163,7 @@ else
             Key = u.Key,
             Name = u.Name ?? TeamServiceBase.ResolveDisplayName(u),
             EMail = u.EMail,
+            LastSeen = u.LastSeen,
             TeamCount = teamLookup[u.Key].Count(),
             Teams = teamLookup[u.Key].Select(x => new UserTeamInfo
             {
@@ -114,10 +174,16 @@ else
             }).ToArray()
         }).OrderBy(u => u.Name).ToList();
 
-        _filteredUsers = _allUsers;
+        ApplyFilter();
     }
 
     private void OnUserSearchChanged()
+    {
+        ApplyFilter();
+        _selectedUser = null;
+    }
+
+    private void ApplyFilter()
     {
         if (string.IsNullOrWhiteSpace(_userSearch))
         {
@@ -131,11 +197,78 @@ else
                           || (u.EMail?.ToLowerInvariant().Contains(search) ?? false))
                 .ToList();
         }
-        _selectedUser = null;
     }
 
     private void OnUserSelected(UserViewModel user)
     {
         _selectedUser = _selectedUser?.Key == user.Key ? null : user;
+    }
+
+    private async Task VerifyUserAsync(UserViewModel user)
+    {
+        try
+        {
+            var result = await UserManagementService.VerifyUserAsync(user.Key);
+            user.DirectoryStatus = result.Status;
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Verification failed", ex.Message);
+        }
+    }
+
+    private async Task VerifyAllAsync()
+    {
+        _verifying = true;
+        try
+        {
+            await foreach (var item in UserManagementService.VerifyAllAsync())
+            {
+                var row = _allUsers.FirstOrDefault(x => x.Key == item.UserKey);
+                if (row != null) row.DirectoryStatus = item.Result.Status;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Verification failed", ex.Message);
+        }
+        finally
+        {
+            _verifying = false;
+        }
+    }
+
+    private async Task DeleteUserAsync(UserViewModel user)
+    {
+        var dialogResult = await DialogService.OpenAsync<DeleteUserDialog>("Delete user",
+            new Dictionary<string, object>
+            {
+                { nameof(DeleteUserDialog.UserName), user.Name ?? user.EMail },
+                { nameof(DeleteUserDialog.ShowDirectoryOption), _showDirectory }
+            });
+        if (dialogResult is not bool alsoDeleteFromDirectory) return;
+
+        try
+        {
+            var result = await UserManagementService.DeleteUserAsync(user.Key, alsoDeleteFromDirectory);
+            if (result.DirectoryError != null)
+            {
+                NotificationService.Notify(NotificationSeverity.Warning, "User deleted locally",
+                    $"Directory delete did not complete: {result.DirectoryError}");
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Success, "User deleted",
+                    $"Removed from {result.RemovedTeamCount} team(s){(result.DirectoryDeleted ? " and the directory" : "")}.");
+            }
+
+            if (_selectedUser?.Key == user.Key) _selectedUser = null;
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Delete failed", ex.Message);
+        }
     }
 }

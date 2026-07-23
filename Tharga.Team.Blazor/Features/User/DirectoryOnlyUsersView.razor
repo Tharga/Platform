@@ -1,0 +1,102 @@
+@implements IDisposable
+@inject IUserManagementService UserManagementService
+@inject NotificationService NotificationService
+
+@*
+    Users that exist in the external directory but have no local user record. Loaded on demand only —
+    a tenant's directory can be large, so nothing is fetched until asked, and results stream in as
+    directory pages arrive.
+*@
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem" class="rz-mb-3 rz-mt-2">
+    <RadzenButton Text="@(_loadedOnce ? "Refresh" : "Load")" Icon="refresh" Click="@LoadAsync" Disabled="@_loading" />
+    @if (_loading)
+    {
+        <RadzenProgressBarCircular ProgressBarStyle="ProgressBarStyle.Primary" Mode="ProgressBarMode.Indeterminate" Style="width: 24px; height: 24px;" ShowValue="false" />
+    }
+    @if (_loadedOnce && !_loading)
+    {
+        <RadzenText TextStyle="TextStyle.Caption">@_users.Count user(s) found only in the directory</RadzenText>
+    }
+</RadzenStack>
+
+@if (_loadedOnce || _loading)
+{
+    <RadzenDataGrid Data="@_users" TItem="DirectoryUser" AllowSorting="true" AllowPaging="true" PageSize="10">
+        <Columns>
+            <RadzenDataGridColumn Title="" Width="66px" Sortable="false" Filterable="false">
+                <Template>
+                    <RadzenGravatar Email="@context.EMail" Style="width: 32px; height: 32px;" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Name" Property="@nameof(DirectoryUser.Name)" />
+            <RadzenDataGridColumn Title="Email" Property="@nameof(DirectoryUser.EMail)" />
+            <RadzenDataGridColumn Title="Status" Sortable="false" Filterable="false" Width="120px">
+                <Template>
+                    @if (context.Enabled == false)
+                    {
+                        <RadzenBadge BadgeStyle="BadgeStyle.Warning" Variant="Variant.Flat" Text="Disabled" />
+                    }
+                    else
+                    {
+                        <RadzenBadge BadgeStyle="BadgeStyle.Success" Variant="Variant.Flat" Text="Enabled" />
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+}
+else
+{
+    <RadzenText TextStyle="TextStyle.Body2">
+        Users that exist in the external directory but not in this application. Nothing is fetched
+        automatically — press Load to query the directory.
+    </RadzenText>
+}
+
+@code {
+    private readonly List<DirectoryUser> _users = [];
+    private bool _loading;
+    private bool _loadedOnce;
+    private CancellationTokenSource _cancellation;
+
+    private async Task LoadAsync()
+    {
+        _cancellation?.Cancel();
+        _cancellation = new CancellationTokenSource();
+        var token = _cancellation.Token;
+
+        _users.Clear();
+        _loading = true;
+        try
+        {
+            await foreach (var user in UserManagementService.GetDirectoryOnlyUsersAsync(token))
+            {
+                _users.Add(user);
+                if (_users.Count % 25 == 0) StateHasChanged();
+            }
+
+            _loadedOnce = true;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Directory listing failed", ex.Message);
+        }
+        finally
+        {
+            if (!token.IsCancellationRequested)
+            {
+                _loading = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        _cancellation?.Cancel();
+        _cancellation?.Dispose();
+    }
+}

@@ -1,0 +1,45 @@
+@inject DialogService DialogService
+
+@*
+    Confirmation for the user-delete flow. The local delete (all team memberships + the user record)
+    always happens; deleting from the external directory is an explicit opt-in, off by default, because
+    it removes the account org-wide — not just from this application.
+*@
+<RadzenStack Gap="1rem">
+    <RadzenText TextStyle="TextStyle.Body1">
+        Delete <b>@UserName</b>? The user is removed from every team and the user record is deleted.
+        This cannot be undone.
+    </RadzenText>
+
+    @if (ShowDirectoryOption)
+    {
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+            <RadzenCheckBox @bind-Value="_alsoDeleteFromDirectory" Name="alsoDeleteFromDirectory" TValue="bool" />
+            <RadzenLabel Text="Also delete from the external directory" Component="alsoDeleteFromDirectory" />
+        </RadzenStack>
+
+        @if (_alsoDeleteFromDirectory)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat" AllowClose="false">
+                Deleting from the directory removes the account <b>organization-wide</b>, affecting every
+                application it signs in to — not just this one. An administrator can restore it for a
+                limited time (30 days in Microsoft Entra ID).
+            </RadzenAlert>
+        }
+    }
+
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+        <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat" Click="@(() => DialogService.Close(null))" />
+        <RadzenButton Text="Delete" ButtonStyle="ButtonStyle.Danger" Click="@(() => DialogService.Close(_alsoDeleteFromDirectory))" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    /// <summary>Display name of the user about to be deleted.</summary>
+    [Parameter] public string UserName { get; set; }
+
+    /// <summary>Whether to offer the "also delete from the directory" opt-in (a directory service is registered).</summary>
+    [Parameter] public bool ShowDirectoryOption { get; set; }
+
+    private bool _alsoDeleteFromDirectory;
+}

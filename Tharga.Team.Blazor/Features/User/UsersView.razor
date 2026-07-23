@@ -1,7 +1,10 @@
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.DependencyInjection
 @using Tharga.Team
 @typeparam TMember where TMember : class, Tharga.Team.ITeamMember
 @attribute [Authorize(Roles = "Developer")]
+@inject IServiceProvider ServiceProvider
+@inject AuthenticationStateProvider AuthStateProvider
 
 <RadzenTabs>
     <Tabs>
@@ -11,5 +14,25 @@
         <RadzenTabsItem Text="Teams">
             <TeamsListView TMember="TMember" />
         </RadzenTabsItem>
+        @if (_showDirectoryTab)
+        {
+            <RadzenTabsItem Text="Directory only">
+                <DirectoryOnlyUsersView />
+            </RadzenTabsItem>
+        }
     </Tabs>
 </RadzenTabs>
+
+@code {
+    private bool _showDirectoryTab;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var hasUsersManage = authState.User.HasClaim(TeamClaimTypes.Scope, SystemUserScopes.Manage);
+        var directoryRegistered = ServiceProvider.GetService<IUserDirectoryService>() != null;
+        _showDirectoryTab = UserAdminGate.ShowDirectoryFeatures(hasUsersManage, directoryRegistered);
+
+        await base.OnInitializedAsync();
+    }
+}
