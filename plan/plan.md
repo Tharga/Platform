@@ -11,13 +11,10 @@
   - New `IUserManagementService`: `VerifyUserAsync(string userKey)`, `IAsyncEnumerable<...> VerifyAllAsync()`, `DeleteUserAsync(string userKey, bool deleteFromDirectory)`, `IAsyncEnumerable<DirectoryUser> GetDirectoryOnlyUsersAsync()` — all with `[RequireScope(SystemUserScopes.Manage)]`.
   - Extend `IUserService` (or repository seam) with what stamping/backfill needs — decide exact seam while implementing.
 
-- [~] **2. Persistence (`Tharga.Team.MongoDB`)**
-  - `IUserRepository`/`UserRepository`: `SetLastSeenAsync(userKey, timestamp)`, `SetDirectoryIdAsync(userKey, directoryId)`, `DeleteAsync(userKey)`.
-  - `UserServiceRepositoryBase`: capture `oid` claim into `DirectoryId` at `CreateUserEntityAsync` time (document for consumers), expose delete.
-  - Team side: `RemoveMemberFromAllTeamsAsync(userKey)` on the repository base + `TeamRepository` (reuse the existing member-removal write pattern).
-  - Tests in `Tharga.Team.MongoDB.Tests`.
+- [x] **2. Persistence (`Tharga.Team.MongoDB`)** — done 2026-07-23. `IUserRepository` + `UserRepository`: `SetLastSeenAsync`/`SetDirectoryIdAsync`/`DeleteAsync` — the two field writes are **opt-in by entity shape** (reflection guard: no-op unless the entity declares the property, since updating an undeclared interface default member fails at driver render time); delete default-throws (silent no-op would hide a missing impl). `ITeamRepository`/`TeamRepository`: `RemoveMemberFromAllTeamsAsync(userKey)` → `Task<int>` (strips member entries in any state, returns team count). Service seam: `IUserService` gained `SetUserLastSeenAsync`/`SetUserDirectoryIdAsync` (default no-op) + `DeleteUserAsync` (default throws), virtuals on `UserServiceBase`, overridden in `UserServiceRepositoryBase`; `ITeamService.RemoveUserFromAllTeamsAsync` (plain member per `GetAllTeamsAsync` precedent) with `TeamServiceBase` virtual-throw + Mongo override; both team decorators forward it — authorization requires `users:manage`, audit logs `remove-member-all` with new `AuditMetadataKeys.MemberTeamCount`. Added `InternalsVisibleTo` for MongoDB.Tests (sibling precedent). 13 new tests incl. an update-render test proving the interface-member expressions translate against the entity class map. Note for step 4: oid capture at `CreateUserEntityAsync` is consumer code — the framework backfill (step 3) covers it; document in step 8/10.
+  - Deferred decision: audit of per-team removals during user delete is a single `remove-member-all` entry (count metadata), not N `remove-member` entries — team timelines won't show individual rows; revisit if requested.
 
-- [ ] **3. LastSeen stamping + oid backfill (`Tharga.Team` / service layer)**
+- [~] **3. LastSeen stamping + oid backfill (`Tharga.Team` / service layer)**
   - Stamp in the `GetCurrentUserAsync` resolve path (`UserServiceBase`) — NOT in `TeamServerClaimsTransformation` (it early-returns when no team cookie is set). Throttle: at most one write per user per interval; interval configurable via options (default 15 min). Piggyback the existing static user cache for the throttle bookkeeping.
   - Backfill `DirectoryId` from the `oid` claim on resolve when the stored value is empty.
   - Tests: throttling behavior, backfill, no-op when claims lack `oid`.

@@ -158,6 +158,28 @@ public class AuditingTeamServiceDecorator : ITeamService
         }
     }
 
+    public async Task<int> RemoveUserFromAllTeamsAsync(string userKey)
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var count = await _inner.RemoveUserFromAllTeamsAsync(userKey);
+            sw.Stop();
+            Log("remove-member-all", nameof(RemoveUserFromAllTeamsAsync), sw.ElapsedMilliseconds, true,
+                metadata: Meta(
+                    (AuditMetadataKeys.MemberKey, userKey),
+                    (AuditMetadataKeys.MemberTeamCount, count.ToString())));
+            return count;
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            Log("remove-member-all", nameof(RemoveUserFromAllTeamsAsync), sw.ElapsedMilliseconds, false, ex.Message,
+                metadata: Meta((AuditMetadataKeys.MemberKey, userKey)));
+            throw;
+        }
+    }
+
     public async Task SetMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel)
     {
         var previous = await TryGetMemberAsync(teamKey, userKey);

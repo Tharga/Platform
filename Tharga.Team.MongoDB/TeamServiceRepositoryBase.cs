@@ -141,6 +141,11 @@ public abstract class TeamServiceRepositoryBase<TTeamEntity, TMember> : TeamServ
         return _teamRepository.GetAllTeamsAsync();
     }
 
+    protected override Task<int> RemoveUserFromAllTeamsInternalAsync(string userKey)
+    {
+        return _teamRepository.RemoveMemberFromAllTeamsAsync(userKey);
+    }
+
     protected override Task SetTeamConsentInternalAsync(string teamKey, string[] consentedRoles, AccessLevel? accessLevel)
     {
         return _teamRepository.SetConsentAsync(teamKey, consentedRoles, accessLevel);

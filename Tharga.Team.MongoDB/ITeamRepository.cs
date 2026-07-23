@@ -36,4 +36,18 @@ public interface ITeamRepository<TTeamEntity, TMember> : IRepository
         => throw new NotSupportedException(
             $"'{GetType().Name}' does not implement {nameof(GetAllTeamsAsync)}. Implement it to support " +
             $"cross-team listing (the '{SystemTeamScopes.Read}' system scope).");
+
+    /// <summary>
+    /// Removes the user's member entries from every team they appear in, regardless of membership state.
+    /// Backs user deletion. Returns the number of teams the user was removed from.
+    /// </summary>
+    /// <remarks>
+    /// Declared with a default implementation so existing custom repositories keep compiling. The default
+    /// throws rather than returning 0: a silent no-op on a deletion path would leave memberships behind
+    /// while reporting success.
+    /// </remarks>
+    Task<int> RemoveMemberFromAllTeamsAsync(string userKey)
+        => throw new NotSupportedException(
+            $"'{GetType().Name}' does not implement {nameof(RemoveMemberFromAllTeamsAsync)}. Implement it " +
+            $"to support user deletion (the '{SystemUserScopes.Manage}' system scope).");
 }

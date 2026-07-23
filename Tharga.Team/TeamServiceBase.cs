@@ -252,6 +252,33 @@ public abstract class TeamServiceBase : ITeamService
         _teamMemberCache.TryRemove($"{teamKey}.{user.Key}", out _);
     }
 
+    /// <summary>
+    /// Backs <see cref="RemoveUserFromAllTeamsAsync"/>. Virtual rather than abstract so existing derived
+    /// services keep compiling; the default throws rather than returning 0, since a silent no-op on a
+    /// deletion path would hide the missing implementation. Storage-backed bases override it.
+    /// </summary>
+    protected virtual Task<int> RemoveUserFromAllTeamsInternalAsync(string userKey)
+        => throw new NotSupportedException(
+            $"'{GetType().Name}' does not implement {nameof(RemoveUserFromAllTeamsInternalAsync)}. " +
+            $"Implement it to support user deletion (the '{SystemUserScopes.Manage}' system scope).");
+
+    public async Task<int> RemoveUserFromAllTeamsAsync(string userKey)
+    {
+        var count = await RemoveUserFromAllTeamsInternalAsync(userKey);
+
+        foreach (var cacheKey in _teamMemberCache.Keys.Where(x => x.EndsWith($".{userKey}")).ToArray())
+        {
+            _teamMemberCache.TryRemove(cacheKey, out _);
+        }
+
+        if (count > 0)
+        {
+            TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
+        }
+
+        return count;
+    }
+
     public async Task TransferOwnershipAsync<TMember>(string teamKey, string newOwnerUserKey) where TMember : ITeamMember
     {
         var user = await RequireCurrentUserAsync();

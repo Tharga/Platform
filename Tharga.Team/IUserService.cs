@@ -19,4 +19,28 @@ public interface IUserService
     /// caller has explicitly chosen a name for themselves.
     /// </summary>
     Task SetUserNameAsync(string userKey, string name);
+
+    /// <summary>
+    /// Stamps when the user last made an authenticated request. Called automatically by the resolve
+    /// path (throttled), so the default is a no-op — stores that track <see cref="IUser.LastSeen"/>
+    /// override it.
+    /// </summary>
+    Task SetUserLastSeenAsync(string userKey, DateTime lastSeen) => Task.CompletedTask;
+
+    /// <summary>
+    /// Links the user to their external-directory id (<see cref="IUser.DirectoryId"/>). Called by the
+    /// oid backfill and by directory verification on an email-fallback match (relink). Default is a
+    /// no-op — stores that track the directory id override it.
+    /// </summary>
+    Task SetUserDirectoryIdAsync(string userKey, string directoryId) => Task.CompletedTask;
+
+    /// <summary>
+    /// Deletes the user record from the store. Low-level storage operation with no authorization check
+    /// or team-membership cleanup — call through <see cref="IUserManagementService.DeleteUserAsync"/>,
+    /// which removes team memberships, audits, and enforces <see cref="SystemUserScopes.Manage"/>.
+    /// </summary>
+    Task DeleteUserAsync(string userKey)
+        => throw new NotSupportedException(
+            $"'{GetType().Name}' does not implement {nameof(DeleteUserAsync)}. Implement it to support " +
+            $"user deletion (the '{SystemUserScopes.Manage}' system scope).");
 }

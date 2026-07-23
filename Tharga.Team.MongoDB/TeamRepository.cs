@@ -179,6 +179,25 @@ internal class TeamRepository<TTeamEntity, TMember> : ITeamRepository<TTeamEntit
         return await response.GetAfterAsync();
     }
 
+    public async Task<int> RemoveMemberFromAllTeamsAsync(string userKey)
+    {
+        var count = 0;
+        await foreach (var team in _collection.GetAsync(x => x.Members.Any(y => y.Key == userKey)))
+        {
+            var members = team.Members.Where(x => x.Key != userKey).ToArray();
+
+            var filter = new FilterDefinitionBuilder<TTeamEntity>()
+                .Eq(x => x.Key, team.Key);
+            var update = new UpdateDefinitionBuilder<TTeamEntity>()
+                .Set(x => x.Members, members);
+
+            await _collection.UpdateOneAsync(filter, update);
+            count++;
+        }
+
+        return count;
+    }
+
     public Task DeleteAsync(string teamKey)
     {
         return _collection.DeleteOneAsync(x => x.Key == teamKey);

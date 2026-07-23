@@ -10,4 +10,31 @@ public interface IUserRepository<TUserEntity> : IRepository
     Task<TUserEntity> GetByKeyAsync(string userKey);
     Task AddAsync(TUserEntity user);
     Task SetNameAsync(string userKey, string name);
+
+    /// <summary>
+    /// Stamps <see cref="IUser.LastSeen"/> on the user document. Called automatically by the throttled
+    /// resolve path, so the default (and the built-in repository, when <typeparamref name="TUserEntity"/>
+    /// does not declare a <c>LastSeen</c> property) is a no-op — activity tracking is opted into by
+    /// declaring the property on the entity.
+    /// </summary>
+    Task SetLastSeenAsync(string userKey, DateTime lastSeen) => Task.CompletedTask;
+
+    /// <summary>
+    /// Sets <see cref="IUser.DirectoryId"/> on the user document. Same opt-in-by-entity-shape contract
+    /// as <see cref="SetLastSeenAsync"/>: a no-op unless the entity declares a <c>DirectoryId</c> property.
+    /// </summary>
+    Task SetDirectoryIdAsync(string userKey, string directoryId) => Task.CompletedTask;
+
+    /// <summary>
+    /// Deletes the user document.
+    /// </summary>
+    /// <remarks>
+    /// Declared with a default implementation so existing custom repositories keep compiling. The default
+    /// throws rather than no-opping: silently skipping a requested deletion would hide the missing
+    /// implementation behind an apparently successful call.
+    /// </remarks>
+    Task DeleteAsync(string userKey)
+        => throw new NotSupportedException(
+            $"'{GetType().Name}' does not implement {nameof(DeleteAsync)}. Implement it to support " +
+            $"user deletion (the '{SystemUserScopes.Manage}' system scope).");
 }

@@ -31,6 +31,9 @@
     <PackageReference Include="Tharga.MongoDB" Version="2.13.0" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Tharga.Team.MongoDB.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Tharga.Team\Tharga.Team.csproj" />
   </ItemGroup>
 </Project>

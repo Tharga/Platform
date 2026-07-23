@@ -68,4 +68,33 @@ public abstract class UserServiceRepositoryBase<TUserEntity> : UserServiceBase
         await _userRepository.SetNameAsync(userKey, name);
         InvalidateUserCache(user.Identity);
     }
+
+    public override Task SetUserLastSeenAsync(string userKey, DateTime lastSeen)
+    {
+        if (string.IsNullOrEmpty(userKey)) return Task.CompletedTask;
+
+        return _userRepository.SetLastSeenAsync(userKey, lastSeen);
+    }
+
+    public override async Task SetUserDirectoryIdAsync(string userKey, string directoryId)
+    {
+        if (string.IsNullOrEmpty(userKey)) return;
+
+        var user = await _userRepository.GetByKeyAsync(userKey);
+        if (user == null) return;
+
+        await _userRepository.SetDirectoryIdAsync(userKey, directoryId);
+        InvalidateUserCache(user.Identity);
+    }
+
+    public override async Task DeleteUserAsync(string userKey)
+    {
+        if (string.IsNullOrEmpty(userKey)) return;
+
+        var user = await _userRepository.GetByKeyAsync(userKey);
+        if (user == null) return;
+
+        await _userRepository.DeleteAsync(userKey);
+        InvalidateUserCache(user.Identity);
+    }
 }

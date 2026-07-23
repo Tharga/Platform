@@ -49,6 +49,15 @@ public abstract class UserServiceBase : IUserService
 
     public virtual Task SetUserNameAsync(string userKey, string name) => Task.CompletedTask;
 
+    public virtual Task SetUserLastSeenAsync(string userKey, DateTime lastSeen) => Task.CompletedTask;
+
+    public virtual Task SetUserDirectoryIdAsync(string userKey, string directoryId) => Task.CompletedTask;
+
+    public virtual Task DeleteUserAsync(string userKey)
+        => throw new NotSupportedException(
+            $"'{GetType().Name}' does not implement {nameof(DeleteUserAsync)}. Implement it to support " +
+            $"user deletion (the '{SystemUserScopes.Manage}' system scope).");
+
     protected void InvalidateUserCache(string identity)
     {
         if (!string.IsNullOrEmpty(identity)) _userCache.TryRemove(identity, out _);

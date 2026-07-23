@@ -12,6 +12,7 @@ namespace Tharga.Team.Service;
 /// <item>Rename / Consent — <c>team:manage</c> on the team.</item>
 /// <item>Custom-role CRUD — the configurable custom-role manage scope on the team (default <c>team:manage</c>).</item>
 /// <item>Member invite/remove/role/scope-overrides/display-name — <c>member:manage</c> on the team.</item>
+/// <item>Remove user from all teams — <c>users:manage</c> (system; backs user deletion).</item>
 /// <item>Transfer ownership — passed through (Owner-only is enforced by the inner service).</item>
 /// </list>
 /// Reads, consent-team lookup, last-seen touch, and invitation responses pass through (self-service / not gated here).
@@ -148,6 +149,13 @@ public sealed class AuthorizationTeamServiceDecorator : ITeamService
         await _inner.SetMemberNameAsync(teamKey, userKey, name);
     }
 
+    // Cross-team member removal (users:manage system scope) — backs user deletion.
+    public async Task<int> RemoveUserFromAllTeamsAsync(string userKey)
+    {
+        await RequireUsersManageAsync();
+        return await _inner.RemoveUserFromAllTeamsAsync(userKey);
+    }
+
     private async Task RequireCreateAsync()
     {
         if (!_lifecycle.AllowTeamCreation)
@@ -161,6 +169,13 @@ public sealed class AuthorizationTeamServiceDecorator : ITeamService
         if (await _authorizer.HasSystemScopeAsync(SystemTeamScopes.Read)) return;
         throw new UnauthorizedAccessException(
             $"Listing all teams requires the '{SystemTeamScopes.Read}' system scope.");
+    }
+
+    private async Task RequireUsersManageAsync()
+    {
+        if (await _authorizer.HasSystemScopeAsync(SystemUserScopes.Manage)) return;
+        throw new UnauthorizedAccessException(
+            $"Removing a user from all teams requires the '{SystemUserScopes.Manage}' system scope.");
     }
 
     private async Task RequireDeleteAsync(string teamKey)

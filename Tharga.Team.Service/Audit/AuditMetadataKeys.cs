@@ -62,4 +62,7 @@ public static class AuditMetadataKeys
 
     /// <summary>New owner on an ownership transfer.</summary>
     public const string NewOwnerKey = "team.newowner.key";
+
+    /// <summary>Number of teams a user was removed from, on a remove-from-all-teams operation.</summary>
+    public const string MemberTeamCount = "member.teamcount";
 }
