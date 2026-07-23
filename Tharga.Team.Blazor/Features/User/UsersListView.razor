@@ -27,8 +27,7 @@ else if (_loaded)
             <RadzenButton Text="Verify all" Icon="how_to_reg" ButtonStyle="ButtonStyle.Light" Click="@VerifyAllAsync" Disabled="@_verifying" />
         }
     </RadzenStack>
-    <RadzenDataGrid Data="@_filteredUsers" TItem="UserViewModel" AllowSorting="true" AllowPaging="true" PageSize="10"
-                    RowSelect="@OnUserSelected" Style="cursor: pointer;">
+    <RadzenDataGrid Data="@_filteredUsers" TItem="UserViewModel" AllowSorting="true" AllowPaging="true" PageSize="10">
         <Columns>
             <RadzenDataGridColumn Title="" Width="66px" Sortable="false" Filterable="false">
                 <Template>
@@ -49,21 +48,22 @@ else if (_loaded)
             </RadzenDataGridColumn>
             <RadzenDataGridColumn Title="@(_showDirectory ? "Directory" : "")" Sortable="false" Filterable="false">
                 <Template>
-                    <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem">
-                        @if (_showDirectory)
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+                        @if (_showDirectory && context.DirectoryStatus != null)
                         {
-                            @if (context.DirectoryStatus != null)
-                            {
-                                <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(DirectoryStatusBadge.Style(context.DirectoryStatus.Value)))"
-                                             Variant="Variant.Flat" Text="@DirectoryStatusBadge.Text(context.DirectoryStatus.Value)" />
-                            }
-                            <span title="Verify against the directory">
-                                <StandardButton Icon="person_search" Click="@(() => VerifyUserAsync(context))" />
-                            </span>
+                            <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(DirectoryStatusBadge.Style(context.DirectoryStatus.Value)))"
+                                         Variant="Variant.Flat" Text="@DirectoryStatusBadge.Text(context.DirectoryStatus.Value)" />
                         }
-                        <span title="Delete user">
-                            <StandardButton Icon="delete" Click="@(() => DeleteUserAsync(context))" />
-                        </span>
+                        <RadzenSplitButton Text="View" Icon="visibility" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                                           Click="@(item => OnUserActionAsync(item, context))">
+                            <ChildContent>
+                                @if (_showDirectory)
+                                {
+                                    <RadzenSplitButtonItem Text="Verify" Value="@VerifyAction" Icon="person_search" />
+                                }
+                                <RadzenSplitButtonItem Text="Delete" Value="@DeleteAction" Icon="delete" />
+                            </ChildContent>
+                        </RadzenSplitButton>
                         @if (ActionsTemplate != null)
                         {
                             @ActionsTemplate(context)
@@ -102,10 +102,13 @@ else
 
 @code {
     /// <summary>
-    /// Optional template rendered after the built-in actions in each user row's action column.
+    /// Optional template rendered after the built-in split button in each user row's action column.
     /// Use to inject row-level actions (edit, custom links) without forking the component.
     /// </summary>
     [Parameter] public RenderFragment<UserViewModel> ActionsTemplate { get; set; }
+
+    private const string VerifyAction = "verify";
+    private const string DeleteAction = "delete";
 
     private bool _loaded;
     private bool _canAdminister = true;
@@ -194,7 +197,23 @@ else
         }
     }
 
-    private void OnUserSelected(UserViewModel user)
+    private async Task OnUserActionAsync(RadzenSplitButtonItem item, UserViewModel user)
+    {
+        switch (item?.Value)
+        {
+            case VerifyAction:
+                await VerifyUserAsync(user);
+                break;
+            case DeleteAction:
+                await DeleteUserAsync(user);
+                break;
+            default:
+                ToggleDetails(user);
+                break;
+        }
+    }
+
+    private void ToggleDetails(UserViewModel user)
     {
         _selectedUser = _selectedUser?.Key == user.Key ? null : user;
     }

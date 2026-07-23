@@ -132,7 +132,7 @@ finding, not a lookup miss.
 
 ## Directory-only users
 
-The **Directory only** tab on `<UsersView />` lists users that exist in the directory but have no local
+The **Users in directory only** tab on `<UsersView />` lists users that exist in the directory but have no local
 user record — matched by directory id with an email fallback, so pre-existing local users without a
 stored `oid` are not falsely reported. Nothing is fetched until you press **Load** (a tenant's
 directory can be large); results stream in page by page.
