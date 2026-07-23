@@ -147,6 +147,9 @@ public static class ThargaBlazorRegistration
             DecorateWithAudit<IUserManagementService>(services,
                 (inner, logger, http) => new AuditingUserManagementServiceDecorator(inner, logger, http));
             DecorateUserManagementWithAuthorization(services);
+
+            // The user store itself: cross-user reads/writes require users:manage; self-service passes.
+            DecorateUserServiceWithAuthorization(services);
         }
 
         services.AddSingleton(Options.Create(o));
@@ -174,6 +177,27 @@ public static class ThargaBlazorRegistration
             var tenantRoleRegistry = sp.GetService<ITenantRoleRegistry>();
             var dynamicRoleOptions = sp.GetService<DynamicTenantRoleOptions>();
             return new AuthorizationTeamServiceDecorator(inner, authorizer, lifecycle, scopeRegistry, tenantRoleRegistry, dynamicRoleOptions?.ManageScope);
+        });
+    }
+
+    private static void DecorateUserServiceWithAuthorization(IServiceCollection services)
+    {
+        var existing = services.LastOrDefault(d => d.ServiceType == typeof(IUserService));
+        if (existing == null) return;
+
+        services.Remove(existing);
+
+        services.AddScoped<IUserService>(sp =>
+        {
+            IUserService inner;
+            if (existing.ImplementationFactory != null)
+                inner = (IUserService)existing.ImplementationFactory(sp);
+            else if (existing.ImplementationType != null)
+                inner = (IUserService)ActivatorUtilities.CreateInstance(sp, existing.ImplementationType);
+            else
+                throw new InvalidOperationException("Cannot resolve inner IUserService for authorization decoration.");
+
+            return new AuthorizationUserServiceDecorator(inner, sp.GetRequiredService<TeamAuthorizer>());
         });
     }
 

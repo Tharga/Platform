@@ -110,7 +110,7 @@ API-key behaviour (auto-lock, expiry, and the random secret length via `MinKeyLe
 
 ## User administration & Entra directory
 
-The user store tracks per-user **last seen** (opt-in: declare `LastSeen`/`DirectoryId` on your user entity), and `IUserManagementService` provides audited, `users:manage`-gated administration: verify users against Microsoft Entra ID, list users that exist only in Entra, and delete users — from the app and (explicit opt-in) from Entra:
+The user store tracks per-user **last seen** (opt-in: declare `LastSeen`/`DirectoryId` on your user entity), and `IUserManagementService` provides audited administration: verify users against Microsoft Entra ID, list users that exist only in Entra, and delete users — from the app and (explicit opt-in) from Entra. Everything cross-user — including viewing the admin lists and enumerating users via `IUserService` — requires the `users:manage` system scope, enforced in the service layer:
 
 ```csharp
 // dotnet add package Tharga.Team.Entra

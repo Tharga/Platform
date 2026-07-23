@@ -6,7 +6,13 @@
 @inject IUserService UserService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
-@if (_loaded)
+@if (!_canAdminister)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat" AllowClose="false" class="rz-mt-2">
+        Viewing teams and their members requires the <b>@SystemUserScopes.Manage</b> system scope.
+    </RadzenAlert>
+}
+else if (_loaded)
 {
     <RadzenDataGrid Data="@_teamViewModels" TItem="TeamViewModel" AllowSorting="true" AllowPaging="true" PageSize="10"
                     RowSelect="@OnTeamSelected" Style="cursor: pointer;">
@@ -85,6 +91,7 @@ else
     [Parameter] public RenderFragment<TeamMemberInfo> MemberActionsTemplate { get; set; }
 
     private bool _loaded;
+    private bool _canAdminister = true;
     private IUser[] _users;
     private ITeam<TMember>[] _teams;
     private bool _canSeeAllTeams;
@@ -96,14 +103,19 @@ else
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         _canSeeAllTeams = TeamVisibility.CanSeeAllTeams(authState.User);
+        _canAdminister = UserAdminGate.CanAdministerUsers(
+            authState.User.HasClaim(TeamClaimTypes.Scope, SystemUserScopes.Manage));
 
-        _users = await UserService.GetAsync().ToArrayAsync();
-        _teams = _canSeeAllTeams
-            ? await TeamService.GetAllTeamsAsync<TMember>().ToArrayAsync()
-            : await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
+        if (_canAdminister)
+        {
+            _users = await UserService.GetAsync().ToArrayAsync();
+            _teams = _canSeeAllTeams
+                ? await TeamService.GetAllTeamsAsync<TMember>().ToArrayAsync()
+                : await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
 
-        BuildViewModels();
-        _loaded = true;
+            BuildViewModels();
+            _loaded = true;
+        }
 
         await base.OnInitializedAsync();
     }

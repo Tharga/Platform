@@ -9,7 +9,13 @@
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 
-@if (_loaded)
+@if (!_canAdminister)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat" AllowClose="false" class="rz-mt-2">
+        Viewing users requires the <b>@SystemUserScopes.Manage</b> system scope.
+    </RadzenAlert>
+}
+else if (_loaded)
 {
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="0.5rem" class="rz-mb-3 rz-mt-2">
         <RadzenStack Orientation="Orientation.Vertical" Gap="0">
@@ -53,24 +59,21 @@
                     </Template>
                 </RadzenDataGridColumn>
             }
-            @if (_showUserActions)
-            {
-                <RadzenDataGridColumn Title="" Sortable="false" Filterable="false">
-                    <Template>
-                        <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem">
-                            @if (_showDirectory)
-                            {
-                                <span title="Verify against the directory">
-                                    <StandardButton Icon="person_search" Click="@(() => VerifyUserAsync(context))" />
-                                </span>
-                            }
-                            <span title="Delete user">
-                                <StandardButton Icon="delete" Click="@(() => DeleteUserAsync(context))" />
+            <RadzenDataGridColumn Title="" Sortable="false" Filterable="false">
+                <Template>
+                    <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem">
+                        @if (_showDirectory)
+                        {
+                            <span title="Verify against the directory">
+                                <StandardButton Icon="person_search" Click="@(() => VerifyUserAsync(context))" />
                             </span>
-                        </RadzenStack>
-                    </Template>
-                </RadzenDataGridColumn>
-            }
+                        }
+                        <span title="Delete user">
+                            <StandardButton Icon="delete" Click="@(() => DeleteUserAsync(context))" />
+                        </span>
+                    </RadzenStack>
+                </Template>
+            </RadzenDataGridColumn>
             @if (ActionsTemplate != null)
             {
                 <RadzenDataGridColumn Title="" Sortable="false" Filterable="false">
@@ -116,7 +119,7 @@ else
     [Parameter] public RenderFragment<UserViewModel> ActionsTemplate { get; set; }
 
     private bool _loaded;
-    private bool _showUserActions;
+    private bool _canAdminister = true;
     private bool _showDirectory;
     private bool _verifying;
     private IUser[] _users;
@@ -132,11 +135,14 @@ else
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var hasUsersManage = authState.User.HasClaim(TeamClaimTypes.Scope, SystemUserScopes.Manage);
         var directoryRegistered = ServiceProvider.GetService<IUserDirectoryService>() != null;
-        _showUserActions = UserAdminGate.ShowUserActions(hasUsersManage);
+        _canAdminister = UserAdminGate.CanAdministerUsers(hasUsersManage);
         _showDirectory = UserAdminGate.ShowDirectoryFeatures(hasUsersManage, directoryRegistered);
 
-        await LoadDataAsync();
-        _loaded = true;
+        if (_canAdminister)
+        {
+            await LoadDataAsync();
+            _loaded = true;
+        }
 
         await base.OnInitializedAsync();
     }

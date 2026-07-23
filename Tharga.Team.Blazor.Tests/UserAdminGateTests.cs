@@ -14,9 +14,9 @@ public class UserAdminGateTests
     [Theory]
     [InlineData(true, true)]
     [InlineData(false, false)]
-    public void ShowUserActions_RequiresScope(bool hasScope, bool expected)
+    public void CanAdministerUsers_RequiresScope(bool hasScope, bool expected)
     {
-        Assert.Equal(expected, UserAdminGate.ShowUserActions(hasScope));
+        Assert.Equal(expected, UserAdminGate.CanAdministerUsers(hasScope));
     }
 
     [Theory]

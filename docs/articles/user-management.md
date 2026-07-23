@@ -95,8 +95,9 @@ still works.
 
 ## The `users:manage` scope
 
-All user administration operations require the **`users:manage` system scope** (registered
-automatically, like `teams:delete`). Grant it by mapping an app role:
+All user administration — **including viewing the users and teams admin lists** — requires the
+**`users:manage` system scope** (registered automatically, like `teams:delete`). Grant it by mapping
+an app role:
 
 ```csharp
 o.ConfigureSystemRoles = roles =>
@@ -105,8 +106,18 @@ o.ConfigureSystemRoles = roles =>
 };
 ```
 
-Authorization is enforced in the service layer (an authorization decorator over
-`IUserManagementService`), so the same rule protects the Blazor UI and any consumer REST endpoint.
+Authorization is enforced in the service layer by decorators over `IUserManagementService` **and
+`IUserService` itself**, so the same rules protect the Blazor circuit and any consumer REST endpoint:
+
+- **Self-service passes for any authenticated caller** — resolving the current user, the
+  invitation-accept name seeding, and setting one's *own* display name.
+- **Everything cross-user requires `users:manage`** — enumerating users, reading a user by key,
+  setting another user's name, activity/directory writes, and deletion.
+
+The `<UsersView />` tabs check the scope up front and render a notice instead of the lists when the
+caller lacks it. Still protect the *page* that embeds the component with `[Authorize]` — and note that
+Blazor only enforces page-level `[Authorize]` when your router uses `AuthorizeRouteView` (an attribute
+on a non-page component does nothing).
 
 ## Verifying users
 

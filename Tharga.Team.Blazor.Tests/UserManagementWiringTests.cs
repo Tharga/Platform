@@ -32,6 +32,39 @@ public class UserManagementWiringTests
     }
 
     [Fact]
+    public void UserService_AuthorizationDecorator_IsOutermost()
+    {
+        var (sp, _) = BuildProvider(withScope: true);
+        using var scope = sp.CreateScope();
+
+        var service = scope.ServiceProvider.GetRequiredService<IUserService>();
+
+        Assert.IsType<AuthorizationUserServiceDecorator>(service);
+    }
+
+    [Fact]
+    public async Task UserEnumeration_WithoutScope_IsDenied()
+    {
+        var (sp, _) = BuildProvider(withScope: false);
+        using var scope = sp.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<IUserService>();
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await service.GetAsync().ToListAsync());
+    }
+
+    [Fact]
+    public async Task CurrentUserResolve_WithoutScope_PassesThrough()
+    {
+        var (sp, _) = BuildProvider(withScope: false);
+        using var scope = sp.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<IUserService>();
+
+        var user = await service.GetCurrentUserAsync();
+
+        Assert.Null(user);
+    }
+
+    [Fact]
     public void UsersManageSystemScope_IsRegistered()
     {
         var (sp, _) = BuildProvider(withScope: true);

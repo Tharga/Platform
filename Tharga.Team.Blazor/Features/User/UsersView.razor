@@ -1,10 +1,15 @@
-@using Microsoft.AspNetCore.Authorization
 @using Microsoft.Extensions.DependencyInjection
 @using Tharga.Team
 @typeparam TMember where TMember : class, Tharga.Team.ITeamMember
-@attribute [Authorize(Roles = "Developer")]
 @inject IServiceProvider ServiceProvider
 @inject AuthenticationStateProvider AuthStateProvider
+
+@*
+    No [Authorize] attribute here: it is inert on a non-page component and invited false confidence.
+    Access is enforced where it holds — the service layer requires users:manage for every read/write
+    these tabs perform, and the child views render a friendly notice without it. Hosts should still
+    [Authorize] the page that embeds this component.
+*@
 
 <RadzenTabs>
     <Tabs>

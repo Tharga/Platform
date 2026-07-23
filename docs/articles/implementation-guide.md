@@ -526,7 +526,7 @@ public class MyTeamService : TeamServiceRepositoryBase<TeamEntity, TeamMember>
 | `<TeamSelector />` | Dropdown to switch between teams |
 | `<TeamComponent />` | Full team management (create, rename, delete, members) |
 | `<TeamInviteView />` | Pending invitation view |
-| `<UsersView />` | Admin user list: last seen, directory verification, user deletion, and a directory-only tab when a directory service is registered (see [User management & directory](user-management.md)) |
+| `<UsersView />` | Admin user list: last seen, directory verification, user deletion, and a directory-only tab when a directory service is registered. Viewing and acting require the `users:manage` system scope — enforced in the service layer (see [User management & directory](user-management.md)) |
 | `<ApiKeyView />` | API key management (requires Step 5). Shows **Created** and **Last used** columns per key, and a **Tags** column (chips for keys in `ChipTagKeys`, plus an `(i)` tooltip of all tags). Opt-in `[Parameter]` flags: `ShowAuditLogButton`, `ShowScopeOverrides` (Scopes column + create-card multi-select + Edit-Scopes dialog per row), `ChipTagKeys` |
 | `<AuditLogView />` | Audit log viewer (requires Step 8) |
 | `Roles.TeamMember` | Role claim added to authenticated team members |
