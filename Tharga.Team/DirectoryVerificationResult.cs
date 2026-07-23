@@ -1,0 +1,12 @@
+namespace Tharga.Team;
+
+/// <summary>
+/// Result of verifying a local user against the external directory.
+/// </summary>
+/// <param name="Status">The verification outcome.</param>
+/// <param name="DirectoryId">
+/// The directory id the user resolved to, when found. May differ from the id stored on the local user
+/// (e.g. resolved via email fallback for a user created before directory ids were captured) — callers
+/// should persist it so the user is linked for subsequent operations.
+/// </param>
+public sealed record DirectoryVerificationResult(DirectoryUserStatus Status, string DirectoryId = null);
