@@ -14,7 +14,7 @@
 <RadzenTabs>
     <Tabs>
         <RadzenTabsItem Text="Users">
-            <UsersListView TMember="TMember" ActionsTemplate="ActionsTemplate" />
+            <UsersListView TMember="TMember" ActionsTemplate="ActionsTemplate" ActionItems="ActionItems" ActionInvoked="ActionInvoked" />
         </RadzenTabsItem>
         <RadzenTabsItem Text="Teams">
             <TeamsListView TMember="TMember" />
@@ -35,6 +35,16 @@
     /// directory-only tab) while injecting its own actions.
     /// </summary>
     [Parameter] public RenderFragment<UserViewModel> ActionsTemplate { get; set; }
+
+    /// <summary>
+    /// Optional extra items for each user row's split-button dropdown (supply
+    /// <c>RadzenSplitButtonItem</c> components), passed through to <see cref="UsersListView{TMember}"/>.
+    /// Clicks arrive via <see cref="ActionInvoked"/>.
+    /// </summary>
+    [Parameter] public RenderFragment ActionItems { get; set; }
+
+    /// <summary>Raised when a consumer-supplied split-button item (<see cref="ActionItems"/>) is clicked.</summary>
+    [Parameter] public EventCallback<UserRowAction> ActionInvoked { get; set; }
 
     private bool _showDirectoryTab;
 

@@ -14,13 +14,14 @@
 }
 else if (_loaded)
 {
-    <RadzenDataGrid Data="@_teamViewModels" TItem="TeamViewModel" AllowSorting="true" AllowPaging="true" PageSize="10">
+    <RadzenDataGrid Data="@_teamViewModels" TItem="TeamViewModel" AllowSorting="true" AllowPaging="true" PageSize="10"
+                    AllowFiltering="true" FilterMode="FilterMode.Simple" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
         <Columns>
             <RadzenDataGridColumn Title="Name" Property="Name" />
-            <RadzenDataGridColumn Title="Members" Property="MemberCount" Width="100px" />
+            <RadzenDataGridColumn Title="Members" Property="MemberCount" Width="100px" Filterable="false" />
             @if (_canSeeAllTeams)
             {
-                <RadzenDataGridColumn Title="Consent" Property="Consent" Width="140px">
+                <RadzenDataGridColumn Title="Consent" Property="Consent" Width="140px" Filterable="false">
                     <Template Context="team">
                         <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(TeamVisibility.BadgeStyle(team.Consent)))"
                                      Variant="Variant.Flat"
@@ -28,7 +29,7 @@ else if (_loaded)
                     </Template>
                 </RadzenDataGridColumn>
             }
-            <RadzenDataGridColumn Title="" Sortable="false" Filterable="false">
+            <RadzenDataGridColumn Title="" Width="120px" Sortable="false" Filterable="false">
                 <Template>
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
                         <RadzenButton Text="View" Icon="visibility" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
@@ -48,18 +49,19 @@ else if (_loaded)
         <RadzenCard class="rz-mt-3">
             <RadzenText TextStyle="TextStyle.Subtitle1"><strong>@_selectedTeam.Name</strong></RadzenText>
             <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-mb-1">Members</RadzenText>
-            <RadzenDataGrid Data="@_selectedTeam.Members" TItem="TeamMemberInfo" AllowSorting="true">
+            <RadzenDataGrid Data="@_selectedTeam.Members" TItem="TeamMemberInfo" AllowSorting="true"
+                            AllowFiltering="true" FilterMode="FilterMode.Simple" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
                 <Columns>
-                    <RadzenDataGridColumn Title="" Width="50px" Sortable="false">
+                    <RadzenDataGridColumn Title="" Width="66px" Sortable="false" Filterable="false">
                         <Template>
                             <RadzenGravatar Email="@context.EMail" Style="width: 32px; height: 32px;" />
                         </Template>
                     </RadzenDataGridColumn>
                     <RadzenDataGridColumn Title="Name" Property="Name" />
                     <RadzenDataGridColumn Title="Email" Property="EMail" />
-                    <RadzenDataGridColumn Title="Role" Property="AccessLevel" Width="120px" />
-                    <RadzenDataGridColumn Title="State" Property="State" Width="100px" />
-                    <RadzenDataGridColumn Title="Last seen" Sortable="true" Width="150px">
+                    <RadzenDataGridColumn Title="Role" Property="AccessLevel" Width="120px" Filterable="false" />
+                    <RadzenDataGridColumn Title="State" Property="State" Width="100px" Filterable="false" />
+                    <RadzenDataGridColumn Title="Last seen" Property="@nameof(TeamMemberInfo.LastSeen)" Width="150px" Filterable="false">
                         <Template>
                             <DateTimeView Date="@context.LastSeen" />
                         </Template>

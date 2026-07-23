@@ -14,17 +14,22 @@
 @*
     The packaged tabbed admin view: Users (with last seen, verify + delete when the caller holds
     users:manage), Teams, and — when a directory service is registered — the "Users in directory only" tab.
-    The ActionsTemplate injects the sample's own Edit action; delete is built in.
+    The sample's own Edit action rides in each row's split-button dropdown via ActionItems/ActionInvoked;
+    View, Verify and Delete are built in.
 *@
-<UsersView TMember="TeamMember" ActionsTemplate="UserActions" />
+<UsersView TMember="TeamMember" ActionInvoked="OnUserActionAsync">
+    <ActionItems>
+        <RadzenSplitButtonItem Text="Edit" Value="@EditAction" Icon="edit" />
+    </ActionItems>
+</UsersView>
 
 @code {
-    private RenderFragment<UserViewModel> UserActions => u => __builder =>
+    private const string EditAction = "edit";
+
+    private async Task OnUserActionAsync(UserRowAction action)
     {
-        <RadzenButton Icon="edit" Variant="Variant.Text" Size="ButtonSize.Small"
-                      Click="@(async () => await EditUser(u))"
-                      title="Edit name and email" />
-    };
+        if (action.Action == EditAction) await EditUser(action.User);
+    }
 
     private async Task EditUser(UserViewModel u)
     {

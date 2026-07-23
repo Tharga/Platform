@@ -1,4 +1,3 @@
-@using Tharga.Team
 @using Microsoft.Extensions.DependencyInjection
 @typeparam TMember where TMember : class, Tharga.Team.ITeamMember
 @inject ITeamService TeamService
@@ -17,17 +16,14 @@
 }
 else if (_loaded)
 {
-    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="0.5rem" class="rz-mb-3 rz-mt-2">
-        <RadzenStack Orientation="Orientation.Vertical" Gap="0">
-            <RadzenLabel Text="Search" />
-            <RadzenTextBox @bind-Value="_userSearch" Placeholder="Name or email..." Change="@OnUserSearchChanged" Style="width: 250px;" />
-        </RadzenStack>
-        @if (_showDirectory)
-        {
+    @if (_showDirectory)
+    {
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" class="rz-mb-3 rz-mt-2">
             <RadzenButton Text="Verify all" Icon="how_to_reg" ButtonStyle="ButtonStyle.Light" Click="@VerifyAllAsync" Disabled="@_verifying" />
-        }
-    </RadzenStack>
-    <RadzenDataGrid Data="@_filteredUsers" TItem="UserViewModel" AllowSorting="true" AllowPaging="true" PageSize="10">
+        </RadzenStack>
+    }
+    <RadzenDataGrid Data="@_allUsers" TItem="UserViewModel" AllowSorting="true" AllowPaging="true" PageSize="10"
+                    AllowFiltering="true" FilterMode="FilterMode.Simple" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
         <Columns>
             <RadzenDataGridColumn Title="" Width="66px" Sortable="false" Filterable="false">
                 <Template>
@@ -36,17 +32,13 @@ else if (_loaded)
             </RadzenDataGridColumn>
             <RadzenDataGridColumn Title="Name" Property="Name" />
             <RadzenDataGridColumn Title="Email" Property="EMail" />
-            <RadzenDataGridColumn Title="Teams" Sortable="false">
-                <Template>
-                    @context.TeamCount
-                </Template>
-            </RadzenDataGridColumn>
-            <RadzenDataGridColumn Title="Last seen" Property="@nameof(UserViewModel.LastSeen)">
+            <RadzenDataGridColumn Title="Teams" Property="@nameof(UserViewModel.TeamCount)" Filterable="false" />
+            <RadzenDataGridColumn Title="Last seen" Property="@nameof(UserViewModel.LastSeen)" Filterable="false">
                 <Template>
                     <DateTimeView Date="@context.LastSeen" />
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Title="@(_showDirectory ? "Directory" : "")" Sortable="false" Filterable="false">
+            <RadzenDataGridColumn Title="" Width="200px" Sortable="false" Filterable="false">
                 <Template>
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
                         @if (_showDirectory && context.DirectoryStatus != null)
@@ -61,6 +53,7 @@ else if (_loaded)
                                 {
                                     <RadzenSplitButtonItem Text="Verify" Value="@VerifyAction" Icon="person_search" />
                                 }
+                                @ActionItems
                                 <RadzenSplitButtonItem Text="Delete" Value="@DeleteAction" Icon="delete" />
                             </ChildContent>
                         </RadzenSplitButton>
@@ -107,6 +100,16 @@ else
     /// </summary>
     [Parameter] public RenderFragment<UserViewModel> ActionsTemplate { get; set; }
 
+    /// <summary>
+    /// Optional extra items appended to each row's split-button dropdown — supply
+    /// <c>RadzenSplitButtonItem</c> components with distinct <c>Value</c>s. Clicks are delivered via
+    /// <see cref="ActionInvoked"/> with the item's Value and the row's user.
+    /// </summary>
+    [Parameter] public RenderFragment ActionItems { get; set; }
+
+    /// <summary>Raised when a consumer-supplied split-button item (<see cref="ActionItems"/>) is clicked.</summary>
+    [Parameter] public EventCallback<UserRowAction> ActionInvoked { get; set; }
+
     private const string VerifyAction = "verify";
     private const string DeleteAction = "delete";
 
@@ -117,9 +120,7 @@ else
     private IUser[] _users;
     private ITeam<TMember>[] _teams;
 
-    private string _userSearch = "";
     private List<UserViewModel> _allUsers = new();
-    private List<UserViewModel> _filteredUsers = new();
     private UserViewModel _selectedUser;
 
     protected override async Task OnInitializedAsync()
@@ -171,36 +172,15 @@ else
                 State = x.Member.State
             }).ToArray()
         }).OrderBy(u => u.Name).ToList();
-
-        ApplyFilter();
-    }
-
-    private void OnUserSearchChanged()
-    {
-        ApplyFilter();
-        _selectedUser = null;
-    }
-
-    private void ApplyFilter()
-    {
-        if (string.IsNullOrWhiteSpace(_userSearch))
-        {
-            _filteredUsers = _allUsers;
-        }
-        else
-        {
-            var search = _userSearch.ToLowerInvariant();
-            _filteredUsers = _allUsers
-                .Where(u => (u.Name?.ToLowerInvariant().Contains(search) ?? false)
-                          || (u.EMail?.ToLowerInvariant().Contains(search) ?? false))
-                .ToList();
-        }
     }
 
     private async Task OnUserActionAsync(RadzenSplitButtonItem item, UserViewModel user)
     {
         switch (item?.Value)
         {
+            case null:
+                ToggleDetails(user);
+                break;
             case VerifyAction:
                 await VerifyUserAsync(user);
                 break;
@@ -208,7 +188,7 @@ else
                 await DeleteUserAsync(user);
                 break;
             default:
-                ToggleDetails(user);
+                await ActionInvoked.InvokeAsync(new UserRowAction(item.Value, user));
                 break;
         }
     }
