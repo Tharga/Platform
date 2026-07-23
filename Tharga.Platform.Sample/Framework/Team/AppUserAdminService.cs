@@ -3,9 +3,9 @@ using Tharga.Team.MongoDB;
 namespace Tharga.Platform.Sample.Framework.Team;
 
 /// <summary>
-/// Sample-only admin service for editing / deleting users. In a real app, back this with audit
-/// logging, team-membership checks before delete, etc. Demonstrates how a consumer wires its own
-/// management service alongside the Platform-provided <see cref="Tharga.Team.Blazor.Features.User.UsersListView"/>.
+/// Sample-only admin service for editing a user's name and email — data the toolkit does not manage.
+/// Deletion is no longer here: the Platform's <see cref="Tharga.Team.IUserManagementService"/> handles
+/// it (all-team removal, audit, the users:manage scope, and the opt-in directory delete).
 /// </summary>
 public class AppUserAdminService
 {
@@ -16,21 +16,11 @@ public class AppUserAdminService
         _collection = collection;
     }
 
-    public async Task<UserEntity> GetByKeyAsync(string key)
-    {
-        return await _collection.GetOneAsync(x => x.Key == key);
-    }
-
     public async Task UpdateAsync(string key, string name, string email)
     {
         var existing = await _collection.GetOneAsync(x => x.Key == key);
         if (existing == null) return;
         var updated = existing with { Name = name, EMail = email };
         await _collection.ReplaceOneAsync(updated);
-    }
-
-    public async Task DeleteAsync(string key)
-    {
-        await _collection.DeleteOneAsync(x => x.Key == key);
     }
 }

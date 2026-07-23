@@ -11,16 +11,12 @@
 
 <PageTitle>Users</PageTitle>
 
-<RadzenTabs>
-    <Tabs>
-        <RadzenTabsItem Text="Users">
-            <UsersListView TMember="TeamMember" ActionsTemplate="UserActions" />
-        </RadzenTabsItem>
-        <RadzenTabsItem Text="Teams">
-            <TeamsListView TMember="TeamMember" />
-        </RadzenTabsItem>
-    </Tabs>
-</RadzenTabs>
+@*
+    The packaged tabbed admin view: Users (with last seen, verify + delete when the caller holds
+    users:manage), Teams, and — when a directory service is registered — the "Directory only" tab.
+    The ActionsTemplate injects the sample's own Edit action; delete is built in.
+*@
+<UsersView TMember="TeamMember" ActionsTemplate="UserActions" />
 
 @code {
     private RenderFragment<UserViewModel> UserActions => u => __builder =>
@@ -28,9 +24,6 @@
         <RadzenButton Icon="edit" Variant="Variant.Text" Size="ButtonSize.Small"
                       Click="@(async () => await EditUser(u))"
                       title="Edit name and email" />
-        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Text" Size="ButtonSize.Small"
-                      Click="@(async () => await DeleteUser(u))"
-                      title="Delete user" />
     };
 
     private async Task EditUser(UserViewModel u)
@@ -59,16 +52,6 @@
 
         await UserAdmin.UpdateAsync(u.Key, name, email);
         NotificationService.Notify(NotificationSeverity.Success, "User updated");
-        Navigation.Refresh();
-    }
-
-    private async Task DeleteUser(UserViewModel u)
-    {
-        var confirmed = await DialogService.Confirm($"Delete user '{u.Name ?? u.EMail}'? This cannot be undone.", "Confirm delete");
-        if (confirmed != true) return;
-
-        await UserAdmin.DeleteAsync(u.Key);
-        NotificationService.Notify(NotificationSeverity.Success, "User deleted");
         Navigation.Refresh();
     }
 }

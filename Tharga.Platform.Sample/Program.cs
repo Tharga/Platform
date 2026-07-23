@@ -7,6 +7,7 @@ using Tharga.Platform.Sample.Framework;
 using Tharga.Platform.Sample.Framework.Team;
 using Tharga.Team;
 using Tharga.Team.Blazor.Framework;
+using Tharga.Team.Entra;
 using Tharga.Team.MongoDB;
 using Tharga.Team.Service.Audit;
 
@@ -80,7 +81,7 @@ builder.AddThargaPlatform(o =>
     // the composition case (Map would throw on an already-mapped role; the toolkit-side grant merges).
     o.ConfigureSystemRoles = roles =>
     {
-        roles.Map("Developer", "system:metrics:read", "mcp:discover", "apikey:manage", "audit:read");
+        roles.Map("Developer", "system:metrics:read", "mcp:discover", "apikey:manage", "audit:read", SystemUserScopes.Manage);
     };
 
     // Logger | MongoDB so the audit entries are both logged and queryable by AuditLogView — the default
@@ -90,6 +91,15 @@ builder.AddThargaPlatform(o =>
 
 // Demo: attach host-defined metadata to every audit entry (visible in the /audit detail row).
 builder.Services.AddThargaAuditEnricher<SampleAuditEnricher>();
+
+// Entra as the user directory (verify users, list directory-only users, opt-in directory delete).
+// App-only Graph auth needs a client secret, so the directory (and its UI) only lights up when one is
+// configured — e.g. `dotnet user-secrets set "AzureAd:ClientSecret" "<secret>"`. Graph permissions:
+// User.Read.All (verify/list), User.ReadWrite.All (delete).
+if (!string.IsNullOrEmpty(builder.Configuration["AzureAd:ClientSecret"]))
+{
+    builder.Services.AddThargaEntraUserDirectory(builder.Configuration);
+}
 
 builder.Services.AddThargaMcp(mcp =>
 {

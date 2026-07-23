@@ -9,7 +9,7 @@
 <RadzenTabs>
     <Tabs>
         <RadzenTabsItem Text="Users">
-            <UsersListView TMember="TMember" />
+            <UsersListView TMember="TMember" ActionsTemplate="ActionsTemplate" />
         </RadzenTabsItem>
         <RadzenTabsItem Text="Teams">
             <TeamsListView TMember="TMember" />
@@ -24,6 +24,13 @@
 </RadzenTabs>
 
 @code {
+    /// <summary>
+    /// Optional template for extra row-level actions in the Users tab, passed through to
+    /// <see cref="UsersListView{TMember}"/>. Lets a host keep this packaged tabbed view (including the
+    /// directory-only tab) while injecting its own actions.
+    /// </summary>
+    [Parameter] public RenderFragment<UserViewModel> ActionsTemplate { get; set; }
+
     private bool _showDirectoryTab;
 
     protected override async Task OnInitializedAsync()

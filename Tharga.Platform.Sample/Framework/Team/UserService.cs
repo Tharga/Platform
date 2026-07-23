@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
+using Tharga.Team;
 using Tharga.Team.MongoDB;
 using Tharga.Toolkit;
 
@@ -21,7 +22,8 @@ public class UserService : UserServiceRepositoryBase<UserEntity>
             Key = Guid.NewGuid().ToString("N")[..10].ToUpperInvariant(),
             Identity = identity,
             EMail = email,
-            Name = name
+            Name = name,
+            DirectoryId = principal.GetDirectoryId()
         });
     }
 }
