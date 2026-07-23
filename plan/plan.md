@@ -26,9 +26,9 @@
 
 - [x] **8. Sample app (`Tharga.Platform.Sample`)** — done 2026-07-23. `UserEntity` declares `DirectoryId` + `LastSeen` (the opt-in); `UserService.CreateUserEntityAsync` captures the oid via `GetDirectoryId()`; Entra registered **conditionally** — only when `AzureAd:ClientSecret` is configured (user-secrets), so the sample runs cleanly without one and the directory UI lights up when present; `users:manage` mapped to Developer. `UsersPage` now uses the packaged `UsersView` (via a new `ActionsTemplate` passthrough added to `UsersView`) keeping only the sample's Edit action — the hand-rolled delete and `AppUserAdminService.DeleteAsync`/`GetByKeyAsync` removed (framework delete supersedes them; doc comment updated). Manual smoke test = user's testing pass after push (needs Mongo + Entra login).
 
-- [ ] **9. Full build + test pass** — `dotnet build -c Release && dotnet test -c Release`; push branch for user testing; ask for feedback. Do NOT open the PR yet.
+- [x] **9. Full build + test pass** — done 2026-07-23. Release build clean (0 errors; only 8 pre-existing cref warnings in untouched files), full suite 752 green. Branch pushed for user testing; PR NOT opened (per workflow).
 
-- [ ] **10. Docs (`docs:` commit, before close-out)** — update `README.md` AND `docs/articles/` (likely a new `user-management.md` article + toc entry + touch `implementation-guide.md`); document Entra app-registration permissions (`User.Read.All` verify + Entra-only listing, `User.ReadWrite.All` delete), the opt-in delete semantics, the soft-delete window, and the "Entra only" view.
+- [x] **10. Docs** — done 2026-07-23 (before the push, so the tested branch is complete). New `docs/articles/user-management.md` (+ toc entry): last-seen opt-in + interval override, oid capture/backfill/relink, Entra registration + Graph permission table, users:manage, verify semantics (incl. no-email-fallback-when-linked rationale), directory-only view, delete semantics (opt-in, soft delete, no rollback), audit events, custom providers. `implementation-guide.md`: UsersView row, audited-features paragraph, package summary + Entra row. `README.md`: package table + dependency graph + new "User administration & Entra directory" section. Package README for Tharga.Team.Entra was written in step 5.
 
 - [ ] **11. Close-out (after user confirms done)** — re-run `dotnet outdated` (apply any new updates), archive `feature.md` to the external plan directory `done/`, `git rm -r plan`, final commit `feat: entra-user-management complete`, push, open PR → `master` (PR description = release notes; suggest minor version bump — additive API).
 
@@ -40,4 +40,4 @@
 
 ## Last session
 
-Feature branch `feature/entra-user-management` created from `master`; plan written; awaiting user confirmation of the plan before any code changes (step 1 marked in progress but not started).
+2026-07-23: Steps 0–10 complete — all implementation, tests (752 green) and docs are on the branch, pushed to origin for user testing. **Next: user tests from the pushed branch** (sample needs Mongo + Entra sign-in; set `AzureAd:ClientSecret` via user-secrets to light up the directory features). After the user confirms the feature is done → step 11 close-out: re-run `dotnet outdated`, archive `feature.md` to the external plan directory `done/`, `git rm -r plan`, final commit `feat: entra-user-management complete`, push, open PR → `master` (PR description = release notes; suggest minor version bump — additive API + new package).
