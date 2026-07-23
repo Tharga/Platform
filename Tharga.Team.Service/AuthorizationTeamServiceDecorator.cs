@@ -156,6 +156,19 @@ public sealed class AuthorizationTeamServiceDecorator : ITeamService
         return await _inner.RemoveUserFromAllTeamsAsync(userKey);
     }
 
+    // Team icon (team:manage on the team).
+    public async Task SetTeamIconAsync(string teamKey, byte[] data, string contentType)
+    {
+        await RequireTeamScopeAsync(TeamScopes.Manage, teamKey);
+        await _inner.SetTeamIconAsync(teamKey, data, contentType);
+    }
+
+    public async Task ClearTeamIconAsync(string teamKey)
+    {
+        await RequireTeamScopeAsync(TeamScopes.Manage, teamKey);
+        await _inner.ClearTeamIconAsync(teamKey);
+    }
+
     private async Task RequireCreateAsync()
     {
         if (!_lifecycle.AllowTeamCreation)

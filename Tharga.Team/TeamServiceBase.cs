@@ -8,12 +8,14 @@ public abstract class TeamServiceBase : ITeamService
 {
     private readonly IUserService _userService;
     private readonly ILogger<TeamServiceBase> _logger;
+    private readonly IIconStore _iconStore;
     private static readonly ConcurrentDictionary<string, ITeamMember> _teamMemberCache = new();
 
-    protected TeamServiceBase(IUserService userService, ILogger<TeamServiceBase> logger = null)
+    protected TeamServiceBase(IUserService userService, ILogger<TeamServiceBase> logger = null, IIconStore iconStore = null)
     {
         _userService = userService;
         _logger = logger;
+        _iconStore = iconStore;
     }
 
     public event EventHandler<TeamsListChangedEventArgs> TeamsListChangedEvent;
@@ -261,6 +263,50 @@ public abstract class TeamServiceBase : ITeamService
         => throw new NotSupportedException(
             $"'{GetType().Name}' does not implement {nameof(RemoveUserFromAllTeamsInternalAsync)}. " +
             $"Implement it to support user deletion (the '{SystemUserScopes.Manage}' system scope).");
+
+    /// <summary>
+    /// Backs <see cref="SetTeamIconAsync"/> / <see cref="ClearTeamIconAsync"/> — persists the icon
+    /// reference (or null to clear) on the team document. Virtual-throw so existing derived services keep
+    /// compiling; storage-backed bases override it.
+    /// </summary>
+    protected virtual Task SetTeamIconReferenceInternalAsync(string teamKey, string reference)
+        => throw new NotSupportedException(
+            $"'{GetType().Name}' does not implement {nameof(SetTeamIconReferenceInternalAsync)}. Implement it to support team icons.");
+
+    public async Task SetTeamIconAsync(string teamKey, byte[] data, string contentType)
+    {
+        var store = RequireIconStore();
+
+        var team = await GetTeamAsync(teamKey);
+        var previousReference = team?.Icon;
+
+        var reference = await store.SaveAsync(IconKind.Team, teamKey, data, contentType);
+        await SetTeamIconReferenceInternalAsync(teamKey, reference);
+
+        if (!string.IsNullOrEmpty(previousReference))
+            await store.DeleteAsync(previousReference);
+
+        TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
+    }
+
+    public async Task ClearTeamIconAsync(string teamKey)
+    {
+        var store = RequireIconStore();
+
+        var team = await GetTeamAsync(teamKey);
+        var previousReference = team?.Icon;
+        if (string.IsNullOrEmpty(previousReference)) return;
+
+        await SetTeamIconReferenceInternalAsync(teamKey, null);
+        await store.DeleteAsync(previousReference);
+
+        TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
+    }
+
+    private IIconStore RequireIconStore()
+        => _iconStore ?? throw new NotSupportedException(
+            "No IIconStore is registered. Team icons require a registered icon store (the built-in " +
+            "MongoIconStore is registered by AddThargaTeamRepository, or supply one via o.AddIconStore<T>()).");
 
     public async Task<int> RemoveUserFromAllTeamsAsync(string userKey)
     {

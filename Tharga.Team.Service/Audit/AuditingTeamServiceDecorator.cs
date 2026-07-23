@@ -158,6 +158,44 @@ public class AuditingTeamServiceDecorator : ITeamService
         }
     }
 
+    public async Task SetTeamIconAsync(string teamKey, byte[] data, string contentType)
+    {
+        var metadata = Meta(
+            (AuditMetadataKeys.IconContentType, IconValidation.NormalizeContentType(contentType)),
+            (AuditMetadataKeys.IconSize, data?.Length.ToString()));
+
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            await _inner.SetTeamIconAsync(teamKey, data, contentType);
+            sw.Stop();
+            Log("icon-set", nameof(SetTeamIconAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey, metadata: metadata);
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            Log("icon-set", nameof(SetTeamIconAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey, metadata);
+            throw;
+        }
+    }
+
+    public async Task ClearTeamIconAsync(string teamKey)
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            await _inner.ClearTeamIconAsync(teamKey);
+            sw.Stop();
+            Log("icon-clear", nameof(ClearTeamIconAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            Log("icon-clear", nameof(ClearTeamIconAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey);
+            throw;
+        }
+    }
+
     public async Task<int> RemoveUserFromAllTeamsAsync(string userKey)
     {
         var sw = Stopwatch.StartNew();

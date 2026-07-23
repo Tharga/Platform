@@ -11,6 +11,7 @@ public interface ITeamRepository<TTeamEntity, TMember> : IRepository
     Task AddAsync(TTeamEntity teamEntity);
     Task DeleteAsync(string teamKey);
     Task RenameAsync(string teamKey, string name);
+    Task SetIconAsync(string teamKey, string reference);
     Task SetLastSeenAsync(string teamKey, string userKey, DateTime utcNow);
     Task AddMemberAsync(string teamKey, TMember member);
     Task RemoveMemberAsync(string teamKey, string userKey);

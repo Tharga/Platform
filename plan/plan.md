@@ -19,14 +19,15 @@
   - Register in `AddThargaTeamRepository`: add the collection + `TrackMongoCollection`, and `services.TryAddScoped<IIconStore, MongoIconStore>()` (consumer override wins). Add `IconCollectionName` to `ThargaTeamOptions`.
   - Tests: save returns a reference, load round-trips bytes+content-type, delete removes, oversize/disallowed-type rejected. (Follow existing MongoDB.Tests substitute-collection pattern.)
 
-- [~] **3. Team-service icon operations (`Tharga.Team` + `Tharga.Team.MongoDB` + `Tharga.Team.Service`)**
+- [x] **3. Team-service icon operations** — done 2026-07-24. `ITeamService.SetTeamIconAsync(teamKey, data, contentType)` + `ClearTeamIconAsync(teamKey)` (also on `ITeamManagementService` with `[RequireScope(TeamScopes.Manage)]` for the REST/scope-proxy path the UI uses). `TeamServiceBase` orchestrates via an optional injected `IIconStore` (store bytes → `SetTeamIconReferenceInternalAsync` → delete previous blob; NotSupported if no store), threaded through `TeamServiceRepositoryBase` → sample `TeamService` ctor (optional param, non-breaking). `ITeamRepository.SetIconAsync` + `TeamRepository` impl. Auth decorator gates both on `team:manage`; audit decorator logs `icon-set` (content-type + size) / `icon-clear`. New `AuditMetadataKeys.IconContentType`/`IconSize`. 10 tests (orchestration incl. old-blob cleanup, auth matrix, audit). Decision: URL-download deferred to the UI layer (step 5, IHttpClientFactory) to keep `HttpClient` out of core. Full suite 812 green.
+  - Original detail:
   - `ITeamService.SetTeamIconAsync(teamKey, byte[] data, contentType)` + `ClearTeamIconAsync(teamKey)` (+ `TeamManagementService`/`ITeamManagementService` `[RequireScope(TeamScopes.Manage)]` doc entries). Implementation in `TeamServiceBase` calls `IIconStore` then persists the reference; on replace/clear deletes the previous blob.
   - Mongo team repo: `SetIconAsync(teamKey, reference)` (mirror `RenameAsync`), and expose current `Icon` for old-blob cleanup.
   - `AuthorizationTeamServiceDecorator`: gate both on `team:manage` (own team). `AuditingTeamServiceDecorator`: `icon.set` (metadata: content-type, size) / `icon.clear`. New `AuditMetadataKeys` as needed.
   - URL path: `SetTeamIconFromUrlAsync(teamKey, url)` — download server-side via injected `HttpClient` (size-capped stream), then the same save path. (team:manage gated; note SSRF is bounded by the admin scope — document.)
   - Tests in `Tharga.Team.Service.Tests`: auth matrix, audit entries, old-blob deletion on replace/clear, URL download happy/oversize.
 
-- [ ] **4. Registration, options, endpoint (`Tharga.Team.Blazor`)**
+- [~] **4. Registration, options, endpoint (`Tharga.Team.Blazor`)**
   - `ThargaPlatformOptions.AddIconStore<T>()`, `AddIconSource<T>()` (list — multiple, ordered), and `IconOptions` config; register in `ThargaPlatformRegistration`. Register `IIconResolver` + built-in `StoredIconSource` **first**, then the consumer sources (so a platform-stored icon takes precedence, custom sources fill in after); custom store via `AddScoped`. Register a named `HttpClient` for URL downloads.
   - `UseThargaPlatform`: map `GET /_tharga/icon/{reference}` → `IIconStore.LoadAsync` → `Results.File(bytes, contentType)` with cache headers; 404 on null; require authenticated user.
   - Tests: endpoint returns bytes/404; `AddIconStore<T>` / `AddIconSource<T>` overrides resolve and order correctly; default store resolves to `MongoIconStore` when the Mongo repo is registered.
