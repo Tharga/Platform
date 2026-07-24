@@ -121,9 +121,16 @@ public class ThargaPlatformOptions
     }
 
     /// <summary>
-    /// Limits applied when accepting an icon (max size, allowed content types).
+    /// Limits applied when accepting an icon (max size, allowed content types, max dimension).
     /// </summary>
     public IconOptions Icon { get; set; } = new();
+
+    /// <summary>
+    /// Runtime-adjustable icon display/behavior settings (Gravatar on/off + style, a generic default
+    /// image, whether user/admin uploads are allowed). This instance is registered as a singleton, so
+    /// changes made to it at runtime take effect live.
+    /// </summary>
+    public IconSettings IconSettings { get; } = new();
 
     /// <summary>
     /// Replace the icon <b>storage</b> backend (<see cref="IIconStore"/> — where icon bytes live). When

@@ -47,6 +47,9 @@
     /// <summary>Whether the user currently has an uploaded icon (controls the Use-Gravatar button).</summary>
     [Parameter] public bool HasIcon { get; set; }
 
+    /// <summary>When set, an administrator is setting this user's icon (requires users:manage); otherwise self-service.</summary>
+    [Parameter] public string AdminUserKey { get; set; }
+
     private string _url;
     private bool _busy;
     private bool _changed;
@@ -91,7 +94,11 @@
 
     private async Task SaveAsync(byte[] data, string contentType)
     {
-        await UserService.SetOwnIconAsync(data, contentType);
+        if (string.IsNullOrEmpty(AdminUserKey))
+            await UserService.SetOwnIconAsync(data, contentType);
+        else
+            await UserService.SetUserIconAsync(AdminUserKey, data, contentType);
+
         _changed = true;
         NotificationService.Notify(NotificationSeverity.Success, "Profile picture updated");
         DialogService.Close(true);
@@ -102,7 +109,11 @@
         _busy = true;
         try
         {
-            await UserService.ClearOwnIconAsync();
+            if (string.IsNullOrEmpty(AdminUserKey))
+                await UserService.ClearOwnIconAsync();
+            else
+                await UserService.ClearUserIconAsync(AdminUserKey);
+
             _changed = true;
             NotificationService.Notify(NotificationSeverity.Success, "Reverted to Gravatar");
             DialogService.Close(true);

@@ -39,6 +39,47 @@ public class UserIconTests
         Assert.Null(await new GravatarIconSource().ResolveAsync(subject));
     }
 
+    [Fact]
+    public async Task Gravatar_Disabled_ReturnsNull()
+    {
+        var source = new GravatarIconSource(new IconSettings { GravatarEnabled = false });
+        var subject = new IconSubject { Kind = IconKind.User, Key = "u1", EMail = "a@b.c" };
+        Assert.Null(await source.ResolveAsync(subject));
+    }
+
+    [Fact]
+    public async Task Gravatar_UsesConfiguredStyle()
+    {
+        var source = new GravatarIconSource(new IconSettings { GravatarStyle = "robohash" });
+        var subject = new IconSubject { Kind = IconKind.User, Key = "u1", EMail = "a@b.c" };
+        var image = await source.ResolveAsync(subject);
+        Assert.Contains("d=robohash", image.Url);
+    }
+
+    // ---- DefaultIconSource ----
+
+    [Fact]
+    public async Task Default_UserWithConfiguredUrl_ReturnsIt()
+    {
+        var source = new DefaultIconSource(new IconSettings { DefaultUserIconUrl = "https://x/default.png" });
+        var image = await source.ResolveAsync(new IconSubject { Kind = IconKind.User, Key = "u1" });
+        Assert.Equal("https://x/default.png", image.Url);
+    }
+
+    [Fact]
+    public async Task Default_NoUrl_ReturnsNull()
+    {
+        var source = new DefaultIconSource(new IconSettings());
+        Assert.Null(await source.ResolveAsync(new IconSubject { Kind = IconKind.User, Key = "u1" }));
+    }
+
+    [Fact]
+    public async Task Default_Team_ReturnsNull()
+    {
+        var source = new DefaultIconSource(new IconSettings { DefaultUserIconUrl = "https://x/default.png" });
+        Assert.Null(await source.ResolveAsync(new IconSubject { Kind = IconKind.Team, Key = "t1" }));
+    }
+
     // ---- Self-service orchestration ----
 
     private sealed record TestUser : IUser
@@ -70,6 +111,7 @@ public class UserIconTests
         protected override TimeSpan? LastSeenStampInterval => null;
         protected override Task<IUser> GetUserAsync(ClaimsPrincipal claimsPrincipal) => Task.FromResult(_current);
         protected override async IAsyncEnumerable<IUser> GetAllAsync() { yield break; }
+        public override Task<IUser> GetUserByKeyAsync(string userKey) => Task.FromResult(_current?.Key == userKey ? _current : null);
 
         protected override Task SetUserIconReferenceAsync(string userKey, string reference)
         {
@@ -149,5 +191,37 @@ public class UserIconTests
         var identity = $"id-{Guid.NewGuid():N}";
         var sut = new IconTestUserService(Substitute.For<IIconStore>(), null, identity);
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => sut.SetOwnIconAsync([1], "image/png"));
+    }
+
+    // ---- Admin set-for-user ----
+
+    [Fact]
+    public async Task SetUserIcon_ByKey_StoresAndDeletesPrevious()
+    {
+        var (sut, store) = Build(new TestUser { Key = "u1", EMail = "a@b.c", Icon = "old-ref" });
+        store.SaveAsync(IconKind.User, "u1", Arg.Any<byte[]>(), "image/png").Returns("new-ref");
+
+        await sut.SetUserIconAsync("u1", [1], "image/png");
+
+        Assert.Equal("new-ref", sut.SetReference);
+        await store.Received(1).DeleteAsync("old-ref");
+    }
+
+    [Fact]
+    public async Task SetUserIcon_UnknownUser_Throws()
+    {
+        var (sut, _) = Build(new TestUser { Key = "u1", EMail = "a@b.c" });
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.SetUserIconAsync("other", [1], "image/png"));
+    }
+
+    [Fact]
+    public async Task ClearUserIcon_ByKey_ClearsAndDeletes()
+    {
+        var (sut, store) = Build(new TestUser { Key = "u1", EMail = "a@b.c", Icon = "ref-1" });
+
+        await sut.ClearUserIconAsync("u1");
+
+        Assert.Null(sut.SetReference);
+        await store.Received(1).DeleteAsync("ref-1");
     }
 }

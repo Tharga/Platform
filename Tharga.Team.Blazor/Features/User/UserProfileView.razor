@@ -6,6 +6,7 @@
 @inject IJSRuntime JS
 @inject IUserService UserService
 @inject IServiceProvider ServiceProvider
+@inject IconSettings IconSettings
 @inject DialogService DialogService
 
 <CascadingAuthenticationState>
@@ -63,7 +64,7 @@
     protected override async Task OnInitializedAsync()
     {
         _user = await UserService.GetCurrentUserAsync();
-        _canUpload = ServiceProvider.GetService<IIconStore>() != null;
+        _canUpload = IconSettings.AllowUserUpload && ServiceProvider.GetService<IIconStore>() != null;
     }
 
     private async Task ChangePicture()

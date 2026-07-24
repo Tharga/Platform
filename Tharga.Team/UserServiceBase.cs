@@ -161,6 +161,37 @@ public abstract class UserServiceBase : IUserService
         InvalidateUserCache(user.Identity);
     }
 
+    public virtual async Task SetUserIconAsync(string userKey, byte[] data, string contentType)
+    {
+        var store = RequireIconStore();
+        var user = await GetUserByKeyAsync(userKey);
+        if (user == null) throw new InvalidOperationException($"User '{userKey}' was not found.");
+
+        var previousReference = user.Icon;
+        var reference = await store.SaveAsync(IconKind.User, user.Key, data, contentType);
+        await SetUserIconReferenceAsync(user.Key, reference);
+
+        if (!string.IsNullOrEmpty(previousReference))
+            await store.DeleteAsync(previousReference);
+
+        InvalidateUserCache(user.Identity);
+    }
+
+    public virtual async Task ClearUserIconAsync(string userKey)
+    {
+        var store = RequireIconStore();
+        var user = await GetUserByKeyAsync(userKey);
+        if (user == null) return;
+
+        var previousReference = user.Icon;
+        if (string.IsNullOrEmpty(previousReference)) return;
+
+        await SetUserIconReferenceAsync(user.Key, null);
+        await store.DeleteAsync(previousReference);
+
+        InvalidateUserCache(user.Identity);
+    }
+
     private IIconStore RequireIconStore()
         => _iconStore ?? throw new NotSupportedException(
             "No IIconStore is registered. User icons require a registered icon store (the built-in " +

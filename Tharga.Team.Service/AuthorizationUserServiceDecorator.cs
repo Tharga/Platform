@@ -71,6 +71,18 @@ public sealed class AuthorizationUserServiceDecorator : IUserService
         await _inner.DeleteUserAsync(userKey);
     }
 
+    public async Task SetUserIconAsync(string userKey, byte[] data, string contentType)
+    {
+        await RequireUsersManageAsync(nameof(SetUserIconAsync));
+        await _inner.SetUserIconAsync(userKey, data, contentType);
+    }
+
+    public async Task ClearUserIconAsync(string userKey)
+    {
+        await RequireUsersManageAsync(nameof(ClearUserIconAsync));
+        await _inner.ClearUserIconAsync(userKey);
+    }
+
     private async Task RequireSelfOrUsersManageAsync(string userKey, string operation)
     {
         if (!string.IsNullOrEmpty(userKey))

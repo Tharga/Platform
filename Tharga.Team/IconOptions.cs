@@ -9,6 +9,13 @@ public class IconOptions
     /// <summary>Maximum accepted icon size in bytes. Default 256 KB.</summary>
     public int MaxBytes { get; set; } = 256 * 1024;
 
+    /// <summary>
+    /// Maximum icon dimension (width and height, px). When an image processor is registered, larger images
+    /// are downscaled to fit within this box before storing (aspect preserved, never upscaled). Default 256.
+    /// 0 disables resizing.
+    /// </summary>
+    public int MaxDimension { get; set; } = 256;
+
     /// <summary>Accepted image content types. Default: png, jpeg, gif, webp, svg.</summary>
     public IReadOnlyCollection<string> AllowedContentTypes { get; set; } =
     [

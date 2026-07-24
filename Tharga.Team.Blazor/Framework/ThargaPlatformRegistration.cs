@@ -167,13 +167,16 @@ public static class ThargaPlatformRegistration
         {
             builder.Services.AddScoped(typeof(IIconStore), options._iconStoreType);
         }
+        builder.Services.AddSingleton(options.IconSettings);
         builder.Services.AddScoped<IIconSource, StoredIconSource>();
         foreach (var sourceType in options._iconSourceTypes)
         {
             builder.Services.AddScoped(typeof(IIconSource), sourceType);
         }
-        // Gravatar last: a fallback for users with no uploaded/custom icon (an upload thus overrides it).
+        // Fallbacks for users with no uploaded/custom icon (an upload thus overrides them): Gravatar (if
+        // enabled), then a configured generic default image, then the avatar's own initials.
         builder.Services.AddScoped<IIconSource, GravatarIconSource>();
+        builder.Services.AddScoped<IIconSource, DefaultIconSource>();
         builder.Services.AddScoped<IIconResolver, IconResolver>();
         builder.Services.AddHttpClient(IconHttpClientName);
 

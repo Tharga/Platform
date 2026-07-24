@@ -76,6 +76,18 @@ public interface IUserService
     Task ClearOwnIconAsync() => Task.CompletedTask;
 
     /// <summary>
+    /// Sets a specific user's icon (administrative). The mechanism is the same as
+    /// <see cref="SetOwnIconAsync"/> but targets <paramref name="userKey"/>; requires
+    /// <see cref="SystemUserScopes.Manage"/>.
+    /// </summary>
+    [RequireScope(SystemUserScopes.Manage)]
+    Task SetUserIconAsync(string userKey, byte[] data, string contentType) => Task.CompletedTask;
+
+    /// <summary>Clears a specific user's icon (administrative). Requires <see cref="SystemUserScopes.Manage"/>.</summary>
+    [RequireScope(SystemUserScopes.Manage)]
+    Task ClearUserIconAsync(string userKey) => Task.CompletedTask;
+
+    /// <summary>
     /// Deletes the user record from the store, with no team-membership cleanup — call through
     /// <see cref="IUserManagementService.DeleteUserAsync"/>, which removes team memberships and audits.
     /// </summary>
