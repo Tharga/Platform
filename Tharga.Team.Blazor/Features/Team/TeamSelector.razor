@@ -32,14 +32,22 @@
         }
         else if (_teams.Length > 1 && SelectedTeam != null)
         {
-            <TeamAvatar Team="SelectedTeam" Size="24px" />
             <RadzenDropDown @bind-Value=@SelectedTeam Data="@(_teams.OrderBy(f => f.Name))" TextProperty="Name">
+                <ValueTemplate Context="team">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.4rem">
+                        <TeamAvatar Team="@((ITeam)team)" Size="20px" />
+                        <span>@(((ITeam)team).Name)</span>
+                    </RadzenStack>
+                </ValueTemplate>
                 <Template Context="team">
-                    @if (_canSeeAllTeams)
-                    {
-                        <span style="@ConsentDotStyle((ITeam)team)" title="@TeamVisibility.Label(TeamVisibility.Resolve(((ITeam)team).ConsentedRoles, ((ITeam)team).ConsentAccessLevel))"></span>
-                    }
-                    @(((ITeam)team).Name)
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.4rem">
+                        @if (_canSeeAllTeams)
+                        {
+                            <span style="@ConsentDotStyle((ITeam)team)" title="@TeamVisibility.Label(TeamVisibility.Resolve(((ITeam)team).ConsentedRoles, ((ITeam)team).ConsentAccessLevel))"></span>
+                        }
+                        <TeamAvatar Team="@((ITeam)team)" Size="20px" />
+                        <span>@(((ITeam)team).Name)</span>
+                    </RadzenStack>
                 </Template>
             </RadzenDropDown>
         }
