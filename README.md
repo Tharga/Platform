@@ -12,6 +12,7 @@ A suite of NuGet packages for building multi-tenant Blazor applications with tea
 | [Tharga.Team.MongoDB](https://www.nuget.org/packages/Tharga.Team.MongoDB) | MongoDB persistence for teams and users | No |
 | [Tharga.Team.Service](https://www.nuget.org/packages/Tharga.Team.Service) | Server-side API key auth, Swagger, audit logging | No |
 | [Tharga.Team.Entra](https://www.nuget.org/packages/Tharga.Team.Entra) | Microsoft Entra ID user directory (verify / list / delete users via Graph) | No |
+| [Tharga.Team.Images](https://www.nuget.org/packages/Tharga.Team.Images) | Automatic downscaling of uploaded team/user icons (ImageSharp) | No |
 | [Tharga.Platform.Mcp](https://www.nuget.org/packages/Tharga.Platform.Mcp) | MCP (Model Context Protocol) bridge — auth, scopes, audit for MCP tools | No |
 
 ## Dependency graph
@@ -25,8 +26,10 @@ Tharga.Team ── plain .NET, no external dependencies
 │   └── + Tharga.MongoDB
 ├── Tharga.Team.Service ── server-side API + auth
 │   └── + Tharga.MongoDB, ASP.NET Core
-└── Tharga.Team.Entra ── Entra ID user directory (optional)
-    └── + Azure.Identity, Microsoft Graph REST
+├── Tharga.Team.Entra ── Entra ID user directory (optional)
+│   └── + Azure.Identity, Microsoft Graph REST
+└── Tharga.Team.Images ── icon downscaling (optional)
+    └── + SixLabors.ImageSharp
 ```
 
 ## Quick Start
@@ -123,6 +126,16 @@ builder.AddThargaPlatform(o =>
 ```
 
 The `<UsersView />` admin component picks it all up automatically. See [User management & directory](docs/articles/user-management.md).
+
+## Team & user icons
+
+Teams and users get real icons/avatars via two pluggable seams — **storage** (`IIconStore`, default MongoDB, no extra package) and **sourcing** (`IIconSource`: stored icon → custom → Gravatar → default → initials). Team icons need no entity change; add `Icon` to your user entity to enable user icons. A `team:manage` holder sets a team icon (upload or URL) from the team component; users upload their own from the profile page (an alternative to Gravatar), and admins (`users:manage`) can set a user's icon. Behavior is configurable and runtime-adjustable via `o.IconSettings` (Gravatar on/off + style, a default image, upload toggles). Add the optional `Tharga.Team.Images` package to auto-downscale oversized uploads (256 px) instead of rejecting them:
+
+```csharp
+builder.Services.AddThargaImageProcessing();   // optional: auto-downscale via ImageSharp
+```
+
+See [Team & user icons](docs/articles/icons.md).
 
 ## Advanced Usage
 
