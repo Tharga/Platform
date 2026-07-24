@@ -87,6 +87,8 @@ public abstract class TeamServiceBase : ITeamService
         return (ITeam<TMember>)team;
     }
 
+    public Task<ITeam> GetTeamByKeyAsync(string teamKey) => GetTeamAsync(teamKey);
+
     public async Task<ITeam> CreateTeamAsync(string name)
     {
         var user = await RequireCurrentUserAsync();

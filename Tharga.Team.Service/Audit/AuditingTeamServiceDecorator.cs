@@ -41,6 +41,7 @@ public class AuditingTeamServiceDecorator : ITeamService
     public IAsyncEnumerable<ITeam> GetTeamsAsync() => _inner.GetTeamsAsync();
     public IAsyncEnumerable<ITeam<TMember>> GetTeamsAsync<TMember>() where TMember : ITeamMember => _inner.GetTeamsAsync<TMember>();
     public Task<ITeam<TMember>> GetTeamAsync<TMember>(string teamKey) where TMember : ITeamMember => _inner.GetTeamAsync<TMember>(teamKey);
+    public Task<ITeam> GetTeamByKeyAsync(string teamKey) => _inner.GetTeamByKeyAsync(teamKey);
     public Task<ITeamMember> GetTeamMemberAsync(string teamKey, string userKey) => _inner.GetTeamMemberAsync(teamKey, userKey);
     public IAsyncEnumerable<ITeamMember> GetMembersAsync(string teamKey) => _inner.GetMembersAsync(teamKey);
     public IAsyncEnumerable<ITeam> GetConsentedTeamsAsync(string[] userRoles) => _inner.GetConsentedTeamsAsync(userRoles);
@@ -422,24 +423,22 @@ public class AuditingTeamServiceDecorator : ITeamService
     }
 
     /// <summary>
-    /// Team lookup for call sites with no <c>TMember</c> to hand. Scans the caller's own teams, so a
-    /// non-member acting through consent finds nothing — the "before" key is then omitted.
+    /// Exact by-key team read for the "before" value at call sites with no <c>TMember</c> to hand.
+    /// Best-effort: audit detail must never fail the operation it describes, so any error yields null (the
+    /// corresponding metadata key is then omitted). Unlike a scan of the caller's own teams, this also
+    /// finds the team for a non-member acting through consent, so the consent "before" value is recorded
+    /// for them too.
     /// </summary>
     private async Task<ITeam> TryFindTeamAsync(string teamKey)
     {
         try
         {
-            await foreach (var team in _inner.GetTeamsAsync())
-            {
-                if (team.Key == teamKey) return team;
-            }
+            return await _inner.GetTeamByKeyAsync(teamKey);
         }
         catch
         {
-            // Best-effort; fall through.
+            return null;
         }
-
-        return null;
     }
 
     private async Task<ITeamMember> TryGetMemberAsync(string teamKey, string userKey)

@@ -21,6 +21,14 @@ public interface ITeamService
     /// <inheritdoc cref="GetAllTeamsAsync()"/>
     IAsyncEnumerable<ITeam<TMember>> GetAllTeamsAsync<TMember>() where TMember : ITeamMember;
     Task<ITeam<TMember>> GetTeamAsync<TMember>(string teamKey) where TMember : ITeamMember;
+
+    /// <summary>
+    /// A team by key, regardless of the caller's membership — a non-generic exact read for call sites with
+    /// no <c>TMember</c> to hand (e.g. the audit decorator capturing a "before" value for a consent change
+    /// made by a non-member acting through consent). Returns null when the team does not exist.
+    /// </summary>
+    Task<ITeam> GetTeamByKeyAsync(string teamKey);
+
     Task<ITeam> CreateTeamAsync(string name = null);
     Task RenameTeamAsync<TMember>(string teamKey, string name) where TMember : ITeamMember;
     Task DeleteTeamAsync<TMember>(string teamKey) where TMember : ITeamMember;
