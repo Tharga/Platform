@@ -144,7 +144,7 @@ public class AuditingTeamServiceMetadataTests
     public async Task SetConsent_RecordsOldAndNewLevelAndRoles()
     {
         var (sut, inner, recorder) = Build();
-        inner.GetTeamsAsync().Returns(Stream<ITeam>(new TestTeam { Key = TeamKey, ConsentAccessLevel = AccessLevel.Viewer }));
+        inner.GetTeamByKeyAsync(TeamKey).Returns(new TestTeam { Key = TeamKey, ConsentAccessLevel = AccessLevel.Viewer });
 
         await sut.SetTeamConsentAsync(TeamKey, ["Developer", "Support"], AccessLevel.Administrator);
 
@@ -159,13 +159,30 @@ public class AuditingTeamServiceMetadataTests
     public async Task SetConsent_WhenCleared_RecordsNoneRatherThanOmittingTheKey()
     {
         var (sut, inner, recorder) = Build();
-        inner.GetTeamsAsync().Returns(Stream<ITeam>(new TestTeam { Key = TeamKey, ConsentAccessLevel = AccessLevel.Administrator }));
+        inner.GetTeamByKeyAsync(TeamKey).Returns(new TestTeam { Key = TeamKey, ConsentAccessLevel = AccessLevel.Administrator });
 
         await sut.SetTeamConsentAsync(TeamKey, [], null);
 
         var metadata = Single(recorder);
         Assert.Equal(nameof(AccessLevel.Administrator), metadata[AuditMetadataKeys.ConsentAccessLevelOld]);
         Assert.Equal("none", metadata[AuditMetadataKeys.ConsentAccessLevelNew]);
+    }
+
+    /// <summary>
+    /// A non-member acting through consent (Administrator-level consent) can change a team's consent, but
+    /// the team isn't among their own teams. The "before" value is now read by exact key, so it's recorded
+    /// for them too — the previous own-teams scan found nothing and omitted it.
+    /// </summary>
+    [Fact]
+    public async Task SetConsent_NonMemberCaller_StillRecordsOldValue()
+    {
+        var (sut, inner, recorder) = Build();
+        inner.GetTeamsAsync().Returns(Stream<ITeam>());  // caller is not a member of this team
+        inner.GetTeamByKeyAsync(TeamKey).Returns(new TestTeam { Key = TeamKey, ConsentAccessLevel = AccessLevel.Viewer });
+
+        await sut.SetTeamConsentAsync(TeamKey, ["Developer"], AccessLevel.Administrator);
+
+        Assert.Equal(nameof(AccessLevel.Viewer), Single(recorder)[AuditMetadataKeys.ConsentAccessLevelOld]);
     }
 
     [Fact]
