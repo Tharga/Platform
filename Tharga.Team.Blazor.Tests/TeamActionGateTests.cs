@@ -44,6 +44,20 @@ public class TeamActionGateTests
     }
 
     [Theory]
+    // Member-manage held and this team is selected → Invite User shows.
+    [InlineData(true, "team-a", "team-a", true)]
+    // Held, but a different team is selected — the #134 leak: must NOT show on non-selected cards.
+    [InlineData(true, "team-a", "team-b", false)]
+    // Not held.
+    [InlineData(false, "team-a", "team-a", false)]
+    // Nothing selected.
+    [InlineData(true, null, "team-a", false)]
+    public void CanManageMembers_RequiresScopeAndTheTeamToBeSelected(bool hasMemberManageScope, string selectedTeamKey, string teamKey, bool expected)
+    {
+        Assert.Equal(expected, TeamActionGate.CanManageMembers(hasMemberManageScope, selectedTeamKey, teamKey));
+    }
+
+    [Theory]
     // All four conditions hold.
     [InlineData(true, "team-a", "team-a", true, true, true)]
     // Selected-team gate fails — this is the leak reported in #125.
