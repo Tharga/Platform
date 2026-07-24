@@ -7,7 +7,7 @@ on:
     branches: [master]
 
 env:
-  MAJOR_MINOR: '3.3'
+  MAJOR_MINOR: '3.4'
 
 permissions:
   contents: write
