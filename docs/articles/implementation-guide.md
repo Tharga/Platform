@@ -1144,6 +1144,15 @@ and system keys), and **user administration** (directory verify, bulk verify, us
 
 Each audit entry captures: timestamp, correlation ID, event type, feature/action, caller identity, team key, access level, scope check results, duration, and a `Metadata` dictionary.
 
+### Reading failures in the log view
+
+The **OK** column of `<AuditLogView />` shows a green check for a successful entry. For a failed entry it
+shows a red icon **plus a short failure code** — the audit equivalent of a response code, taken from the
+entry's `EventType` (`ScopeDenial`, `AccessLevelDenial`, `AuthFailure`, `RateLimit`), or `Error` for an
+entry that failed by throwing. Hovering the status shows a detail tooltip with the code, the scope that was
+checked and its result (when the failure was an authorization denial), and the `ErrorMessage` reason. The
+reason is also present in the CSV and JSON exports (the `ErrorMessage` column/field).
+
 ### Operation metadata (what changed)
 
 Built-in operations record *what* changed in `AuditEntry.Metadata`, not just that they happened — so the

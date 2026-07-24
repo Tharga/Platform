@@ -417,6 +417,36 @@ public partial class AuditLogView : ComponentBase
         return System.Text.Json.JsonSerializer.Serialize(ordered);
     }
 
+    // Audit calls are not HTTP, so there is no numeric status; the failure's EventType is the closest
+    // "response code" — with a plain exception (Success=false on an otherwise normal event) surfaced as "Error".
+    internal static string BuildFailureCode(AuditEntry entry)
+    {
+        if (entry is null || entry.Success) return null;
+        return entry.EventType switch
+        {
+            AuditEventType.ScopeDenial => "ScopeDenial",
+            AuditEventType.AccessLevelDenial => "AccessLevelDenial",
+            AuditEventType.AuthFailure => "AuthFailure",
+            AuditEventType.RateLimit => "RateLimit",
+            _ => "Error"
+        };
+    }
+
+    /// <summary>
+    /// Multi-line hover-tooltip detail for a failed entry in the "OK" column: the failure code, the
+    /// authorization scope and its result when present, and the reason text. Null for successful entries.
+    /// </summary>
+    internal static string BuildFailureDetail(AuditEntry entry)
+    {
+        if (entry is null || entry.Success) return null;
+        var lines = new List<string> { BuildFailureCode(entry) };
+        if (!string.IsNullOrEmpty(entry.ScopeChecked))
+            lines.Add($"Scope: {entry.ScopeChecked} ({entry.ScopeResult})");
+        if (!string.IsNullOrEmpty(entry.ErrorMessage))
+            lines.Add($"Reason: {entry.ErrorMessage}");
+        return string.Join("\n", lines);
+    }
+
     private string GetTeamName(string teamKey)
     {
         if (string.IsNullOrEmpty(teamKey)) return "";

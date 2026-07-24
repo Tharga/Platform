@@ -174,10 +174,19 @@ else
                         <RadzenDataGridColumn Title="Event" Width="110px" Filterable="false" Sortable="false">
                             <Template>@context.EventType</Template>
                         </RadzenDataGridColumn>
-                        <RadzenDataGridColumn Title="OK" Width="50px" Filterable="false" Sortable="false">
+                        <RadzenDataGridColumn Title="OK" Width="160px" Filterable="false" Sortable="false">
                             <Template>
-                                <RadzenIcon Icon="@(context.Success ? "check_circle" : "error")"
-                                            Style="@($"color: {(context.Success ? "green" : "red")}")" />
+                                @if (context.Success)
+                                {
+                                    <RadzenIcon Icon="check_circle" Style="color: green" />
+                                }
+                                else
+                                {
+                                    <span title="@BuildFailureDetail(context)" style="display:inline-flex;align-items:center;gap:0.25rem;">
+                                        <RadzenIcon Icon="error" Style="color: red" />
+                                        <span style="color:#dc3545;font-size:0.8rem;white-space:nowrap;">@BuildFailureCode(context)</span>
+                                    </span>
+                                }
                             </Template>
                         </RadzenDataGridColumn>
                     </Columns>
