@@ -137,6 +137,20 @@ builder.Services.AddThargaImageProcessing();   // optional: auto-downscale via I
 
 See [Team & user icons](docs/articles/icons.md).
 
+## Live claim revalidation
+
+Team claims (membership, access level, tenant-role scopes, consent access) are enriched at HTTP authentication, so in a long-lived Blazor Server circuit they would otherwise stay frozen until a reload — a removed member, a downgraded access level, or a revoked consent would keep their old access, in the service-layer checks as well as the UI. Platform revalidates them on an interval and refreshes the principal **in place** (no forced sign-out), so team access is stale for at most one interval. On by default (30 min); tune or disable it:
+
+```csharp
+builder.AddThargaPlatform(o =>
+{
+    o.Blazor.ClaimRevalidation.Interval = TimeSpan.FromMinutes(5); // narrow the window
+    // o.Blazor.ClaimRevalidation.Enabled = false;                 // or turn it off
+});
+```
+
+See [Team-claim revalidation](docs/articles/implementation-guide.md#team-claim-revalidation).
+
 ## Advanced Usage
 
 Individual `Add*` methods remain available for partial/custom setups. See the **[Implementation Guide](docs/articles/implementation-guide.md)** for step-by-step instructions.

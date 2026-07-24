@@ -20,8 +20,11 @@ public class TeamServerClaimsTransformationTests
         _options.Setup(o => o.Value).Returns(new ThargaBlazorOptions());
     }
 
+    private TeamMembershipClaimsBuilder CreateBuilder(IScopeRegistry scopeRegistry = null, ITenantRoleService tenantRoleService = null) =>
+        new(_teamService.Object, _userService.Object, _options.Object, scopeRegistry, tenantRoleService);
+
     private TeamServerClaimsTransformation CreateSut() =>
-        new(_httpContextAccessor.Object, _teamService.Object, _userService.Object, _options.Object, _scopeRegistry.Object);
+        new(_httpContextAccessor.Object, CreateBuilder(_scopeRegistry.Object));
 
     private void SetupCookie(string teamKey)
     {
@@ -190,7 +193,7 @@ public class TeamServerClaimsTransformationTests
                 m.ScopeOverrides == Array.Empty<string>()));
 
         var sut = new TeamServerClaimsTransformation(
-            _httpContextAccessor.Object, _teamService.Object, _userService.Object, _options.Object, scopeRegistry: null);
+            _httpContextAccessor.Object, CreateBuilder(scopeRegistry: null));
         var result = await sut.TransformAsync(principal);
 
         Assert.Contains(result.Claims, c => c.Type == TeamClaimTypes.TeamKey);
@@ -215,8 +218,7 @@ public class TeamServerClaimsTransformationTests
             .Callback<ClaimsIdentity>(id => id.AddClaim(new System.Security.Claims.Claim(ClaimTypes.Role, "Developer")));
 
         var sut = new TeamServerClaimsTransformation(
-            _httpContextAccessor.Object, _teamService.Object, _userService.Object, _options.Object,
-            _scopeRegistry.Object, claimsEnricher: enricher.Object);
+            _httpContextAccessor.Object, CreateBuilder(_scopeRegistry.Object), claimsEnricher: enricher.Object);
 
         var result = await sut.TransformAsync(principal);
 
@@ -244,8 +246,7 @@ public class TeamServerClaimsTransformationTests
             .ReturnsAsync(new[] { "case:read", "case:write" });
 
         var sut = new TeamServerClaimsTransformation(
-            _httpContextAccessor.Object, _teamService.Object, _userService.Object, _options.Object,
-            _scopeRegistry.Object, tenantRoleService: tenantRoleService.Object);
+            _httpContextAccessor.Object, CreateBuilder(_scopeRegistry.Object, tenantRoleService.Object));
 
         var result = await sut.TransformAsync(principal);
 
