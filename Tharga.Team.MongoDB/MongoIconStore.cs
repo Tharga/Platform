@@ -12,15 +12,22 @@ public class MongoIconStore : IIconStore
 {
     private readonly IIconRepositoryCollection _collection;
     private readonly IconOptions _options;
+    private readonly IIconProcessor _processor;
 
-    public MongoIconStore(IIconRepositoryCollection collection, IOptions<IconOptions> options = null)
+    public MongoIconStore(IIconRepositoryCollection collection, IOptions<IconOptions> options = null, IIconProcessor processor = null)
     {
         _collection = collection;
         _options = options?.Value ?? new IconOptions();
+        _processor = processor ?? new NoOpIconProcessor();
     }
 
     public async Task<string> SaveAsync(IconKind kind, string ownerKey, byte[] data, string contentType, CancellationToken cancellationToken = default)
     {
+        // Process (e.g. downscale) before validating, so oversized images are resized rather than rejected.
+        var processed = await _processor.ProcessAsync(data, contentType, cancellationToken);
+        data = processed?.Data ?? data;
+        contentType = processed?.ContentType ?? contentType;
+
         var validation = IconValidation.Validate(data, contentType, _options);
         if (!validation.IsValid)
             throw new InvalidOperationException(validation.Error);

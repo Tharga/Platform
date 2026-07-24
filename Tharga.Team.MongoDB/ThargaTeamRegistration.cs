@@ -18,6 +18,7 @@ public static class ThargaTeamRegistration
         // o.AddIconStore<T>() wins; AddOptions ensures IOptions<IconOptions> resolves even without the
         // Blazor platform configuring it.
         services.AddOptions<IconOptions>();
+        services.TryAddScoped<IIconProcessor, NoOpIconProcessor>();
         services.AddTransient<IIconRepositoryCollection, IconRepositoryCollection>();
         services.TrackMongoCollection(typeof(IIconRepositoryCollection), typeof(IconRepositoryCollection));
         services.TryAddScoped<IIconStore, MongoIconStore>();
