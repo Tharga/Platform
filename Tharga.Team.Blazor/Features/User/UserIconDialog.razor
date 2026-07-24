@@ -6,6 +6,7 @@
 @inject IUserService UserService
 @inject IHttpClientFactory HttpClientFactory
 @inject IOptions<IconOptions> IconOptions
+@inject AvatarChangeNotifier AvatarChangeNotifier
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 
@@ -94,9 +95,14 @@
     private async Task SaveAsync(byte[] data, string contentType)
     {
         if (string.IsNullOrEmpty(AdminUserKey))
+        {
             await UserService.SetOwnIconAsync(data, contentType);
+            AvatarChangeNotifier.Notify();
+        }
         else
+        {
             await UserService.SetUserIconAsync(AdminUserKey, data, contentType);
+        }
 
         _changed = true;
         NotificationService.Notify(NotificationSeverity.Success, "Profile picture updated");
@@ -109,9 +115,14 @@
         try
         {
             if (string.IsNullOrEmpty(AdminUserKey))
+            {
                 await UserService.ClearOwnIconAsync();
+                AvatarChangeNotifier.Notify();
+            }
             else
+            {
                 await UserService.ClearUserIconAsync(AdminUserKey);
+            }
 
             _changed = true;
             NotificationService.Notify(NotificationSeverity.Success, "Reverted to Gravatar");

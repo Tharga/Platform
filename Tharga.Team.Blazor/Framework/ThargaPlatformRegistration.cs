@@ -178,6 +178,7 @@ public static class ThargaPlatformRegistration
         builder.Services.AddScoped<IIconSource, GravatarIconSource>();
         builder.Services.AddScoped<IIconSource, DefaultIconSource>();
         builder.Services.AddScoped<IIconResolver, IconResolver>();
+        builder.Services.AddScoped<Features.User.AvatarChangeNotifier>();
         builder.Services.AddHttpClient(IconHttpClientName);
 
         // Email sender: custom type > SMTP (if EmailOptions set) > nothing

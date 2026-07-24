@@ -2,11 +2,13 @@
 @using Tharga.Team
 @using Tharga.Team.Blazor.Features.User
 @using Tharga.Toolkit
+@implements IDisposable
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IOptions<ThargaBlazorOptions> ThargaBlazorOptions;
 @inject IThargaTextProvider TextProvider
 @inject IUserService UserService
+@inject AvatarChangeNotifier AvatarChangeNotifier
 
 <CascadingAuthenticationState>
     <AuthorizeView>
@@ -60,6 +62,7 @@
         {
             _email = authState.User.GetEmail();
             _user = await UserService.GetCurrentUserAsync();
+            AvatarChangeNotifier.Changed += OnAvatarChanged;
         }
 
         var teamMenuRoles = TeamMenuRoles?.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray() ?? [];
@@ -91,6 +94,17 @@
                 throw new ArgumentOutOfRangeException($"Unknown action '{args.Icon}'.");
         }
     }
+
+    private void OnAvatarChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            _user = await UserService.GetCurrentUserAsync();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose() => AvatarChangeNotifier.Changed -= OnAvatarChanged;
 
     private Task Login()
     {
