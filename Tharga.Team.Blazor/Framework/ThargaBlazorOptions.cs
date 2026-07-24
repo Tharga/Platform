@@ -43,6 +43,16 @@ public record ThargaBlazorOptions : BlazorOptions
     public ConsentOptions Consent { get; set; } = new();
 
     /// <summary>
+    /// Periodic revalidation of team claims for live Blazor Server circuits. Team membership, access
+    /// level, tenant-role scopes, and consent-derived access are otherwise computed once when the circuit
+    /// is established and stay frozen for its life — so a removed member, a downgraded access level, or a
+    /// revoked consent is not applied (to the UI or to service-layer authorization) until a full reload.
+    /// When enabled, the claims are re-evaluated on the configured interval and refreshed in place if they
+    /// changed. Server/SSR only (applies when <see cref="SkipAuthStateDecoration"/> is <c>true</c>).
+    /// </summary>
+    public ClaimRevalidationOptions ClaimRevalidation { get; set; } = new();
+
+    /// <summary>
     /// Controls how team/scope claims are enriched on the principal.
     /// <para>
     /// <b>true (default)</b> — Claims are enriched server-side via <c>IClaimsTransformation</c>,

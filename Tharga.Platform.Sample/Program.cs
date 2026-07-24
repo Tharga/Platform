@@ -28,6 +28,11 @@ builder.AddThargaPlatform(o =>
     o.Blazor.AddClaimsEnricher<DeveloperRoleEnricher>();
     o.Blazor.Consent.ShowToggle = true;
 
+    // Demo: revalidate team claims every 20 seconds so a member removal, access downgrade, or consent
+    // change is reflected quickly in a live circuit while testing (#127). The production default is a slow
+    // 30 minutes; set o.Blazor.ClaimRevalidation.Enabled = false to turn revalidation off entirely.
+    o.Blazor.ClaimRevalidation.Interval = TimeSpan.FromSeconds(20);
+
     // Cross-team visibility: grant the consent roles the teams:read system scope, so a Developer sees
     // every team (not just their own) with a badge showing what each has consented to. Discovery only —
     // access inside a team still depends on that team's consent.

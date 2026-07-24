@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Options;
 
 namespace Tharga.Team.Blazor.Framework;
 
@@ -13,32 +12,20 @@ namespace Tharga.Team.Blazor.Framework;
 internal class TeamServerClaimsTransformation : IClaimsTransformation
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly ITeamService _teamService;
-    private readonly IUserService _userService;
-    private readonly IScopeRegistry _scopeRegistry;
+    private readonly TeamMembershipClaimsBuilder _membershipClaimsBuilder;
     private readonly ISystemRoleRegistry _systemRoleRegistry;
     private readonly ITeamClaimsEnricher _claimsEnricher;
-    private readonly ITenantRoleService _tenantRoleService;
-    private readonly ThargaBlazorOptions _options;
 
     public TeamServerClaimsTransformation(
         IHttpContextAccessor httpContextAccessor,
-        ITeamService teamService,
-        IUserService userService,
-        IOptions<ThargaBlazorOptions> options,
-        IScopeRegistry scopeRegistry = null,
+        TeamMembershipClaimsBuilder membershipClaimsBuilder,
         ISystemRoleRegistry systemRoleRegistry = null,
-        ITeamClaimsEnricher claimsEnricher = null,
-        ITenantRoleService tenantRoleService = null)
+        ITeamClaimsEnricher claimsEnricher = null)
     {
         _httpContextAccessor = httpContextAccessor;
-        _teamService = teamService;
-        _userService = userService;
-        _options = options.Value;
-        _scopeRegistry = scopeRegistry;
+        _membershipClaimsBuilder = membershipClaimsBuilder;
         _systemRoleRegistry = systemRoleRegistry;
         _claimsEnricher = claimsEnricher;
-        _tenantRoleService = tenantRoleService;
     }
 
     public async Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
@@ -76,64 +63,9 @@ internal class TeamServerClaimsTransformation : IClaimsTransformation
         // Mark that we've processed this principal (re-entrance guard)
         AddClaimSafe(identity, Constants.TeamKeyCookie, teamKey);
 
-        var user = await _userService.GetCurrentUserAsync(principal);
-        var member = await _teamService.GetTeamMemberAsync(teamKey, user?.Key);
-        if (member != null)
-        {
-            AddClaimSafe(identity, TeamClaimTypes.TeamKey, teamKey);
-            AddClaimSafe(identity, ClaimTypes.Role, Roles.TeamMember);
-            AddClaimSafe(identity, ClaimTypes.Role, $"Team{member.AccessLevel}");
-            AddClaimSafe(identity, TeamClaimTypes.AccessLevel, member.AccessLevel.ToString());
-            if (!string.IsNullOrEmpty(member.Key))
-                AddClaimSafe(identity, TeamClaimTypes.MemberKey, member.Key);
-
-            if (_tenantRoleService != null)
-            {
-                foreach (var scope in await _tenantRoleService.GetEffectiveScopesAsync(teamKey, member.AccessLevel, member.TenantRoles, member.ScopeOverrides))
-                {
-                    AddClaimSafe(identity, TeamClaimTypes.Scope, scope);
-                }
-            }
-            else if (_scopeRegistry != null)
-            {
-                foreach (var scope in _scopeRegistry.GetEffectiveScopes(member.AccessLevel, member.TenantRoles, member.ScopeOverrides))
-                {
-                    AddClaimSafe(identity, TeamClaimTypes.Scope, scope);
-                }
-            }
-        }
-        else
-        {
-            // Check consent-based access: user is not a member but may have a global role
-            // that has been granted viewer access by this team
-            var userRoles = principal.Claims
-                .Where(c => c.Type == ClaimTypes.Role)
-                .Select(c => c.Value)
-                .ToArray();
-
-            if (userRoles.Length > 0)
-            {
-                var consentedTeam = await _teamService.GetConsentedTeamsAsync(userRoles)
-                    .FirstOrDefaultAsync(t => t.Key == teamKey);
-
-                if (consentedTeam != null)
-                {
-                    var consentLevel = consentedTeam.ConsentAccessLevel ?? _options.Consent.AccessLevel;
-                    AddClaimSafe(identity, TeamClaimTypes.TeamKey, teamKey);
-                    AddClaimSafe(identity, ClaimTypes.Role, Roles.TeamMember);
-                    AddClaimSafe(identity, ClaimTypes.Role, $"Team{consentLevel}");
-                    AddClaimSafe(identity, TeamClaimTypes.AccessLevel, consentLevel.ToString());
-
-                    if (_scopeRegistry != null)
-                    {
-                        foreach (var scope in _scopeRegistry.GetEffectiveScopes(consentLevel, [], []))
-                        {
-                            AddClaimSafe(identity, TeamClaimTypes.Scope, scope);
-                        }
-                    }
-                }
-            }
-        }
+        // Team membership / consent claims — shared with the in-circuit revalidator so the two cannot drift.
+        foreach (var claim in await _membershipClaimsBuilder.BuildAsync(principal, teamKey))
+            AddClaimSafe(identity, claim.Type, claim.Value);
 
         return principal;
     }

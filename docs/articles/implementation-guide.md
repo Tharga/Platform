@@ -617,12 +617,34 @@ builder.AddThargaPlatform(o =>
 
 The enricher runs **once per request** inside `TeamServerClaimsTransformation`, before member lookup and consent evaluation. It supports full dependency injection (constructor injection). Duplicate claims are automatically prevented.
 
-> **When team claims refresh.** `TeamServerClaimsTransformation` is an `IClaimsTransformation`, so it runs during **HTTP authentication** — a page load or the establishment of a Blazor Server circuit — not on every interaction within a live circuit. In practice team claims are re-evaluated on page load and on team switch (switching teams forces a full reload). They are **not** re-evaluated while a user sits on a page: if a member is removed, their access level is lowered, or a team revokes consent, the affected user keeps their existing claims until their circuit is replaced — a reload, a team switch, a new tab, or re-authentication. This applies to the service-layer checks too, since `BlazorTeamPrincipalAccessor` falls back to the circuit's authentication state when there is no `HttpContext`. Hosts needing prompt revocation can register a [`RevalidatingServerAuthenticationStateProvider`](https://learn.microsoft.com/aspnet/core/blazor/security/server/) to revalidate the circuit on an interval.
+> **When team claims refresh.** `TeamServerClaimsTransformation` is an `IClaimsTransformation`, so it runs during **HTTP authentication** — a page load or the establishment of a Blazor Server circuit — not on every interaction within a live circuit. Team claims are therefore re-evaluated on page load and on team switch (switching teams forces a full reload). To keep a live circuit from acting on frozen claims — a removed member, a lowered access level, or a revoked consent — Platform also revalidates team claims periodically (see [Team-claim revalidation](#team-claim-revalidation) below), refreshing them in place without signing the user out.
 
 **Use cases:**
 - Assign global roles (e.g. `Developer`, `SystemAdministrator`) based on user identity
 - Add custom claims from external systems before team consent is evaluated
 - Enrich the principal with application-specific metadata
+
+#### Team-claim revalidation
+
+Because the claims transformation runs only at HTTP authentication, team membership, access level, tenant-role scopes, and consent-derived access would otherwise stay frozen for the life of a Blazor Server circuit — so a removed member, a downgraded access level, or a revoked consent would keep their old access until a full reload. This affects **service-layer authorization** too, not just the UI: `BlazorTeamPrincipalAccessor` falls back to the circuit's authentication state when there is no `HttpContext`, so `[RequireScope]`, `[RequireAccessLevel]`, and the `ITeamService` authorization decorator all read the frozen claims in-circuit.
+
+To close this window, Platform revalidates team claims on an interval for the life of each Blazor Server circuit. On each tick the caller's team claims are recomputed for their selected team; if they changed, the principal is refreshed **in place** — the caller is **not** signed out, their team access is simply brought up to date (including downgrades and removal). The net guarantee: team access is stale for at most one interval instead of "until reload". Team-independent system scopes (granted by app roles) and app roles themselves are preserved; a transient recompute error fails open (current claims kept, retried next interval).
+
+```csharp
+builder.AddThargaPlatform(o =>
+{
+    // Default: enabled, 30-minute interval.
+    o.Blazor.ClaimRevalidation.Interval = TimeSpan.FromMinutes(5); // narrow the window
+    // o.Blazor.ClaimRevalidation.Enabled = false;                 // or turn it off entirely
+});
+```
+
+| Option | Default | Effect |
+|--------|---------|--------|
+| `ClaimRevalidation.Enabled` | `true` | Revalidate team claims for the life of a Server circuit. `false` reverts to pre-3.5 behaviour (claims refresh only on reload / team switch). |
+| `ClaimRevalidation.Interval` | 30 minutes | How often claims are re-evaluated. Shorter narrows the staleness window at the cost of one lightweight membership read per active circuit per interval. |
+
+> Server/SSR only. Revalidation is wired when `SkipAuthStateDecoration` is `true` (the default, and the signal for a server-hosted app); a standalone WASM client has no server circuit to revalidate this way. A team **switch** still refreshes claims immediately via a full reload regardless of this setting.
 
 ### Verification
 

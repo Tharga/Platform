@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -91,8 +92,10 @@ public static class ThargaBlazorRegistration
                 sp.GetRequiredService<ITeamService>(),
                 sp.GetService<IUserDirectoryService>()));
 
-            // Server-side claims enrichment — always registered, reads selected_team_id cookie
+            // Server-side claims enrichment — always registered, reads selected_team_id cookie.
+            // The membership/consent claim computation is shared with the in-circuit revalidator below.
             services.AddHttpContextAccessor();
+            services.TryAddScoped<TeamMembershipClaimsBuilder>();
             services.AddTransient<IClaimsTransformation, TeamServerClaimsTransformation>();
 
             // Make scope/access-level proxies resolve the caller from the circuit too (not just HttpContext),
@@ -126,6 +129,28 @@ public static class ThargaBlazorRegistration
                 }
 
                 services.AddScoped<AuthenticationStateProvider, TeamClaimsAuthenticationStateProvider>();
+            }
+
+            // Periodic team-claim revalidation for live Blazor Server circuits (#127): re-evaluate
+            // membership/access/consent on an interval and refresh the principal in place, so removals,
+            // downgrades, and consent revocations stop being frozen for the life of the circuit. Server/SSR
+            // only — SkipAuthStateDecoration (true for Server/SSR) is the existing hosting signal; a WASM
+            // client has no server circuit to revalidate this way. The provider becomes the
+            // ServerAuthenticationStateProvider (seeded via IHostEnvironmentAuthenticationStateProvider), so
+            // both the UI and BlazorTeamPrincipalAccessor observe the refreshed claims. Only wrap the
+            // framework's ServerAuthenticationStateProvider — never clobber a consumer- or test-supplied
+            // provider (which would break its seeding).
+            var existingAuthProvider = services.LastOrDefault(d => d.ServiceType == typeof(AuthenticationStateProvider));
+            var wrapsServerProvider = existingAuthProvider?.ImplementationType != null
+                && typeof(ServerAuthenticationStateProvider).IsAssignableFrom(existingAuthProvider.ImplementationType);
+            if (o.ClaimRevalidation.Enabled && o.SkipAuthStateDecoration && wrapsServerProvider)
+            {
+                services.TryAddScoped<TeamClaimRevalidator>();
+                services.AddScoped<TeamRevalidatingAuthenticationStateProvider>();
+                services.Replace(ServiceDescriptor.Scoped<AuthenticationStateProvider>(
+                    sp => sp.GetRequiredService<TeamRevalidatingAuthenticationStateProvider>()));
+                services.Replace(ServiceDescriptor.Scoped<IHostEnvironmentAuthenticationStateProvider>(
+                    sp => sp.GetRequiredService<TeamRevalidatingAuthenticationStateProvider>()));
             }
         }
 
