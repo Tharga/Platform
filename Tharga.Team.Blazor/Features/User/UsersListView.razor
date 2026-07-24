@@ -27,7 +27,7 @@ else if (_loaded)
         <Columns>
             <RadzenDataGridColumn Title="" Width="66px" Sortable="false" Filterable="false">
                 <Template>
-                    <RadzenGravatar Email="@context.EMail" Style="width: 32px; height: 32px;" />
+                    <UserAvatar EMail="@context.EMail" IconReference="@context.Icon" Name="@context.Name" UserKey="@context.Key" Size="32px" />
                 </Template>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn Title="Name" Property="Name" />
@@ -71,7 +71,7 @@ else if (_loaded)
     {
         <RadzenCard class="rz-mt-3">
             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" class="rz-mb-2">
-                <RadzenGravatar Email="@_selectedUser.EMail" Style="width: 48px; height: 48px;" />
+                <UserAvatar EMail="@_selectedUser.EMail" IconReference="@_selectedUser.Icon" Name="@_selectedUser.Name" UserKey="@_selectedUser.Key" Size="48px" />
                 <RadzenStack Orientation="Orientation.Vertical" Gap="0">
                     <RadzenText TextStyle="TextStyle.Subtitle1"><strong>@(_selectedUser.Name ?? _selectedUser.EMail)</strong></RadzenText>
                     <RadzenText TextStyle="TextStyle.Caption">@_selectedUser.EMail</RadzenText>
@@ -162,6 +162,7 @@ else
             Key = u.Key,
             Name = u.Name ?? TeamServiceBase.ResolveDisplayName(u),
             EMail = u.EMail,
+            Icon = u.Icon,
             LastSeen = u.LastSeen,
             TeamCount = teamLookup[u.Key].Count(),
             Teams = teamLookup[u.Key].Select(x => new UserTeamInfo

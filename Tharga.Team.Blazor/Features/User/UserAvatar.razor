@@ -15,8 +15,20 @@ else
 }
 
 @code {
-    /// <summary>The user to render an avatar for.</summary>
+    /// <summary>A user to render the avatar for. When set, takes precedence over the individual fields.</summary>
     [Parameter] public IUser User { get; set; }
+
+    /// <summary>The user's key (used with the individual-field form).</summary>
+    [Parameter] public string UserKey { get; set; }
+
+    /// <summary>Display name (for the initials fallback).</summary>
+    [Parameter] public string Name { get; set; }
+
+    /// <summary>Email (used by the Gravatar fallback).</summary>
+    [Parameter] public string EMail { get; set; }
+
+    /// <summary>Reference of an explicitly-uploaded icon, if any.</summary>
+    [Parameter] public string IconReference { get; set; }
 
     /// <summary>CSS size (width and height) of the avatar. Default 40px.</summary>
     [Parameter] public string Size { get; set; } = "40px";
@@ -27,7 +39,12 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        if (User == null)
+        var key = User?.Key ?? UserKey;
+        var email = User?.EMail ?? EMail;
+        var iconReference = User?.Icon ?? IconReference;
+        var display = User?.Name ?? Name ?? email;
+
+        if (string.IsNullOrEmpty(email) && string.IsNullOrEmpty(iconReference) && string.IsNullOrEmpty(display))
         {
             _url = null;
             _initials = "?";
@@ -35,17 +52,16 @@ else
             return;
         }
 
-        var display = User.Name ?? User.EMail;
         _alt = display;
         _initials = IconInitials.From(display);
 
         var subject = new IconSubject
         {
             Kind = IconKind.User,
-            Key = User.Key,
+            Key = key,
             Name = display,
-            EMail = User.EMail,
-            IconReference = User.Icon
+            EMail = email,
+            IconReference = iconReference
         };
 
         var image = await IconResolver.ResolveAsync(subject);

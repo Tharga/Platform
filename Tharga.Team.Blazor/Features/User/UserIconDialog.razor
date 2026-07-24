@@ -36,7 +36,9 @@
     }
 
     <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
-        <RadzenButton Text="Use Gravatar" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Click="OnRemove" Visible="@HasIcon" Disabled="@_busy" title="Remove the uploaded image and fall back to Gravatar" />
+        <div>
+            <RadzenButton Text="Use Gravatar" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Click="OnRemove" Visible="@HasIcon" Disabled="@_busy" title="Remove the uploaded image and fall back to Gravatar" />
+        </div>
         <RadzenButton Text="Close" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat" Click="@(() => DialogService.Close(_changed))" />
     </RadzenStack>
 </RadzenStack>

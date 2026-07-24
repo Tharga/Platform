@@ -3,6 +3,7 @@
 @using Microsoft.Extensions.Logging
 @using Microsoft.Extensions.Options
 @using Microsoft.JSInterop
+@using Tharga.Team.Blazor.Features.User
 @using Tharga.Toolkit
 @typeparam TMember where TMember : class, Tharga.Team.ITeamMember
 @inject ITeamService TeamService
@@ -92,7 +93,7 @@ else
                                         <Template>
                                             @{
                                                 var user = _users.FirstOrDefault(x => x.Key == context.Key);
-                                                <RadzenGravatar Email="@(context.Invitation?.EMail ?? user?.EMail)" Style="margin-right: 6px;"/>
+                                                <span style="margin-right: 6px;"><UserAvatar User="user" EMail="@(context.Invitation?.EMail ?? user?.EMail)" Name="@context.Name" Size="32px" /></span>
                                                 @(context.Invitation?.EMail ?? user?.EMail)
                                             }
                                         </Template>

@@ -21,9 +21,15 @@
                             {
                                 <RadzenButton Text="Change picture" Icon="photo_camera" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="ChangePicture" />
                             }
+                            @if (string.IsNullOrEmpty(_user?.Icon))
+                            {
+                                <RadzenText TextStyle="TextStyle.Caption">
+                                    Your picture comes from <RadzenLink Path="https://gravatar.com/" Target="gravatar">Gravatar</RadzenLink> (based on your email).@(_canUpload ? " Upload your own with “Change picture” above, or manage it at Gravatar." : " Register your email at Gravatar to change it.")
+                                </RadzenText>
+                            }
                             else
                             {
-                                <RadzenText TextStyle="TextStyle.Caption">To change your image, register your email at <RadzenLink Path="https://gravatar.com/" Target="gravatar">Gravatar</RadzenLink>.</RadzenText>
+                                <RadzenText TextStyle="TextStyle.Caption">Using your uploaded picture.</RadzenText>
                             }
                         </RadzenStack>
                     </RadzenStack>

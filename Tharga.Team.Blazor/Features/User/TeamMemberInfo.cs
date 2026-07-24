@@ -8,6 +8,7 @@ public record TeamMemberInfo
     public string Key { get; init; }
     public string Name { get; init; }
     public string EMail { get; init; }
+    public string Icon { get; init; }
     public AccessLevel AccessLevel { get; init; }
     public MembershipState? State { get; init; }
     public DateTime? LastSeen { get; init; }
