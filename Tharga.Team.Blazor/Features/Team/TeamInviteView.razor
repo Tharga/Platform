@@ -23,6 +23,14 @@
     </CascadingAuthenticationState>
 </RadzenStack>
 
+@if (ShowEmptyMessage && string.IsNullOrEmpty(_inviteCode))
+{
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" class="rz-p-2">
+        <RadzenIcon Icon="mail" />
+        <RadzenText TextStyle="TextStyle.Body1">You have no pending invitations. When you open an invitation link, the request to join will appear here.</RadzenText>
+    </RadzenStack>
+}
+
 @code
 {
     private string _inviteCode;
@@ -31,6 +39,13 @@
 
     [Parameter]
     public string InviteCode { get; set; }
+
+    /// <summary>
+    /// When true, shows a "no pending invitations" message if there is no active invite. Use on a
+    /// standalone invites page; leave false (the default) when embedding the view elsewhere.
+    /// </summary>
+    [Parameter]
+    public bool ShowEmptyMessage { get; set; }
 
     protected override async Task OnInitializedAsync()
     {

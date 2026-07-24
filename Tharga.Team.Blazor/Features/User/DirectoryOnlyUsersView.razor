@@ -25,7 +25,7 @@
         <Columns>
             <RadzenDataGridColumn Title="" Width="66px" Sortable="false" Filterable="false">
                 <Template>
-                    <RadzenGravatar Email="@context.EMail" Style="width: 32px; height: 32px;" />
+                    <UserAvatar EMail="@context.EMail" Name="@context.Name" Size="32px" />
                 </Template>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn Title="Name" Property="@nameof(DirectoryUser.Name)" />

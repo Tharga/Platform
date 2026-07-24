@@ -12,8 +12,8 @@ public abstract class UserServiceRepositoryBase<TUserEntity> : UserServiceBase
 {
     private readonly IUserRepository<TUserEntity> _userRepository;
 
-    protected UserServiceRepositoryBase(AuthenticationStateProvider authenticationStateProvider, IUserRepository<TUserEntity> userRepository, ILogger<UserServiceBase> logger = null)
-        : base(authenticationStateProvider, logger)
+    protected UserServiceRepositoryBase(AuthenticationStateProvider authenticationStateProvider, IUserRepository<TUserEntity> userRepository, ILogger<UserServiceBase> logger = null, IIconStore iconStore = null)
+        : base(authenticationStateProvider, logger, iconStore)
     {
         _userRepository = userRepository;
     }
@@ -93,6 +93,11 @@ public abstract class UserServiceRepositoryBase<TUserEntity> : UserServiceBase
 
         await _userRepository.SetDirectoryIdAsync(userKey, directoryId);
         InvalidateUserCache(user.Identity);
+    }
+
+    protected override Task SetUserIconReferenceAsync(string userKey, string reference)
+    {
+        return _userRepository.SetIconAsync(userKey, reference);
     }
 
     public override async Task DeleteUserAsync(string userKey)

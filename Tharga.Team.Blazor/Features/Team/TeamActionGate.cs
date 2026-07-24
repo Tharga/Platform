@@ -28,6 +28,15 @@ internal static class TeamActionGate
         => CanManage(hasManageScope, selectedTeamKey, teamKey);
 
     /// <summary>
+    /// Whether member-management actions (e.g. Invite User) should be visible: the member-manage scope is
+    /// held and that team is the selected one it was issued for. Like the manage scope, member:manage is
+    /// emitted only for the selected team, so a global flag would offer the action on every card
+    /// (Tharga/Platform#134).
+    /// </summary>
+    public static bool CanManageMembers(bool hasMemberManageScope, string selectedTeamKey, string teamKey)
+        => CanManage(hasMemberManageScope, selectedTeamKey, teamKey);
+
+    /// <summary>
     /// Whether the Delete action should be visible: manage rights on this team, host-enabled team
     /// creation, and team ownership.
     /// </summary>

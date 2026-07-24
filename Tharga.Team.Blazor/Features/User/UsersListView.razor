@@ -5,6 +5,7 @@
 @inject IUserManagementService UserManagementService
 @inject IServiceProvider ServiceProvider
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IconSettings IconSettings
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 
@@ -27,7 +28,7 @@ else if (_loaded)
         <Columns>
             <RadzenDataGridColumn Title="" Width="66px" Sortable="false" Filterable="false">
                 <Template>
-                    <RadzenGravatar Email="@context.EMail" Style="width: 32px; height: 32px;" />
+                    <UserAvatar EMail="@context.EMail" IconReference="@context.Icon" Name="@context.Name" UserKey="@context.Key" Size="32px" />
                 </Template>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn Title="Name" Property="Name" />
@@ -53,6 +54,10 @@ else if (_loaded)
                                 {
                                     <RadzenSplitButtonItem Text="Verify" Value="@VerifyAction" Icon="person_search" />
                                 }
+                                @if (_showAdminUpload)
+                                {
+                                    <RadzenSplitButtonItem Text="Set icon" Value="@SetIconAction" Icon="image" />
+                                }
                                 @ActionItems
                                 <RadzenSplitButtonItem Text="Delete" Value="@DeleteAction" Icon="delete" />
                             </ChildContent>
@@ -71,7 +76,7 @@ else if (_loaded)
     {
         <RadzenCard class="rz-mt-3">
             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" class="rz-mb-2">
-                <RadzenGravatar Email="@_selectedUser.EMail" Style="width: 48px; height: 48px;" />
+                <UserAvatar EMail="@_selectedUser.EMail" IconReference="@_selectedUser.Icon" Name="@_selectedUser.Name" UserKey="@_selectedUser.Key" Size="48px" />
                 <RadzenStack Orientation="Orientation.Vertical" Gap="0">
                     <RadzenText TextStyle="TextStyle.Subtitle1"><strong>@(_selectedUser.Name ?? _selectedUser.EMail)</strong></RadzenText>
                     <RadzenText TextStyle="TextStyle.Caption">@_selectedUser.EMail</RadzenText>
@@ -112,10 +117,12 @@ else
 
     private const string VerifyAction = "verify";
     private const string DeleteAction = "delete";
+    private const string SetIconAction = "set-icon";
 
     private bool _loaded;
     private bool _canAdminister = true;
     private bool _showDirectory;
+    private bool _showAdminUpload;
     private bool _verifying;
     private IUser[] _users;
     private ITeam<TMember>[] _teams;
@@ -130,6 +137,7 @@ else
         var directoryRegistered = ServiceProvider.GetService<IUserDirectoryService>() != null;
         _canAdminister = UserAdminGate.CanAdministerUsers(hasUsersManage);
         _showDirectory = UserAdminGate.ShowDirectoryFeatures(hasUsersManage, directoryRegistered);
+        _showAdminUpload = hasUsersManage && IconSettings.AllowAdminUpload && ServiceProvider.GetService<IIconStore>() != null;
 
         if (_canAdminister)
         {
@@ -162,6 +170,7 @@ else
             Key = u.Key,
             Name = u.Name ?? TeamServiceBase.ResolveDisplayName(u),
             EMail = u.EMail,
+            Icon = u.Icon,
             LastSeen = u.LastSeen,
             TeamCount = teamLookup[u.Key].Count(),
             Teams = teamLookup[u.Key].Select(x => new UserTeamInfo
@@ -187,10 +196,26 @@ else
             case DeleteAction:
                 await DeleteUserAsync(user);
                 break;
+            case SetIconAction:
+                await SetUserIconAsync(user);
+                break;
             default:
                 await ActionInvoked.InvokeAsync(new UserRowAction(item.Value, user));
                 break;
         }
+    }
+
+    private async Task SetUserIconAsync(UserViewModel user)
+    {
+        var result = await DialogService.OpenAsync<UserIconDialog>($"Icon — {user.Name}",
+            new Dictionary<string, object>
+            {
+                { nameof(UserIconDialog.AdminUserKey), user.Key },
+                { nameof(UserIconDialog.HasIcon), !string.IsNullOrEmpty(user.Icon) }
+            },
+            new DialogOptions { Width = "480px" });
+
+        if (result is true) await LoadDataAsync();
     }
 
     private void ToggleDetails(UserViewModel user)

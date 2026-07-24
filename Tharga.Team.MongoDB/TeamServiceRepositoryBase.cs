@@ -9,8 +9,8 @@ public abstract class TeamServiceRepositoryBase<TTeamEntity, TMember> : TeamServ
     private readonly ITeamRepository<TTeamEntity, TMember> _teamRepository;
     private readonly IMongoDbServiceFactory _mongoDbServiceFactory;
 
-    protected TeamServiceRepositoryBase(IUserService userService, ITeamRepository<TTeamEntity, TMember> teamRepository, IMongoDbServiceFactory mongoDbServiceFactory)
-        : base(userService)
+    protected TeamServiceRepositoryBase(IUserService userService, ITeamRepository<TTeamEntity, TMember> teamRepository, IMongoDbServiceFactory mongoDbServiceFactory, IIconStore iconStore = null)
+        : base(userService, iconStore: iconStore)
     {
         _teamRepository = teamRepository;
         _mongoDbServiceFactory = mongoDbServiceFactory;
@@ -144,6 +144,11 @@ public abstract class TeamServiceRepositoryBase<TTeamEntity, TMember> : TeamServ
     protected override Task<int> RemoveUserFromAllTeamsInternalAsync(string userKey)
     {
         return _teamRepository.RemoveMemberFromAllTeamsAsync(userKey);
+    }
+
+    protected override Task SetTeamIconReferenceInternalAsync(string teamKey, string reference)
+    {
+        return _teamRepository.SetIconAsync(teamKey, reference);
     }
 
     protected override Task SetTeamConsentInternalAsync(string teamKey, string[] consentedRoles, AccessLevel? accessLevel)

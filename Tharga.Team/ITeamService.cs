@@ -47,4 +47,16 @@ public interface ITeamService
     /// removed from.
     /// </summary>
     Task<int> RemoveUserFromAllTeamsAsync(string userKey);
+
+    /// <summary>
+    /// Sets the team's icon from raw image bytes: stores them via the registered <see cref="IIconStore"/>,
+    /// persists the reference on the team, and deletes any previously-stored icon. Requires a registered
+    /// icon store. Gated by <c>team:manage</c>.
+    /// </summary>
+    Task SetTeamIconAsync(string teamKey, byte[] data, string contentType);
+
+    /// <summary>
+    /// Clears the team's icon and deletes the stored bytes. Gated by <c>team:manage</c>.
+    /// </summary>
+    Task ClearTeamIconAsync(string teamKey);
 }

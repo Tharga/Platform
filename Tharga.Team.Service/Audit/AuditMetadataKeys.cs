@@ -66,6 +66,12 @@ public static class AuditMetadataKeys
     /// <summary>Number of teams a user was removed from, on a remove-from-all-teams operation.</summary>
     public const string MemberTeamCount = "member.teamcount";
 
+    /// <summary>Icon content type, on a team-icon set.</summary>
+    public const string IconContentType = "icon.contenttype";
+
+    /// <summary>Icon size in bytes, on a team-icon set.</summary>
+    public const string IconSize = "icon.size";
+
     /// <summary>User the operation acted on (cross-team user administration).</summary>
     public const string UserKey = "user.key";
 

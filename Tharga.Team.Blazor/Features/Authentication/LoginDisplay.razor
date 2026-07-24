@@ -1,16 +1,21 @@
 ﻿@using Microsoft.Extensions.Options
+@using Tharga.Team
+@using Tharga.Team.Blazor.Features.User
 @using Tharga.Toolkit
+@implements IDisposable
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IOptions<ThargaBlazorOptions> ThargaBlazorOptions;
 @inject IThargaTextProvider TextProvider
+@inject IUserService UserService
+@inject AvatarChangeNotifier AvatarChangeNotifier
 
 <CascadingAuthenticationState>
     <AuthorizeView>
         <Authorized>
             <RadzenProfileMenu Click="@(ClickAction)" title="@_email">
                 <Template>
-                    <RadzenGravatar Email="@_email" AlternateText="@_email" />
+                    <UserAvatar User="_user" EMail="@_email" Size="32px" />
                 </Template>
                 <ChildContent>
                     <RadzenProfileMenuItem Text="@_userText" Icon="account_circle" />
@@ -29,6 +34,7 @@
 
 @code {
     private string _email;
+    private IUser _user;
     private bool _showTeamDefault;
     private bool _hasTeamMenuRoleRestriction;
     private bool _userInTeamMenuRole;
@@ -55,6 +61,8 @@
         if (authState.User.Identity?.IsAuthenticated ?? false)
         {
             _email = authState.User.GetEmail();
+            _user = await UserService.GetCurrentUserAsync();
+            AvatarChangeNotifier.Changed += OnAvatarChanged;
         }
 
         var teamMenuRoles = TeamMenuRoles?.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray() ?? [];
@@ -86,6 +94,17 @@
                 throw new ArgumentOutOfRangeException($"Unknown action '{args.Icon}'.");
         }
     }
+
+    private void OnAvatarChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            _user = await UserService.GetCurrentUserAsync();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose() => AvatarChangeNotifier.Changed -= OnAvatarChanged;
 
     private Task Login()
     {

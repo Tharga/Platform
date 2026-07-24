@@ -10,6 +10,7 @@ internal class UserRepository<TUserEntity> : IUserRepository<TUserEntity>
     // property; updating an undeclared member would fail at driver render time, so those writes no-op.
     private static readonly bool _entityDeclaresLastSeen = typeof(TUserEntity).GetProperty(nameof(IUser.LastSeen)) != null;
     private static readonly bool _entityDeclaresDirectoryId = typeof(TUserEntity).GetProperty(nameof(IUser.DirectoryId)) != null;
+    private static readonly bool _entityDeclaresIcon = typeof(TUserEntity).GetProperty(nameof(IUser.Icon)) != null;
 
     private readonly IUserRepositoryCollection<TUserEntity> _collection;
 
@@ -68,6 +69,18 @@ internal class UserRepository<TUserEntity> : IUserRepository<TUserEntity>
             .Eq(x => x.Key, userKey);
         var update = new UpdateDefinitionBuilder<TUserEntity>()
             .Set(x => x.DirectoryId, directoryId);
+
+        return _collection.UpdateOneAsync(filter, update);
+    }
+
+    public virtual Task SetIconAsync(string userKey, string reference)
+    {
+        if (!_entityDeclaresIcon) return Task.CompletedTask;
+
+        var filter = new FilterDefinitionBuilder<TUserEntity>()
+            .Eq(x => x.Key, userKey);
+        var update = new UpdateDefinitionBuilder<TUserEntity>()
+            .Set(x => x.Icon, reference);
 
         return _collection.UpdateOneAsync(filter, update);
     }

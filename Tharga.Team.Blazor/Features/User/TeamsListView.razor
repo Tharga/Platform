@@ -54,7 +54,7 @@ else if (_loaded)
                 <Columns>
                     <RadzenDataGridColumn Title="" Width="66px" Sortable="false" Filterable="false">
                         <Template>
-                            <RadzenGravatar Email="@context.EMail" Style="width: 32px; height: 32px;" />
+                            <UserAvatar EMail="@context.EMail" IconReference="@context.Icon" Name="@context.Name" UserKey="@context.Key" Size="32px" />
                         </Template>
                     </RadzenDataGridColumn>
                     <RadzenDataGridColumn Title="Name" Property="Name" />
@@ -141,6 +141,7 @@ else
                     Key = m.Key,
                     Name = m.Name ?? user?.Name ?? TeamServiceBase.ResolveDisplayName(user),
                     EMail = user?.EMail ?? m.Invitation?.EMail,
+                    Icon = user?.Icon,
                     AccessLevel = m.AccessLevel,
                     State = m.State,
                     LastSeen = m.LastSeen

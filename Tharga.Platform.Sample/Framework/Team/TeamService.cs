@@ -6,8 +6,8 @@ namespace Tharga.Platform.Sample.Framework.Team;
 
 public class TeamService : TeamServiceRepositoryBase<TeamEntity, TeamMember>
 {
-    public TeamService(IUserService userService, ITeamRepository<TeamEntity, TeamMember> teamRepository, IMongoDbServiceFactory mongoDbServiceFactory)
-        : base(userService, teamRepository, mongoDbServiceFactory)
+    public TeamService(IUserService userService, ITeamRepository<TeamEntity, TeamMember> teamRepository, IMongoDbServiceFactory mongoDbServiceFactory, IIconStore iconStore = null)
+        : base(userService, teamRepository, mongoDbServiceFactory, iconStore)
     {
     }
 

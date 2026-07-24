@@ -8,6 +8,7 @@ using Tharga.Platform.Sample.Framework.Team;
 using Tharga.Team;
 using Tharga.Team.Blazor.Framework;
 using Tharga.Team.Entra;
+using Tharga.Team.Images;
 using Tharga.Team.MongoDB;
 using Tharga.Team.Service.Audit;
 
@@ -109,6 +110,9 @@ builder.Services.AddThargaMcp(mcp =>
 builder.AddMongoDB();
 
 builder.Services.AddScoped<AppUserAdminService>();
+
+// Auto-downscale uploaded icons larger than IconOptions.MaxDimension (256px) instead of rejecting them.
+builder.Services.AddThargaImageProcessing();
 
 builder.Services.AddThargaTeamRepository(o =>
 {

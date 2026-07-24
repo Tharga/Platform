@@ -3,6 +3,7 @@
 @using Microsoft.Extensions.Logging
 @using Microsoft.Extensions.Options
 @using Microsoft.JSInterop
+@using Tharga.Team.Blazor.Features.User
 @using Tharga.Toolkit
 @typeparam TMember where TMember : class, Tharga.Team.ITeamMember
 @inject ITeamService TeamService
@@ -43,7 +44,8 @@ else
         {
             @foreach (var team in _teams)
             {
-                <ExpandableCard Text="@team.Name" Selected="@(_selectedTeam?.Key == team.Key)">
+                <ExpandableCard Text="@team.Name" Icon="groups" ImageUrl="@TeamIconUrl(team)" Selected="@(_selectedTeam?.Key == team.Key)">
+                    <ChildContent>
                     <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" AlignItems="AlignItems.Center">
                         @if (_canSeeAllTeams)
                         {
@@ -72,10 +74,26 @@ else
                                                 Change="@(async args => await SetConsent(team, (AccessLevel?)args))" />
                             </RadzenStack>
                         }
-                        <RadzenButton icon="edit" Text="Rename" Click="@(async () => { await RenameTeam(team); })" Visible="@(CanRenameTeam(team))"/>
-                        <ActionButton icon="delete" Text="Delete" Click="@(async () => { await DeleteTeam(team); })" Visible="@(CanDeleteTeam(team))"/>
-                        <RadzenButton icon="swap_horiz" Text="Transfer Ownership" Click="@(async () => { await TransferOwnership(team); })" Visible="@(HasAccessLevel(team, AccessLevel.Owner) && team.Members.Length > 1)"/>
-                        <RadzenButton icon="remove" Text="Leave" Click="@(async () => { await RemoveUserFromTeam(team, _user.Key); })" Visible="@(CanLeaveTeam(team))"/>
+                        @{
+                            var actions = TeamActions(team);
+                        }
+                        @if (actions.Count == 1)
+                        {
+                            <RadzenButton Text="@actions[0].Text" Icon="@actions[0].Icon" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                                          Click="@(() => InvokeTeamActionAsync(actions[0].Value, team))" />
+                        }
+                        else if (actions.Count > 1)
+                        {
+                            <RadzenSplitButton Text="@actions[0].Text" Icon="@actions[0].Icon" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                                               Click="@(item => OnTeamActionAsync(item, team, actions[0].Value))">
+                                <ChildContent>
+                                    @foreach (var action in actions.Skip(1))
+                                    {
+                                        <RadzenSplitButtonItem Text="@action.Text" Value="@action.Value" Icon="@action.Icon" />
+                                    }
+                                </ChildContent>
+                            </RadzenSplitButton>
+                        }
                     </RadzenStack>
                     <RadzenRow>
                         <RadzenColumn>
@@ -87,7 +105,7 @@ else
                                         <Template>
                                             @{
                                                 var user = _users.FirstOrDefault(x => x.Key == context.Key);
-                                                <RadzenGravatar Email="@(context.Invitation?.EMail ?? user?.EMail)" Style="margin-right: 6px;"/>
+                                                <span style="margin-right: 6px;"><UserAvatar User="user" EMail="@(context.Invitation?.EMail ?? user?.EMail)" Name="@context.Name" Size="32px" /></span>
                                                 @(context.Invitation?.EMail ?? user?.EMail)
                                             }
                                         </Template>
@@ -240,9 +258,7 @@ else
                             </RadzenDataGrid>
                         </RadzenColumn>
                     </RadzenRow>
-                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right">
-                        <RadzenButton Icon="add" Text="Invite User" Click="@(() => AddUser(team))" Visible="@(_canManageMembers)"/>
-                    </RadzenStack>
+                    </ChildContent>
                 </ExpandableCard>
             }
         }
@@ -428,6 +444,20 @@ else
             new DialogOptions { Resizable = true, Draggable = true });
 
         if (result == true) await ReloadTeams();
+    }
+
+    private async Task SetTeamIcon(ITeam<TMember> team)
+    {
+        var result = await DialogService.OpenAsync<TeamIconDialog>(
+            $"Icon — {team.Name}",
+            new Dictionary<string, object>
+            {
+                { nameof(TeamIconDialog.TeamKey), team.Key },
+                { nameof(TeamIconDialog.HasIcon), !string.IsNullOrEmpty(team.Icon) }
+            },
+            new DialogOptions { Width = "480px" });
+
+        if (result is true) await ReloadTeams();
     }
 
     private async Task AddUser(ITeam<TMember> team)
@@ -684,9 +714,59 @@ else
         return team.Members.Any(x => x.Key == _user.Key && x.State == MembershipState.Member);
     }
 
+    private const string IconAction = "icon";
+    private const string RenameAction = "rename";
+    private const string InviteAction = "invite";
+    private const string TransferAction = "transfer";
+    private const string DeleteAction = "delete";
+    private const string LeaveAction = "leave";
+
+    private string TeamIconUrl(ITeam<TMember> team)
+        => string.IsNullOrEmpty(team.Icon) ? null : IconRoute.Url(team.Icon);
+
+    /// <summary>
+    /// The actions available on a team, in priority order — the first is the split button's default
+    /// (primary) action, with "Invite user" preferred when available.
+    /// </summary>
+    private List<(string Value, string Text, string Icon)> TeamActions(ITeam<TMember> team)
+    {
+        var actions = new List<(string, string, string)>();
+        if (CanManageMembers(team)) actions.Add((InviteAction, "Invite user", "person_add"));
+        if (CanRenameTeam(team))
+        {
+            actions.Add((IconAction, "Set icon", "image"));
+            actions.Add((RenameAction, "Rename", "edit"));
+        }
+        if (HasAccessLevel(team, AccessLevel.Owner) && team.Members.Length > 1) actions.Add((TransferAction, "Transfer ownership", "swap_horiz"));
+        if (CanLeaveTeam(team)) actions.Add((LeaveAction, "Leave", "remove"));
+        if (CanDeleteTeam(team)) actions.Add((DeleteAction, "Delete", "delete"));
+        return actions;
+    }
+
+    private Task OnTeamActionAsync(RadzenSplitButtonItem item, ITeam<TMember> team, string defaultValue)
+        => InvokeTeamActionAsync(item?.Value ?? defaultValue, team);
+
+    private async Task InvokeTeamActionAsync(string value, ITeam<TMember> team)
+    {
+        switch (value)
+        {
+            case IconAction: await SetTeamIcon(team); break;
+            case RenameAction: await RenameTeam(team); break;
+            case InviteAction: await AddUser(team); break;
+            case TransferAction: await TransferOwnership(team); break;
+            case LeaveAction: await RemoveUserFromTeam(team, _user.Key); break;
+            case DeleteAction: await DeleteTeam(team); break;
+        }
+    }
+
     private bool CanRenameTeam(ITeam<TMember> team)
     {
         return TeamActionGate.CanRename(_canManage, _selectedTeam?.Key, team.Key);
+    }
+
+    private bool CanManageMembers(ITeam<TMember> team)
+    {
+        return TeamActionGate.CanManageMembers(_canManageMembers, _selectedTeam?.Key, team.Key);
     }
 
     private bool CanDeleteTeam(ITeam<TMember> team)
