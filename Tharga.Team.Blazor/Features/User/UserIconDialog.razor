@@ -15,7 +15,7 @@
     and the pluggable IIconStore.
 *@
 <RadzenStack Gap="1rem">
-    <RadzenText TextStyle="TextStyle.Body2">Upload an image, or provide an image URL to download. Maximum @_maxKb KB. This replaces your Gravatar image.</RadzenText>
+    <RadzenText TextStyle="TextStyle.Body2">Upload an image (up to @_maxUploadMb MB) or provide an image URL. Large images are downscaled automatically. This replaces your Gravatar image.</RadzenText>
 
     <RadzenStack Gap="0.25rem">
         <RadzenLabel Text="Upload a file" />
@@ -53,9 +53,9 @@
     private string _url;
     private bool _busy;
     private bool _changed;
-    private int _maxKb;
+    private int _maxUploadMb;
 
-    protected override void OnInitialized() => _maxKb = IconOptions.Value.MaxBytes / 1024;
+    protected override void OnInitialized() => _maxUploadMb = Math.Max(1, IconOptions.Value.MaxUploadBytes / (1024 * 1024));
 
     private async Task OnFileSelected(InputFileChangeEventArgs e)
     {
@@ -65,9 +65,8 @@
         _busy = true;
         try
         {
-            var max = IconOptions.Value.MaxBytes;
             using var stream = new MemoryStream();
-            await file.OpenReadStream(max + 1).CopyToAsync(stream);
+            await file.OpenReadStream(IconOptions.Value.MaxUploadBytes).CopyToAsync(stream);
             await SaveAsync(stream.ToArray(), file.ContentType);
         }
         catch (Exception ex) { NotifyError(ex); }

@@ -6,8 +6,17 @@ namespace Tharga.Team;
 /// </summary>
 public class IconOptions
 {
-    /// <summary>Maximum accepted icon size in bytes. Default 256 KB.</summary>
+    /// <summary>
+    /// Maximum <b>stored</b> icon size in bytes — validated after any processing (downscaling). Default 256 KB.
+    /// </summary>
     public int MaxBytes { get; set; } = 256 * 1024;
+
+    /// <summary>
+    /// Maximum size (bytes) of an original upload accepted for reading, <b>before</b> processing. Larger
+    /// than <see cref="MaxBytes"/> so oversized images can be read and then downscaled (when an image
+    /// processor is registered) rather than rejected outright. Default 10 MB.
+    /// </summary>
+    public int MaxUploadBytes { get; set; } = 10 * 1024 * 1024;
 
     /// <summary>
     /// Maximum icon dimension (width and height, px). When an image processor is registered, larger images
