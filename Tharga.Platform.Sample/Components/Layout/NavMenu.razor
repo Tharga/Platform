@@ -28,9 +28,10 @@
                     <RadzenPanelMenuItem Text="Team" Path="team" Icon="groups"/>
                     <RadzenPanelMenuItem Text="Invites" Path="invites" Icon="mail"/>
                     <RadzenPanelMenuItem Text="Custom roles" Path="roles" Icon="admin_panel_settings"/>
-                    <RadzenPanelMenuItem Text="Audit" Path="audit" Icon="receipt_long"/>
+                    <RadzenPanelMenuItem Text="Access" Path="access" Icon="verified_user"/>
                     @if (_hasTeam)
                     {
+                        <RadzenPanelMenuItem Text="Team audit" Path="team-audit" Icon="receipt_long"/>
                         <RadzenPanelMenuItem Text="API Keys" Path="api-keys" Icon="key"/>
                     }
                 </Authorized>
@@ -38,6 +39,7 @@
 
             <AuthorizeView Roles="@Tharga.Team.Blazor.Framework.Roles.Developer">
                 <Authorized>
+                    <RadzenPanelMenuItem Text="System audit" Path="audit" Icon="receipt_long"/>
                     <RadzenPanelMenuItem Text="System API Keys" Path="system-api-keys" Icon="vpn_key"/>
                     <RadzenPanelMenuItem Text="Users" Path="users" Icon="people" />
                     <RadzenPanelMenuItem Text="Icon settings" Path="icon-settings" Icon="image" />

@@ -1,0 +1,202 @@
+@page "/access"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@using Tharga.Team
+@using Tharga.Team.Blazor.Framework
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ITeamStateService TeamStateService
+@inject IServiceProvider ServiceProvider
+@inject IUserService UserService
+@inject ITeamService TeamService
+
+@*
+    An ordinary application page for exercising access control as different users. Everything here reads
+    the caller's own claims — sign in as a member, an administrator and a Developer, switch teams, and
+    compare. The "server check" section matters most: it calls the services directly, so it shows what the
+    server actually permits rather than what the UI chose to render.
+*@
+
+<PageTitle>Access</PageTitle>
+
+<RadzenStack Gap="1rem">
+
+    <RadzenCard>
+        <RadzenText TextStyle="TextStyle.H6">Who you are</RadzenText>
+        <RadzenStack Gap="0.25rem">
+            <RadzenText TextStyle="TextStyle.Body2"><strong>Identity:</strong> @_identity</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2"><strong>Selected team:</strong> @(_selectedTeam?.Name ?? "none")</RadzenText>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenText TextStyle="TextStyle.Body2"><strong>Access level here:</strong></RadzenText>
+                <RadzenBadge BadgeStyle="@(_accessLevel == null ? BadgeStyle.Danger : BadgeStyle.Info)"
+                             Variant="Variant.Flat" Text="@(_accessLevel?.ToString() ?? "No access")" />
+                <RadzenText TextStyle="TextStyle.Caption">@_accessSource</RadzenText>
+            </RadzenStack>
+            <RadzenText TextStyle="TextStyle.Body2"><strong>Roles:</strong> @(_roles.Length == 0 ? "none" : string.Join(", ", _roles))</RadzenText>
+        </RadzenStack>
+    </RadzenCard>
+
+    <ExpandableCard Icon="shield" Text="Scopes">
+        <ChildContent>
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-mb-2">
+                Team scopes come from your access level on the selected team. System scopes come from your app
+                roles via <code>ConfigureSystemRoles</code> and are <strong>not</strong> bound to any team — which
+                is why a Developer keeps them on a team that granted them nothing.
+            </RadzenText>
+            <RadzenDataGrid Data="@_scopeRows" TItem="ScopeRow" AllowSorting="true">
+                <Columns>
+                    <RadzenDataGridColumn Title="Scope" Property="@nameof(ScopeRow.Name)" />
+                    <RadzenDataGridColumn Title="Kind" Property="@nameof(ScopeRow.Kind)" Width="110px" />
+                    <RadzenDataGridColumn Title="Held" Width="90px" Sortable="false">
+                        <Template>
+                            <RadzenBadge BadgeStyle="@(context.Held ? BadgeStyle.Success : BadgeStyle.Light)"
+                                         Variant="Variant.Flat" Text="@(context.Held ? "Yes" : "No")" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Title="Description" Property="@nameof(ScopeRow.Description)" />
+                </Columns>
+            </RadzenDataGrid>
+        </ChildContent>
+    </ExpandableCard>
+
+    <RadzenCard>
+        <RadzenText TextStyle="TextStyle.H6">Content gated by role</RadzenText>
+        <RadzenStack Gap="0.5rem">
+            <AuthorizeView Roles="@Roles.TeamMember" Context="member">
+                <Authorized><RadzenAlert AlertStyle="AlertStyle.Success" ShowIcon="false" Variant="Variant.Flat" AllowClose="false">Visible to any member of the selected team.</RadzenAlert></Authorized>
+                <NotAuthorized><RadzenAlert AlertStyle="AlertStyle.Light" ShowIcon="false" Variant="Variant.Flat" AllowClose="false">Hidden — you are not a member of the selected team.</RadzenAlert></NotAuthorized>
+            </AuthorizeView>
+            <AuthorizeView Roles="TeamOwner" Context="owner">
+                <Authorized><RadzenAlert AlertStyle="AlertStyle.Success" ShowIcon="false" Variant="Variant.Flat" AllowClose="false">Visible to the team owner.</RadzenAlert></Authorized>
+                <NotAuthorized><RadzenAlert AlertStyle="AlertStyle.Light" ShowIcon="false" Variant="Variant.Flat" AllowClose="false">Hidden — you do not own the selected team.</RadzenAlert></NotAuthorized>
+            </AuthorizeView>
+            <AuthorizeView Roles="@Roles.Developer" Context="developer">
+                <Authorized><RadzenAlert AlertStyle="AlertStyle.Success" ShowIcon="false" Variant="Variant.Flat" AllowClose="false">Visible to a Developer — a system role, so it does not change with the selected team.</RadzenAlert></Authorized>
+                <NotAuthorized><RadzenAlert AlertStyle="AlertStyle.Light" ShowIcon="false" Variant="Variant.Flat" AllowClose="false">Hidden — you are not a Developer.</RadzenAlert></NotAuthorized>
+            </AuthorizeView>
+        </RadzenStack>
+    </RadzenCard>
+
+    <RadzenCard>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" class="rz-mb-2">
+            <RadzenText TextStyle="TextStyle.H6" class="rz-m-0">Server check</RadzenText>
+            <RadzenButton Text="Run" Icon="play_arrow" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small" Click="RunServerChecksAsync" />
+        </RadzenStack>
+        <RadzenText TextStyle="TextStyle.Body2" class="rz-mb-2">
+            Calls each service and reports what came back. Hiding a button is not authorization — this is the
+            only section that tells you what the server enforces.
+        </RadzenText>
+        @if (_checks.Count > 0)
+        {
+            <RadzenDataGrid Data="@_checks" TItem="CheckRow">
+                <Columns>
+                    <RadzenDataGridColumn Title="Operation" Property="@nameof(CheckRow.Operation)" />
+                    <RadzenDataGridColumn Title="Requires" Property="@nameof(CheckRow.Requires)" Width="160px" />
+                    <RadzenDataGridColumn Title="Result" Width="110px" Sortable="false">
+                        <Template>
+                            <RadzenBadge BadgeStyle="@(context.Allowed ? BadgeStyle.Success : BadgeStyle.Danger)"
+                                         Variant="Variant.Flat" Text="@(context.Allowed ? "Allowed" : "Denied")" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Title="Detail" Property="@nameof(CheckRow.Detail)" />
+                </Columns>
+            </RadzenDataGrid>
+        }
+    </RadzenCard>
+
+</RadzenStack>
+
+@code {
+    private string _identity;
+    private ITeam _selectedTeam;
+    private AccessLevel? _accessLevel;
+    private string _accessSource;
+    private string[] _roles = [];
+    private List<ScopeRow> _scopeRows = [];
+    private readonly List<CheckRow> _checks = [];
+
+    private sealed record ScopeRow(string Name, string Kind, bool Held, string Description);
+
+    private sealed record CheckRow(string Operation, string Requires, bool Allowed, string Detail);
+
+    protected override async Task OnInitializedAsync()
+    {
+        TeamStateService.SelectedTeamChangedEvent += async (_, _) =>
+        {
+            await LoadAsync();
+            await InvokeAsync(StateHasChanged);
+        };
+
+        await LoadAsync();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var user = (await AuthStateProvider.GetAuthenticationStateAsync()).User;
+        _selectedTeam = await TeamStateService.GetSelectedTeamAsync();
+
+        _identity = user.FindFirst(ClaimTypes.Name)?.Value
+                    ?? user.FindFirst("preferred_username")?.Value
+                    ?? user.Identity?.Name
+                    ?? "unknown";
+
+        _accessLevel = Enum.TryParse<AccessLevel>(user.FindFirst(TeamClaimTypes.AccessLevel)?.Value, out var level)
+            ? level
+            : null;
+
+        _accessSource = _accessLevel == null
+            ? "no membership and no consent on this team"
+            : user.HasClaim(ClaimTypes.Role, Roles.TeamMember) ? "from membership or consent" : "";
+
+        _roles = user.FindAll(ClaimTypes.Role).Select(x => x.Value).Distinct().OrderBy(x => x).ToArray();
+
+        var held = user.FindAll(TeamClaimTypes.Scope).Select(x => x.Value).ToHashSet(StringComparer.Ordinal);
+        var teamScopes = ServiceProvider.GetService<IScopeRegistry>()?.All ?? [];
+        var systemScopes = ServiceProvider.GetService<ISystemScopeRegistry>()?.All ?? [];
+
+        _scopeRows =
+        [
+            .. teamScopes.Select(s => new ScopeRow(s.Name, "Team", held.Contains(s.Name), s.Description)),
+            .. systemScopes.Select(s => new ScopeRow(s.Name, "System", held.Contains(s.Name), s.Description))
+        ];
+    }
+
+    private async Task RunServerChecksAsync()
+    {
+        _checks.Clear();
+
+        _checks.Add(await CheckAsync("List every user", SystemUserScopes.Manage,
+            async () => $"{await UserService.GetAsync().CountAsync()} users"));
+
+        _checks.Add(await CheckAsync("List my co-members", "authenticated",
+            async () => $"{(await UserService.GetTeamMemberUsersAsync()).Count} users"));
+
+        _checks.Add(await CheckAsync("List every team", SystemTeamScopes.Read,
+            async () => $"{await TeamService.GetAllTeamsAsync().CountAsync()} teams"));
+
+        var apiKeyService = ServiceProvider.GetService<IApiKeyManagementService>();
+        if (apiKeyService != null && _selectedTeam != null)
+        {
+            _checks.Add(await CheckAsync($"List API keys for '{_selectedTeam.Name}'", ApiKeyScopes.Manage,
+                async () => $"{await apiKeyService.GetKeysAsync(_selectedTeam.Key).CountAsync()} keys"));
+        }
+    }
+
+    private static async Task<CheckRow> CheckAsync(string operation, string requires, Func<Task<string>> action)
+    {
+        try
+        {
+            return new CheckRow(operation, requires, true, await action());
+        }
+        catch (UnauthorizedAccessException e)
+        {
+            return new CheckRow(operation, requires, false, e.Message);
+        }
+        catch (Exception e)
+        {
+            return new CheckRow(operation, requires, false, $"{e.GetType().Name}: {e.Message}");
+        }
+    }
+}

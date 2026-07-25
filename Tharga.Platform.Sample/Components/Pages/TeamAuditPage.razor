@@ -1,0 +1,52 @@
+@page "/team-audit"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Tharga.Team
+@inject ITeamStateService TeamStateService
+
+@*
+    Per-team audit: the same view pinned to the selected team, so a team administrator holding audit:read
+    on that team sees its entries and nothing else. Pinning is what confines the data — AuditLogView's own
+    gate is a bare audit:read claim check and cannot tell a team grant from a system one.
+*@
+
+<PageTitle>Team Audit Log</PageTitle>
+
+@if (_selectedTeam == null)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat" AllowClose="false">
+        <RadzenText TextStyle="TextStyle.Body2">Select a team to see its audit log.</RadzenText>
+    </RadzenAlert>
+}
+else
+{
+    <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" Variant="Variant.Flat" AllowClose="false" class="rz-mb-3">
+        <RadzenText TextStyle="TextStyle.Body2">
+            Entries for <strong>@_selectedTeam.Name</strong> only.
+            <AuthorizeView Roles="@Tharga.Team.Blazor.Framework.Roles.Developer" Context="developer">
+                <Authorized>
+                    For every team, see <RadzenLink Path="audit" Text="the system audit log" />.
+                </Authorized>
+            </AuthorizeView>
+        </RadzenText>
+    </RadzenAlert>
+
+    <AuditLogView PinnedFilter="@(new AuditPinnedFilter { TeamKey = _selectedTeam.Key })" />
+}
+
+@code {
+    private ITeam _selectedTeam;
+
+    protected override async Task OnInitializedAsync()
+    {
+        TeamStateService.SelectedTeamChangedEvent += async (_, e) =>
+        {
+            _selectedTeam = e.SelectedTeam;
+            await InvokeAsync(StateHasChanged);
+        };
+
+        _selectedTeam = await TeamStateService.GetSelectedTeamAsync();
+        await base.OnInitializedAsync();
+    }
+}
