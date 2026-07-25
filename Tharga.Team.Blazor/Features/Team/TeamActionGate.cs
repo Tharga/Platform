@@ -17,8 +17,15 @@ internal static class TeamActionGate
     /// team is the selected one the scope was issued for.
     /// </summary>
     public static bool CanManage(bool hasManageScope, string selectedTeamKey, string teamKey)
+        => hasManageScope && IsSelected(selectedTeamKey, teamKey);
+
+    /// <summary>
+    /// Whether <paramref name="teamKey"/> is the currently selected team. Every per-team action is
+    /// confined to it: the scopes are issued for the selected team, and an action offered on another
+    /// team card is one the caller cannot carry out there.
+    /// </summary>
+    private static bool IsSelected(string selectedTeamKey, string teamKey)
     {
-        if (!hasManageScope) return false;
         if (string.IsNullOrEmpty(selectedTeamKey) || string.IsNullOrEmpty(teamKey)) return false;
         return string.Equals(selectedTeamKey, teamKey, StringComparison.Ordinal);
     }
@@ -44,10 +51,20 @@ internal static class TeamActionGate
         => CanManage(hasManageScope, selectedTeamKey, teamKey) && allowTeamCreation && isOwner;
 
     /// <summary>
-    /// Whether the Leave action should be visible. Non-members have nothing to leave; the owner
-    /// must transfer ownership instead.
+    /// Whether the Leave action should be visible: on the selected team, where the caller is a member
+    /// but not the owner. Non-members have nothing to leave and the owner must transfer ownership
+    /// instead; leaving elsewhere is refused by the service, which requires the member-manage scope on
+    /// the team being left.
     /// </summary>
-    public static bool CanLeave(bool isMember, bool isOwner) => isMember && !isOwner;
+    public static bool CanLeave(bool isMember, bool isOwner, string selectedTeamKey, string teamKey)
+        => isMember && !isOwner && IsSelected(selectedTeamKey, teamKey);
+
+    /// <summary>
+    /// Whether the Transfer ownership action should be visible: on the selected team, where the caller
+    /// owns it and there is somebody to hand it to.
+    /// </summary>
+    public static bool CanTransferOwnership(bool isOwner, bool hasOtherMembers, string selectedTeamKey, string teamKey)
+        => isOwner && hasOtherMembers && IsSelected(selectedTeamKey, teamKey);
 
     /// <summary>
     /// Whether the consent selector should be editable: manage rights on this team and administrator

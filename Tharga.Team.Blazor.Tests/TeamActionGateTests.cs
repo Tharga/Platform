@@ -74,16 +74,34 @@ public class TeamActionGateTests
     }
 
     [Theory]
-    // A member who is not the owner can leave.
-    [InlineData(true, false, true)]
+    // A member who is not the owner can leave the selected team.
+    [InlineData(true, false, "t-1", "t-1", true)]
     // The owner must transfer ownership instead.
-    [InlineData(true, true, false)]
+    [InlineData(true, true, "t-1", "t-1", false)]
     // Non-members must not be offered Leave — the #125 regression.
-    [InlineData(false, false, false)]
-    [InlineData(false, true, false)]
-    public void CanLeave_RequiresMembershipAndNotOwner(bool isMember, bool isOwner, bool expected)
+    [InlineData(false, false, "t-1", "t-1", false)]
+    [InlineData(false, true, "t-1", "t-1", false)]
+    // Leaving is confined to the selected team; elsewhere the service refuses it.
+    [InlineData(true, false, "t-1", "t-2", false)]
+    [InlineData(true, false, null, "t-1", false)]
+    public void CanLeave_RequiresMembershipNotOwnerAndSelectedTeam(bool isMember, bool isOwner, string selectedTeamKey, string teamKey, bool expected)
     {
-        Assert.Equal(expected, TeamActionGate.CanLeave(isMember, isOwner));
+        Assert.Equal(expected, TeamActionGate.CanLeave(isMember, isOwner, selectedTeamKey, teamKey));
+    }
+
+    [Theory]
+    // The owner of the selected team, with somebody to hand it to.
+    [InlineData(true, true, "t-1", "t-1", true)]
+    // Sole member — nobody to transfer to.
+    [InlineData(true, false, "t-1", "t-1", false)]
+    // Not the owner.
+    [InlineData(false, true, "t-1", "t-1", false)]
+    // Owned, but not the selected team.
+    [InlineData(true, true, "t-1", "t-2", false)]
+    [InlineData(true, true, null, "t-1", false)]
+    public void CanTransferOwnership_RequiresOwnerOtherMembersAndSelectedTeam(bool isOwner, bool hasOtherMembers, string selectedTeamKey, string teamKey, bool expected)
+    {
+        Assert.Equal(expected, TeamActionGate.CanTransferOwnership(isOwner, hasOtherMembers, selectedTeamKey, teamKey));
     }
 
     [Theory]

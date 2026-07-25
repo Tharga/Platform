@@ -712,7 +712,7 @@ else
             actions.Add((IconAction, "Set icon", "image"));
             actions.Add((RenameAction, "Rename", "edit"));
         }
-        if (HasAccessLevel(team, AccessLevel.Owner) && team.Members.Length > 1) actions.Add((TransferAction, "Transfer ownership", "swap_horiz"));
+        if (CanTransferOwnership(team)) actions.Add((TransferAction, "Transfer ownership", "swap_horiz"));
         if (CanLeaveTeam(team)) actions.Add((LeaveAction, "Leave", "remove"));
         if (CanDeleteTeam(team)) actions.Add((DeleteAction, "Delete", "delete"));
         return actions;
@@ -751,7 +751,12 @@ else
 
     private bool CanLeaveTeam(ITeam<TMember> team)
     {
-        return TeamActionGate.CanLeave(IsMemberOf(team), HasAccessLevel(team, AccessLevel.Owner));
+        return TeamActionGate.CanLeave(IsMemberOf(team), HasAccessLevel(team, AccessLevel.Owner), _selectedTeam?.Key, team.Key);
+    }
+
+    private bool CanTransferOwnership(ITeam<TMember> team)
+    {
+        return TeamActionGate.CanTransferOwnership(HasAccessLevel(team, AccessLevel.Owner), team.Members.Length > 1, _selectedTeam?.Key, team.Key);
     }
 
     private bool CanEditConsent(ITeam<TMember> team)
