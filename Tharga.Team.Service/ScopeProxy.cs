@@ -129,10 +129,18 @@ public class ScopeProxy<T> : DispatchProxy where T : class
     /// team named in the call's own arguments, not merely the one the caller happens to have selected —
     /// otherwise holding a scope for team A authorizes acting on team B.
     /// </summary>
+    /// <remarks>
+    /// Matched by parameter name, agreeing with <see cref="ServiceScopeValidation"/>: a first parameter of
+    /// type string is not necessarily a team, so binding positionally would silently authorize against
+    /// whatever string happened to come first.
+    /// </remarks>
     private static string ResolveTeamKey(MethodInfo method, object[] args)
     {
         var parameters = method.GetParameters();
         if (parameters.Length == 0 || args is not { Length: > 0 }) return null;
-        return parameters[0].ParameterType == typeof(string) ? args[0] as string : null;
+
+        return parameters[0].ParameterType == typeof(string) && parameters[0].Name == ServiceScopeValidation.TeamKeyParameterName
+            ? args[0] as string
+            : null;
     }
 }

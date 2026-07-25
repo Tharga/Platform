@@ -95,6 +95,8 @@ public static class ScopeServiceCollectionExtensions
         where TService : class
         where TImplementation : class, TService
     {
+        ServiceScopeValidation.Validate(typeof(TService), scopeKind);
+
         services.AddHttpContextAccessor();
         services.TryAddScoped<ITeamPrincipalAccessor, HttpContextTeamPrincipalAccessor>();
         services.AddScoped<TImplementation>();

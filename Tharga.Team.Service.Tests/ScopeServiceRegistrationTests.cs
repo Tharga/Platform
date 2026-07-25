@@ -102,6 +102,34 @@ public class ScopeServiceRegistrationTests
         Assert.Throws<UnauthorizedAccessException>(() => service.ReadMethod());
     }
 
+    // ---- Two-way validation: a service must be wholly the kind it claims ----
+
+    [Fact]
+    public void AddTeamService_Rejects_An_Interface_Whose_Methods_Name_No_Team()
+    {
+        var services = new ServiceCollection();
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => services.AddTeamService<ISystemScopedTestService, SystemServiceImplementation>());
+
+        Assert.Contains("ReadMethod", exception.Message);
+    }
+
+    /// <summary>
+    /// The direction that closes the escape hatch: without it, a mixed interface could be registered as a
+    /// system service precisely to dodge the team check, and the whole scheme would be advisory.
+    /// </summary>
+    [Fact]
+    public void AddSystemService_Rejects_An_Interface_That_Names_A_Team()
+    {
+        var services = new ServiceCollection();
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => services.AddSystemService<IScopedTestService, TeamServiceImplementation>());
+
+        Assert.Contains("DeleteMethod", exception.Message);
+    }
+
     [Fact]
     public void ApiKeyManagement_Is_Registered_Through_The_Guarding_Path()
     {
