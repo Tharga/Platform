@@ -4,22 +4,6 @@ using Tharga.Team.Blazor.Framework;
 namespace Tharga.Team.Blazor.Features.Team;
 
 /// <summary>
-/// How much access a team has consented to grant an oversight caller, reduced to the three states the
-/// UI distinguishes.
-/// </summary>
-public enum ConsentVisibility
-{
-    /// <summary>The team has consented to nothing — visible, but no access.</summary>
-    None,
-
-    /// <summary>Partial access (Viewer or User).</summary>
-    Partial,
-
-    /// <summary>Full team-administrator access.</summary>
-    Full
-}
-
-/// <summary>
 /// Decides what an oversight caller (one holding <see cref="SystemTeamScopes.Read"/>) may see: whether
 /// team listings widen beyond their own memberships, and how a team's consent level is presented.
 /// </summary>
@@ -40,25 +24,29 @@ internal static class TeamVisibility
     }
 
     /// <summary>
-    /// Reduces a team's consented access level to the state shown in the UI. A team that has consented
-    /// to no roles reads as <see cref="ConsentVisibility.None"/> regardless of any stored level.
+    /// The access level a team has actually consented to grant, or null when it has consented to no
+    /// roles — visible, but no access — regardless of any level stored alongside.
     /// </summary>
-    public static ConsentVisibility Resolve(string[] consentedRoles, AccessLevel? consentAccessLevel)
+    /// <param name="defaultAccessLevel">
+    /// The host's configured <c>Consent.AccessLevel</c>, granted when the consent carries no level of its
+    /// own. Passed in rather than assumed, because it is what <c>TeamMembershipClaimsBuilder</c> actually
+    /// puts in the caller's claims — hard-coding Viewer here would misreport any host that changed it.
+    /// </param>
+    public static AccessLevel? Resolve(string[] consentedRoles, AccessLevel? consentAccessLevel, AccessLevel defaultAccessLevel)
     {
-        if (consentedRoles is not { Length: > 0 }) return ConsentVisibility.None;
-        if (consentAccessLevel is null) return ConsentVisibility.Partial;
-
-        return consentAccessLevel == AccessLevel.Administrator
-            ? ConsentVisibility.Full
-            : ConsentVisibility.Partial;
+        if (consentedRoles is not { Length: > 0 }) return null;
+        return consentAccessLevel ?? defaultAccessLevel;
     }
 
-    /// <summary>Label shown alongside the tint — colour alone is not an accessible encoding.</summary>
-    public static string Label(ConsentVisibility visibility) => visibility switch
+    /// <summary>
+    /// Label shown alongside the tint — colour alone is not an accessible encoding. Names the granted
+    /// level rather than a coarse band, so "Viewer" and "User" are told apart.
+    /// </summary>
+    public static string Label(AccessLevel? consentAccessLevel) => consentAccessLevel switch
     {
-        ConsentVisibility.Full => "Full access",
-        ConsentVisibility.Partial => "Partial access",
-        _ => "No access"
+        null => "No access",
+        AccessLevel.Administrator => "Full access",
+        var level => level.ToString()
     };
 
     /// <summary>
@@ -66,10 +54,10 @@ internal static class TeamVisibility
     /// component-library dependency and remains unit-testable. Theme-aware by construction — hard-coded
     /// colours would not survive dark theme.
     /// </summary>
-    public static string BadgeStyle(ConsentVisibility visibility) => visibility switch
+    public static string BadgeStyle(AccessLevel? consentAccessLevel) => consentAccessLevel switch
     {
-        ConsentVisibility.Full => "Success",
-        ConsentVisibility.Partial => "Warning",
-        _ => "Danger"
+        null => "Danger",
+        AccessLevel.Administrator => "Success",
+        _ => "Warning"
     };
 }

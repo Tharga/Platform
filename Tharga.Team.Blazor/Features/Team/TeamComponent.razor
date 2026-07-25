@@ -66,7 +66,7 @@ else
                             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
                                 <RadzenLabel Text="@($"Consent access for {string.Join(", ", _consentRoles)}")" Style="font-size: 0.85em;" />
                                 <RadzenDropDown TValue="AccessLevel?"
-                                                Value="@(team.ConsentedRoles is { Length: > 0 } ? team.ConsentAccessLevel ?? AccessLevel.Viewer : (AccessLevel?)null)"
+                                                Value="@ConsentOf(team)"
                                                 Data="@_consentLevels"
                                                 AllowClear="true"
                                                 Disabled="@(!CanEditConsent(team))"
@@ -322,6 +322,7 @@ else
     private string _createTeamPath;
     private bool _showConsentToggle;
     private string[] _consentRoles;
+    private AccessLevel _consentDefaultLevel;
     private string[] _allScopeNames = Array.Empty<string>();
     private IReadOnlyDictionary<string, string> _scopeDescriptions = new Dictionary<string, string>();
     private IScopeRegistry _scopeRegistry;
@@ -346,6 +347,7 @@ else
         _createTeamPath = BlazorOptions.Value.CreateTeamPath;
         _showConsentToggle = BlazorOptions.Value.Consent.ShowToggle;
         _consentRoles = BlazorOptions.Value.Consent.Roles ?? [];
+        _consentDefaultLevel = BlazorOptions.Value.Consent.AccessLevel;
         if (_tenantRoleRegistry != null)
             _roleDefinitions = _tenantRoleRegistry.All;
         if (_scopeRegistry != null)
@@ -776,9 +778,9 @@ else
         StateHasChanged();
     }
 
-    private ConsentVisibility ConsentOf(ITeam<TMember> team)
+    private AccessLevel? ConsentOf(ITeam<TMember> team)
     {
-        return TeamVisibility.Resolve(team.ConsentedRoles, team.ConsentAccessLevel);
+        return TeamVisibility.Resolve(team.ConsentedRoles, team.ConsentAccessLevel, _consentDefaultLevel);
     }
 
     private async Task BuildVisibleRolesAsync()

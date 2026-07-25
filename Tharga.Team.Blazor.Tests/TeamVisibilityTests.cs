@@ -41,40 +41,49 @@ public class TeamVisibilityTests
         Assert.False(TeamVisibility.CanSeeAllTeams(new ClaimsPrincipal(new ClaimsIdentity())));
     }
 
+    private const AccessLevel HostDefault = AccessLevel.Viewer;
+
     [Theory]
     // No consented roles -> nothing granted, whatever level is stored.
-    [InlineData(false, null, "None")]
-    [InlineData(false, AccessLevel.Administrator, "None")]
-    // Consented, level absent -> falls back to the host default, which is never Administrator.
-    [InlineData(true, null, "Partial")]
-    // Consented at a partial level.
-    [InlineData(true, AccessLevel.Viewer, "Partial")]
-    [InlineData(true, AccessLevel.User, "Partial")]
-    // Consented at full team-administrator access.
-    [InlineData(true, AccessLevel.Administrator, "Full")]
-    public void Resolve_ReducesConsentToTheThreeUiStates(bool hasRoles, AccessLevel? level, string expected)
+    [InlineData(false, null, null)]
+    [InlineData(false, AccessLevel.Administrator, null)]
+    // Consented at an explicit level -> that level, told apart rather than banded together.
+    [InlineData(true, AccessLevel.Viewer, AccessLevel.Viewer)]
+    [InlineData(true, AccessLevel.User, AccessLevel.User)]
+    [InlineData(true, AccessLevel.Administrator, AccessLevel.Administrator)]
+    public void Resolve_ReportsTheGrantedLevel(bool hasRoles, AccessLevel? stored, AccessLevel? expected)
     {
         var roles = hasRoles ? ["Developer"] : Array.Empty<string>();
 
-        Assert.Equal(expected, TeamVisibility.Resolve(roles, level).ToString());
+        Assert.Equal(expected, TeamVisibility.Resolve(roles, stored, HostDefault));
+    }
+
+    [Theory]
+    [InlineData(AccessLevel.Viewer)]
+    [InlineData(AccessLevel.User)]
+    [InlineData(AccessLevel.Administrator)]
+    public void Resolve_LevelAbsent_UsesTheHostDefault(AccessLevel hostDefault)
+    {
+        Assert.Equal(hostDefault, TeamVisibility.Resolve(["Developer"], null, hostDefault));
     }
 
     [Fact]
-    public void Resolve_NullRoles_IsNone()
+    public void Resolve_NullRoles_GrantsNothing()
     {
-        Assert.Equal("None", TeamVisibility.Resolve(null, AccessLevel.Administrator).ToString());
+        Assert.Null(TeamVisibility.Resolve(null, AccessLevel.Administrator, HostDefault));
     }
 
     [Theory]
     [InlineData(false, null, "No access", "Danger")]
-    [InlineData(true, AccessLevel.Viewer, "Partial access", "Warning")]
+    [InlineData(true, AccessLevel.Viewer, "Viewer", "Warning")]
+    [InlineData(true, AccessLevel.User, "User", "Warning")]
     [InlineData(true, AccessLevel.Administrator, "Full access", "Success")]
     public void LabelAndBadgeStyle_PairTextWithTint(bool hasRoles, AccessLevel? level, string label, string badgeStyle)
     {
         var roles = hasRoles ? ["Developer"] : Array.Empty<string>();
-        var visibility = TeamVisibility.Resolve(roles, level);
+        var consent = TeamVisibility.Resolve(roles, level, HostDefault);
 
-        Assert.Equal(label, TeamVisibility.Label(visibility));
-        Assert.Equal(badgeStyle, TeamVisibility.BadgeStyle(visibility));
+        Assert.Equal(label, TeamVisibility.Label(consent));
+        Assert.Equal(badgeStyle, TeamVisibility.BadgeStyle(consent));
     }
 }

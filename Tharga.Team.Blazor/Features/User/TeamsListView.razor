@@ -5,6 +5,7 @@
 @inject ITeamService TeamService
 @inject IUserService UserService
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject Microsoft.Extensions.Options.IOptions<Tharga.Team.Blazor.Framework.ThargaBlazorOptions> BlazorOptions
 
 @if (!_canAdminister)
 {
@@ -132,7 +133,7 @@ else
             Key = t.Key,
             Name = t.Name,
             MemberCount = t.Members?.Length ?? 0,
-            Consent = TeamVisibility.Resolve(t.ConsentedRoles, t.ConsentAccessLevel),
+            Consent = TeamVisibility.Resolve(t.ConsentedRoles, t.ConsentAccessLevel, BlazorOptions.Value.Consent.AccessLevel),
             Members = (t.Members ?? []).Select(m =>
             {
                 var user = _users.FirstOrDefault(u => u.Key == m.Key);

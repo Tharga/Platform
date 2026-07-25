@@ -16,5 +16,8 @@ public record TeamViewModel
     /// What this team has consented to grant an oversight caller. Only meaningful to a caller holding
     /// the <c>teams:read</c> system scope; otherwise every listed team is one the caller belongs to.
     /// </summary>
-    public ConsentVisibility Consent { get; init; }
+    /// <summary>
+    /// The access level this team has consented to grant, or null when it has consented to nothing.
+    /// </summary>
+    public AccessLevel? Consent { get; init; }
 }
