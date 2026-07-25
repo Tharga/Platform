@@ -300,10 +300,14 @@ else
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
-        // Access is granted by the apikey:manage scope. Cross-team/Developer access comes from the global
-        // role→system-scope mapping (o.ConfigureSystemRoles) granting apikey:manage, not a per-component role.
-        _hasAccess = user.HasClaim(TeamClaimTypes.Scope, ApiKeyScopes.Manage);
-        if (!_hasAccess) { await base.OnInitializedAsync(); return; }
+        _selectedTeam = await TeamStateService.GetSelectedTeamAsync();
+
+        // Bound to the selected team: apikey:manage is issued for one team, so a bare claim check would
+        // offer key management on a team the caller has no access to and the service then rejects. With no
+        // team selected yet this is not a denial — the "No team selected" branch handles that.
+        _hasAccess = _selectedTeam == null
+                     || TeamScopeGate.HasTeamScope(user, ApiKeyScopes.Manage, _selectedTeam.Key);
+        if (!_hasAccess) { _teamLoaded = true; await base.OnInitializedAsync(); return; }
 
         _scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
         _allScopeNames = _scopeRegistry?.All.Select(s => s.Name).ToArray() ?? Array.Empty<string>();
@@ -315,7 +319,6 @@ else
         _newExpiryDate = _options.MaxExpiryDays.HasValue
             ? DateTime.UtcNow.AddDays(_options.MaxExpiryDays.Value).Date
             : null;
-        _selectedTeam = await TeamStateService.GetSelectedTeamAsync();
         _roleDefinitions = await ApiKeyRolePicker.ResolveAsync(_tenantRoleService, _tenantRoleRegistry, _selectedTeam?.Key);
         _teamLoaded = true;
         await ReloadData();
