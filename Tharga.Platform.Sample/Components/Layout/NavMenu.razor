@@ -1,26 +1,69 @@
-@using Microsoft.AspNetCore.Authorization
+@inject ITeamStateService TeamStateService
 
-<RadzenStack Orientation="Orientation.Vertical" Gap="0" class="rz-h-100">
-    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" class="rz-p-3">
-        <RadzenIcon Icon="hub" />
-        <RadzenText TextStyle="TextStyle.H6" class="rz-m-0">Platform Sample</RadzenText>
+<RadzenHeader>
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
+            <RadzenSidebarToggle Click="@(() => _menuExpanded = !_menuExpanded)" />
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
+                <BreadCrumbs ShowRoot="true" />
+            </RadzenStack>
+        </RadzenStack>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+            <TeamSelector />
+            <LoginDisplay />
+        </RadzenStack>
     </RadzenStack>
+</RadzenHeader>
 
-    <RadzenPanelMenu>
+<RadzenSidebar Responsive="false" Style="width: max-content">
+    <RadzenPanelMenu DisplayStyle="@(_menuExpanded ? MenuItemDisplayStyle.IconAndText : MenuItemDisplayStyle.Icon)" ShowArrow="true">
         <RadzenPanelMenuItem Text="Home" Path="" Icon="home" />
-        <RadzenPanelMenuItem Text="Team" Path="team" Icon="groups" />
-        <RadzenPanelMenuItem Text="API Keys" Path="api-keys" Icon="key" />
-        <RadzenPanelMenuItem Text="Scopes" Path="scopes" Icon="shield" />
-        <RadzenPanelMenuItem Text="Custom roles" Path="roles" Icon="admin_panel_settings" />
-        <AuthorizeView Roles="@Tharga.Team.Blazor.Framework.Roles.Developer">
-            <Authorized>
-                <RadzenPanelMenuItem Text="System API Keys" Path="system-api-keys" Icon="vpn_key" />
-            </Authorized>
-        </AuthorizeView>
-        <RadzenPanelMenuItem Text="Audit" Path="audit" Icon="receipt_long" />
-        <RadzenPanelMenuItem Text="Profile" Path="profile" Icon="person" />
-        <RadzenPanelMenuItem Text="Users" Path="users" Icon="people" />
-        <RadzenPanelMenuItem Text="Invites" Path="invites" Icon="mail" />
-        <RadzenPanelMenuItem Text="Icon settings" Path="icon-settings" Icon="image" />
+        <CascadingAuthenticationState>
+
+            <RadzenPanelMenuItem Text="Scopes" Path="scopes" Icon="shield"/>
+
+            <AuthorizeView>
+                <Authorized>
+                    <RadzenPanelMenuItem Text="Profile" Path="profile" Icon="person"/>
+                    <RadzenPanelMenuItem Text="Team" Path="team" Icon="groups"/>
+                    <RadzenPanelMenuItem Text="Invites" Path="invites" Icon="mail"/>
+                    <RadzenPanelMenuItem Text="Custom roles" Path="roles" Icon="admin_panel_settings"/>
+                    <RadzenPanelMenuItem Text="Access" Path="access" Icon="verified_user"/>
+                    @if (_hasTeam)
+                    {
+                        <RadzenPanelMenuItem Text="Team audit" Path="team-audit" Icon="receipt_long"/>
+                        <RadzenPanelMenuItem Text="API Keys" Path="api-keys" Icon="key"/>
+                    }
+                </Authorized>
+            </AuthorizeView>
+
+            <AuthorizeView Roles="@Tharga.Team.Blazor.Framework.Roles.Developer">
+                <Authorized>
+                    <RadzenPanelMenuItem Text="System audit" Path="audit" Icon="receipt_long"/>
+                    <RadzenPanelMenuItem Text="System API Keys" Path="system-api-keys" Icon="vpn_key"/>
+                    <RadzenPanelMenuItem Text="Users" Path="users" Icon="people" />
+                    <RadzenPanelMenuItem Text="Icon settings" Path="icon-settings" Icon="image" />
+                </Authorized>
+            </AuthorizeView>
+
+        </CascadingAuthenticationState>
     </RadzenPanelMenu>
-</RadzenStack>
+</RadzenSidebar>
+
+@code {
+    bool _menuExpanded = true;
+    bool _hasTeam;
+
+    protected override async Task OnInitializedAsync()
+    {
+        TeamStateService.SelectedTeamChangedEvent += async (_, _) => { await LoadAsync(); await InvokeAsync(StateHasChanged); };
+        await LoadAsync();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var team = await TeamStateService.GetSelectedTeamAsync();
+        _hasTeam = team != null;
+    }
+}

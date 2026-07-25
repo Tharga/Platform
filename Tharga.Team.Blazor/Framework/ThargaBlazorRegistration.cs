@@ -222,7 +222,7 @@ public static class ThargaBlazorRegistration
             else
                 throw new InvalidOperationException("Cannot resolve inner IUserService for authorization decoration.");
 
-            return new AuthorizationUserServiceDecorator(inner, sp.GetRequiredService<TeamAuthorizer>());
+            return new AuthorizationUserServiceDecorator(inner, sp.GetRequiredService<TeamAuthorizer>(), sp.GetRequiredService<ITeamService>);
         });
     }
 

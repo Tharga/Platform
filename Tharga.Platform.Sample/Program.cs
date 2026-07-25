@@ -1,4 +1,6 @@
 using Radzen;
+using Serilog;
+using Serilog.Events;
 using Tharga.Mcp;
 using Tharga.MongoDB;
 using Tharga.Platform.Mcp;
@@ -13,6 +15,21 @@ using Tharga.Team.MongoDB;
 using Tharga.Team.Service.Audit;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Logs land in <project>/logs so a failed circuit can be traced after the fact — the browser only shows
+// the error boundary, and the terminal scrolls away. ContentRootPath (not the working directory) keeps
+// them next to the source whether the app is started from the IDE or `dotnet run`.
+builder.Services.AddSerilog((services, configuration) => configuration
+    .ReadFrom.Configuration(builder.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.File(
+        Path.Combine(builder.Environment.ContentRootPath, "logs", "sample-.log"),
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 14,
+        restrictedToMinimumLevel: LogEventLevel.Information,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] ({SourceContext}) {Message:lj}{NewLine}{Exception}"));
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -132,6 +149,8 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     app.UseHsts();
 }
+
+app.UseSerilogRequestLogging();
 
 app.UseHttpsRedirection();
 app.UseAntiforgery();

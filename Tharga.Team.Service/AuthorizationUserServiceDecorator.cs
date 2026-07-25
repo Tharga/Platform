@@ -18,11 +18,21 @@ public sealed class AuthorizationUserServiceDecorator : IUserService
 {
     private readonly IUserService _inner;
     private readonly TeamAuthorizer _authorizer;
+    private readonly Func<ITeamService> _teamServiceFactory;
 
-    public AuthorizationUserServiceDecorator(IUserService inner, TeamAuthorizer authorizer)
+    /// <param name="inner">The undecorated user store.</param>
+    /// <param name="authorizer">Claims-based authorization primitives.</param>
+    /// <param name="teamServiceFactory">
+    /// Resolves <see cref="ITeamService"/> on demand for <see cref="GetTeamMemberUsersAsync"/>. Deliberately
+    /// a factory rather than an instance: <c>TeamServiceBase</c> takes an <see cref="IUserService"/>, so
+    /// constructor-injecting the team service here would close a dependency cycle. When omitted, the
+    /// co-member projection yields the caller alone.
+    /// </param>
+    public AuthorizationUserServiceDecorator(IUserService inner, TeamAuthorizer authorizer, Func<ITeamService> teamServiceFactory = null)
     {
         _inner = inner;
         _authorizer = authorizer;
+        _teamServiceFactory = teamServiceFactory;
     }
 
     // Self-service — pass through.
@@ -45,6 +55,37 @@ public sealed class AuthorizationUserServiceDecorator : IUserService
         {
             yield return user;
         }
+    }
+
+    // Self-service projection — the caller's co-members, resolved from their own memberships.
+    public async Task<IReadOnlyList<IUser>> GetTeamMemberUsersAsync()
+    {
+        if (!await _authorizer.IsAuthenticatedAsync())
+            throw new UnauthorizedAccessException($"{nameof(GetTeamMemberUsersAsync)} requires an authenticated caller.");
+
+        var current = await _inner.GetCurrentUserAsync();
+        var visibleKeys = new HashSet<string>(StringComparer.Ordinal);
+        if (!string.IsNullOrEmpty(current?.Key)) visibleKeys.Add(current.Key);
+
+        var teamService = _teamServiceFactory?.Invoke();
+        if (teamService != null)
+        {
+            await foreach (var team in teamService.GetTeamsAsync())
+            {
+                await foreach (var member in teamService.GetMembersAsync(team.Key))
+                {
+                    if (!string.IsNullOrEmpty(member.Key)) visibleKeys.Add(member.Key);
+                }
+            }
+        }
+
+        var users = new List<IUser>();
+        await foreach (var user in _inner.GetAsync())
+        {
+            if (visibleKeys.Contains(user.Key)) users.Add(user);
+        }
+
+        return users;
     }
 
     public async Task<IUser> GetUserByKeyAsync(string userKey)

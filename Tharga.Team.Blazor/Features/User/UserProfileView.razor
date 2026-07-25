@@ -17,7 +17,25 @@
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
                         <UserAvatar User="_user" Size="64px" />
                         <RadzenStack Gap="0.25rem">
-                            <RadzenText TextStyle="TextStyle.Subtitle1"><strong>@(_user?.Name ?? context.User.GetEmail())</strong></RadzenText>
+                            @if (_editingName)
+                            {
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
+                                    <RadzenTextBox Value="@_editedName" ValueChanged="@(v => _editedName = v)" Placeholder="Your name" />
+                                    <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Small"
+                                                  Click="SaveName" title="Save" />
+                                    <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Small"
+                                                  Click="@(() => _editingName = false)" title="Cancel" />
+                                </RadzenStack>
+                            }
+                            else
+                            {
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
+                                    <RadzenText TextStyle="TextStyle.Subtitle1" class="rz-m-0"><strong>@(_user?.Name ?? context.User.GetEmail())</strong></RadzenText>
+                                    <RadzenButton Icon="edit" Variant="Variant.Text" Size="ButtonSize.Small"
+                                                  Click="StartNameEdit" title="Edit your name" />
+                                </RadzenStack>
+                            }
+                            <RadzenText TextStyle="TextStyle.Caption">@(_user?.EMail ?? context.User.GetEmail())</RadzenText>
                             @if (_canUpload)
                             {
                                 <RadzenButton Text="Change picture" Icon="photo_camera" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="ChangePicture" />
@@ -60,11 +78,37 @@
 @code {
     private IUser _user;
     private bool _canUpload;
+    private bool _editingName;
+    private string _editedName;
 
     protected override async Task OnInitializedAsync()
     {
         _user = await UserService.GetCurrentUserAsync();
         _canUpload = IconSettings.AllowUserUpload && ServiceProvider.GetService<IIconStore>() != null;
+    }
+
+    private void StartNameEdit()
+    {
+        _editedName = _user?.Name;
+        _editingName = true;
+    }
+
+    /// <summary>
+    /// Writes the caller's own <see cref="IUser.Name"/> — the root name, shared across every team.
+    /// Per-team display names are overrides set by a team administrator and are untouched here.
+    /// </summary>
+    private async Task SaveName()
+    {
+        var trimmed = string.IsNullOrWhiteSpace(_editedName) ? null : _editedName.Trim();
+        if (trimmed == _user?.Name)
+        {
+            _editingName = false;
+            return;
+        }
+
+        await UserService.SetUserNameAsync(_user.Key, trimmed);
+        _user = await UserService.GetCurrentUserAsync();
+        _editingName = false;
     }
 
     private async Task ChangePicture()

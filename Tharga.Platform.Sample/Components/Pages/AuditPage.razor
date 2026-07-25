@@ -1,8 +1,21 @@
 @page "/audit"
 @rendermode InteractiveServer
-@attribute [Authorize]
+@attribute [Authorize(Roles = Tharga.Team.Blazor.Framework.Roles.Developer)]
 @using Microsoft.AspNetCore.Authorization
 
-<PageTitle>Audit Log</PageTitle>
+@*
+    System-wide audit: every entry from every team. Gated on the Developer role because this sample maps
+    audit:read into that role via ConfigureSystemRoles, which grants it independently of any team. The
+    per-team view is at /team-audit.
+*@
+
+<PageTitle>System Audit Log</PageTitle>
+
+<RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" Variant="Variant.Flat" AllowClose="false" class="rz-mb-3">
+    <RadzenText TextStyle="TextStyle.Body2">
+        System-wide — entries from every team. For the selected team only, see
+        <RadzenLink Path="team-audit" Text="the team audit log" />.
+    </RadzenText>
+</RadzenAlert>
 
 <AuditLogView />

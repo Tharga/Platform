@@ -66,7 +66,7 @@ else
                             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
                                 <RadzenLabel Text="@($"Consent access for {string.Join(", ", _consentRoles)}")" Style="font-size: 0.85em;" />
                                 <RadzenDropDown TValue="AccessLevel?"
-                                                Value="@(team.ConsentedRoles is { Length: > 0 } ? team.ConsentAccessLevel ?? AccessLevel.Viewer : (AccessLevel?)null)"
+                                                Value="@ConsentOf(team)"
                                                 Data="@_consentLevels"
                                                 AllowClear="true"
                                                 Disabled="@(!CanEditConsent(team))"
@@ -113,8 +113,7 @@ else
                                     <RadzenDataGridColumn Title="Name" Property="@nameof(ITeamMember.Name)">
                                         <Template>
                                             @{
-                                                var canEditThisRow = EnableMemberNameEdit && (_canManageMembers || context.Key == _user.Key);
-                                                var isSelfEdit = context.Key == _user.Key;
+                                                var canEditThisRow = EnableMemberNameEdit && CanManageMembers(team);
                                             }
                                             @if (canEditThisRow && !string.IsNullOrEmpty(_editingMemberKey) && _editingMemberKey == context.Key)
                                             {
@@ -126,7 +125,7 @@ else
                                                     <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Small"
                                                                   Click="@(() => SaveMemberName(team, context))"
                                                                   Style="flex: 0 0 auto;" />
-                                                    @if (!isSelfEdit && !string.IsNullOrEmpty(context.Name))
+                                                    @if (!string.IsNullOrEmpty(context.Name))
                                                     {
                                                         <RadzenButton Icon="restart_alt" ButtonStyle="ButtonStyle.Warning" Variant="Variant.Flat" Size="ButtonSize.Small"
                                                                       Click="@(() => ResetMemberName(team, context))"
@@ -170,7 +169,7 @@ else
                                             {
                                                 <RadzenText>@context.AccessLevel</RadzenText>
                                             }
-                                            else if (_canManageMembers)
+                                            else if (CanManageMembers(team))
                                             {
                                                 // Custom hidden until #76 adds member scope/role editing (see InviteUserDialog).
                                                 var accessLevels = Enum.GetValues<AccessLevel>().Where(x => x != AccessLevel.Owner && x != AccessLevel.Custom);
@@ -184,7 +183,7 @@ else
                                     </RadzenDataGridColumn>
                                     <RadzenDataGridColumn Title="Roles" Width="200px" Visible="@(ShowRoles && _tenantRoleRegistry != null)">
                                         <Template>
-                                            @if (_canManageMembers && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
+                                            @if (CanManageMembers(team) && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
                                             {
                                                 <RoleEditor Roles="@GetVisibleRoles(team.Key)"
                                                             Selected="@(context.TenantRoles ?? Array.Empty<string>())"
@@ -198,7 +197,7 @@ else
                                     </RadzenDataGridColumn>
                                     <RadzenDataGridColumn Title="Scope Overrides" Width="200px" Visible="@(ShowScopeOverrides && _scopeRegistry != null)">
                                         <Template>
-                                            @if (_canManageMembers && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
+                                            @if (CanManageMembers(team) && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
                                             {
                                                 <ScopeOverrideEditor AllScopes="_allScopeNames"
                                                                      Descriptions="_scopeDescriptions"
@@ -239,13 +238,13 @@ else
                                     <RadzenDataGridColumn>
                                         <Template>
                                             <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem">
-                                                @if (_canManageMembers && context.Invitation != null)
+                                                @if (CanManageMembers(team) && context.Invitation != null)
                                                 {
                                                     <span title="Copy invitation link">
                                                         <StandardButton Icon="link" Click="@(() => CopyInvitationLink(team, context.Key))"/>
                                                     </span>
                                                 }
-                                                @if (_canManageMembers && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
+                                                @if (CanManageMembers(team) && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
                                                 {
                                                     <span title="Remove member">
                                                         <StandardButton Icon="remove" Click="@(() => RemoveUserFromTeam(team, context.Key))"/>
@@ -323,6 +322,7 @@ else
     private string _createTeamPath;
     private bool _showConsentToggle;
     private string[] _consentRoles;
+    private AccessLevel _consentDefaultLevel;
     private string[] _allScopeNames = Array.Empty<string>();
     private IReadOnlyDictionary<string, string> _scopeDescriptions = new Dictionary<string, string>();
     private IScopeRegistry _scopeRegistry;
@@ -347,6 +347,7 @@ else
         _createTeamPath = BlazorOptions.Value.CreateTeamPath;
         _showConsentToggle = BlazorOptions.Value.Consent.ShowToggle;
         _consentRoles = BlazorOptions.Value.Consent.Roles ?? [];
+        _consentDefaultLevel = BlazorOptions.Value.Consent.AccessLevel;
         if (_tenantRoleRegistry != null)
             _roleDefinitions = _tenantRoleRegistry.All;
         if (_scopeRegistry != null)
@@ -355,8 +356,10 @@ else
             _scopeDescriptions = _scopeRegistry.All.ToDictionary(s => s.Name, s => s.Description);
         }
 
-        _users = await UserService.GetAsync().ToArrayAsync();
         _user = await UserService.GetCurrentUserAsync();
+        _users = UserDirectoryGate.Resolve(claims.HasClaim(TeamClaimTypes.Scope, SystemUserScopes.Manage)) == UserDirectorySource.FullDirectory
+            ? await UserService.GetAsync().ToArrayAsync()
+            : [.. await UserService.GetTeamMemberUsersAsync()];
 
         await ReloadTeams();
 
@@ -563,37 +566,11 @@ else
 
     private async Task SaveMemberName(ITeam<TMember> team, TMember member)
     {
-        var trimmed = string.IsNullOrWhiteSpace(_editingMemberName) ? null : _editingMemberName.Trim();
         var oldName = member.Name;
-        var isSelfEdit = member.Key == _user.Key;
 
-        if (isSelfEdit)
-        {
-            // Self-edit: this is "set my global name". Always overwrites User.Name; clear the
-            // per-team Member.Name override in this team so the row falls through to User.Name.
-            if (string.IsNullOrEmpty(trimmed))
-            {
-                CancelMemberNameEdit();
-                return;
-            }
-
-            await UserService.SetUserNameAsync(_user.Key, trimmed);
-            await TeamManagementService.SetMemberNameAsync(team.Key, _user.Key, null);
-            CancelMemberNameEdit();
-            await ReloadTeams();
-
-            if (OnMemberNameChanged.HasDelegate)
-            {
-                await OnMemberNameChanged.InvokeAsync(new MemberNameChangedArgs(team.Key, member.Key, oldName, null));
-            }
-            return;
-        }
-
-        // Admin-edit on another row: per-team override.
-        var defaultName = ResolveDefaultMemberName(member);
-
-        // Auto-fallback: if the input matches the resolved default, persist null (no override).
-        var newName = trimmed == defaultName ? null : trimmed;
+        // Per-team override only — the root IUser.Name belongs to the user's profile page and to user
+        // administration, and must not be reachable from a member row. See MemberNamePolicy.
+        var newName = MemberNamePolicy.ResolveOverride(_editingMemberName, ResolveDefaultMemberName(member));
 
         if (newName == oldName)
         {
@@ -737,7 +714,7 @@ else
             actions.Add((IconAction, "Set icon", "image"));
             actions.Add((RenameAction, "Rename", "edit"));
         }
-        if (HasAccessLevel(team, AccessLevel.Owner) && team.Members.Length > 1) actions.Add((TransferAction, "Transfer ownership", "swap_horiz"));
+        if (CanTransferOwnership(team)) actions.Add((TransferAction, "Transfer ownership", "swap_horiz"));
         if (CanLeaveTeam(team)) actions.Add((LeaveAction, "Leave", "remove"));
         if (CanDeleteTeam(team)) actions.Add((DeleteAction, "Delete", "delete"));
         return actions;
@@ -776,28 +753,34 @@ else
 
     private bool CanLeaveTeam(ITeam<TMember> team)
     {
-        return TeamActionGate.CanLeave(IsMemberOf(team), HasAccessLevel(team, AccessLevel.Owner));
+        return TeamActionGate.CanLeave(IsMemberOf(team), HasAccessLevel(team, AccessLevel.Owner), _selectedTeam?.Key, team.Key);
+    }
+
+    private bool CanTransferOwnership(ITeam<TMember> team)
+    {
+        return TeamActionGate.CanTransferOwnership(HasAccessLevel(team, AccessLevel.Owner), team.Members.Length > 1, _selectedTeam?.Key, team.Key);
     }
 
     private bool CanEditConsent(ITeam<TMember> team)
     {
-        return TeamActionGate.CanEditConsent(HasAccessLevel(team, AccessLevel.Administrator));
+        return TeamActionGate.CanEditConsent(_canManage, _selectedTeam?.Key, team.Key, HasAccessLevel(team, AccessLevel.Administrator));
     }
 
     private async Task ReloadTeams()
     {
         _teams = null;
         _selectedTeam = await TeamStateService.GetSelectedTeamAsync();
-        _teams = _canSeeAllTeams
+        var teams = _canSeeAllTeams
             ? await TeamService.GetAllTeamsAsync<TMember>().ToArrayAsync()
             : await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
+        _teams = teams.OrderBy(x => x.Name).ToArray();
         await BuildVisibleRolesAsync();
         StateHasChanged();
     }
 
-    private ConsentVisibility ConsentOf(ITeam<TMember> team)
+    private AccessLevel? ConsentOf(ITeam<TMember> team)
     {
-        return TeamVisibility.Resolve(team.ConsentedRoles, team.ConsentAccessLevel);
+        return TeamVisibility.Resolve(team.ConsentedRoles, team.ConsentAccessLevel, _consentDefaultLevel);
     }
 
     private async Task BuildVisibleRolesAsync()

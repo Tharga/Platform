@@ -241,7 +241,7 @@ builder.AddThargaAuth(o =>
 | Component | Namespace | Description |
 |-----------|-----------|-------------|
 | `<LoginDisplay />` | `Tharga.Team.Blazor.Features.Authentication` | Profile menu with Gravatar when authenticated, login button when not. Navigates to `/login`, `/logout`, and profile/team pages. The Team item can be restricted to specific roles via `TeamMenuRoles`. |
-| `<UserProfileView />` | `Tharga.Team.Blazor.Features.User` | Displays user's Gravatar, profile info, and authentication claims in an expandable card. |
+| `<UserProfileView />` | `Tharga.Team.Blazor.Features.User` | The signed-in user's avatar, name and email, with inline editing of their own name, plus authentication claims in an expandable card. |
 
 ### Usage
 
