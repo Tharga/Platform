@@ -13,7 +13,7 @@ public class DeveloperRoleEnricher : ITeamClaimsEnricher
 {
     private static readonly HashSet<string> _developerEmails = new(StringComparer.OrdinalIgnoreCase)
     {
-        "daniel.bohlin",
+        "daniel.bohlin@thargelion.se",
     };
 
     public Task EnrichAsync(ClaimsIdentity identity)

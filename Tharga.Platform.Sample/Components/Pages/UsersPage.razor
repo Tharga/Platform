@@ -3,7 +3,6 @@
 @attribute [Authorize(Roles = "Developer")]
 @using Microsoft.AspNetCore.Authorization
 @using Tharga.Platform.Sample.Framework.Team
-@using Tharga.Team.Blazor.Features.User
 @inject AppUserAdminService UserAdmin
 @inject DialogService DialogService
 @inject NotificationService NotificationService
@@ -11,12 +10,6 @@
 
 <PageTitle>Users</PageTitle>
 
-@*
-    The packaged tabbed admin view: Users (with last seen, verify + delete when the caller holds
-    users:manage), Teams, and — when a directory service is registered — the "Users in directory only" tab.
-    The sample's own Edit action rides in each row's split-button dropdown via ActionItems/ActionInvoked;
-    View, Verify and Delete are built in.
-*@
 <UsersView TMember="TeamMember" ActionInvoked="OnUserActionAsync">
     <ActionItems>
         <RadzenSplitButtonItem Text="Edit" Value="@EditAction" Icon="edit" />
