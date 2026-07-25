@@ -39,6 +39,12 @@ Two consequences, filed as the two issues:
   co-members' identities.
 - Require the team to be selected before the consent drop-down is editable.
 
+Added mid-feature (reported in session, no GitHub issue filed):
+
+- Each name lives on exactly one surface. `/profile` sets the caller's own root name and shows their
+  email; `/users` sets the root name administratively; `/team` writes per-team overrides only.
+- The member grid honours the selected team for every manage action, not just "Invite user".
+
 Out of scope: any change to how system scopes are granted, and any new host configuration.
 
 ## Decisions
@@ -66,6 +72,10 @@ Out of scope: any change to how system scopes are granted, and any new host conf
 - [ ] A user sees no user record for anyone they share no team with.
 - [ ] A caller holding `users:manage` still sees the full directory, unchanged.
 - [ ] The consent drop-down is read-only on any team that is not the selected, managed one.
+- [ ] A user can set their own name on `/profile`, and sees their email address there.
+- [ ] An administrator can set a user's root name on `/users`.
+- [ ] Editing a member name on `/team` changes only that team's override — never the root name — and
+      is possible only for a manager of the selected team.
 - [ ] Full test suite passes.
 
 ## Done condition

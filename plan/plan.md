@@ -55,6 +55,24 @@ Branch: `feature/team-member-visibility` (from `master`)
     `logs/sample-20260725.log`.
   - Committed separately as `chore:` — unrelated to the two issues, so it stays out of the fix commit.
 
+- [x] 7d. Name-editing surfaces (reported in session; no GitHub issue)
+  - Root cause: `SetUserNameAsync` — the root-name write — had exactly one UI call site in the whole
+    codebase, `TeamComponent.SaveMemberName`, under a "self-edit sets my global name" branch. So the
+    one page that must never touch the root name was the only page that did, while `/profile` and
+    `/users` had no name editing at all. Exactly inverted.
+  - `/team`: self-edit branch removed; the row always writes a per-team override via the new pure
+    `MemberNamePolicy.ResolveOverride` (7 tests). Name editing now requires `CanManageMembers(team)`,
+    so it is manage-only on the selected team — per the decision taken in session.
+  - `/profile`: own-name editing added (writes root name, self-service on the decorator) and the
+    email address is now shown.
+  - `/users`: "Rename" split-button action added, writing the root name. `UserViewModel.StoredName`
+    added so the editor binds to the persisted value, not the email-resolved fallback — otherwise
+    saving unchanged would promote a fallback into a real stored name.
+  - Selected-team gap closed on all six member-grid sites (name, access level, tenant roles, scope
+    overrides, invitation actions, member removal): `_canManageMembers` → `CanManageMembers(team)`.
+    Same defect class as #140; these were enabled on non-selected teams where the server rejects.
+  - Suite: 891 passed / 0 failed.
+
 - [ ] 8. Verify in the sample app
   - Sign in as a user without a system role, confirm the page renders, create a team, confirm the
     owner row shows email and avatar, and that the consent drop-down is read-only on unmanaged teams.
@@ -80,7 +98,11 @@ Branch: `feature/team-member-visibility` (from `master`)
 implemented and the suite is green at 883 (baseline 868). The reported stack trace confirmed
 `TeamComponent.razor:358` as the sole blocker on the render path, exactly as traced statically.
 
+Also fixed in the same session: Serilog file logging in the sample (7c) and the name-editing
+surfaces (7d). Suite at 891.
+
 Next: step 8 — verify in the sample app as a user without a system role (page renders, first team
-can be created, owner row shows email/avatar, consent read-only on unmanaged teams). Then the docs
-review in step 9: this changes what an ordinary member can see, so it likely warrants documenting
-rather than shipping as a silent fix.
+can be created, owner row shows email/avatar, consent read-only on unmanaged teams), plus the three
+name surfaces: own name + email on `/profile`, admin rename on `/users`, override-only on `/team`.
+Then the docs review in step 9: this changes what an ordinary member can see *and* where names are
+edited, so both warrant documenting rather than shipping as silent fixes.
