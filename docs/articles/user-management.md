@@ -111,13 +111,39 @@ Authorization is enforced in the service layer by decorators over `IUserManageme
 
 - **Self-service passes for any authenticated caller** — resolving the current user, the
   invitation-accept name seeding, and setting one's *own* display name.
-- **Everything cross-user requires `users:manage`** — enumerating users, reading a user by key,
+- **Co-members pass for any authenticated caller** — `IUserService.GetTeamMemberUsersAsync()` returns the
+  users who share at least one team with the caller, plus the caller. It takes no argument, so the
+  visibility set is derived entirely from the caller's own memberships and there is nothing to widen.
+- **Everything cross-user requires `users:manage`** — enumerating *all* users, reading a user by key,
   setting another user's name, activity/directory writes, and deletion.
+
+Team access level never grants `users:manage` — it is a *system* scope, mapped from app roles, while
+access levels grant only team scopes. A team owner is therefore an ordinary caller here, and the
+co-member projection is what lets `<TeamComponent />` show member emails, names and avatars without it.
+Without that projection a member row falls back to "Unknown" with no email, because accepting an
+invitation clears the per-team name override and promotes it to `IUser.Name`.
 
 The `<UsersView />` tabs check the scope up front and render a notice instead of the lists when the
 caller lacks it. Still protect the *page* that embeds the component with `[Authorize]` — and note that
 Blazor only enforces page-level `[Authorize]` when your router uses `AuthorizeRouteView` (an attribute
 on a non-page component does nothing).
+
+## Where names are edited
+
+A user has one **root name** (`IUser.Name`), shared everywhere, and optionally a **per-team override**
+(`ITeamMember.Name`) that applies only inside one team. Each is edited on exactly one surface:
+
+| Surface | Edits | Who |
+|---|---|---|
+| `<UserProfileView />` (profile page) | root name | the user, for themselves |
+| `<UsersView />` (users page) | root name | a holder of `users:manage` |
+| `<TeamComponent />` (team page) | per-team override only | a holder of `member:manage` **on the selected team** |
+
+The team surface never writes the root name. Submitting a member's displayed name unchanged stores *no*
+override, so the row keeps tracking that user's later renames rather than pinning a copy of the name.
+
+Accepting an invitation clears the per-team override and promotes the admin-entered name to `IUser.Name`,
+so an accepted member's name and email come from the user record — see the co-member note above.
 
 ## Verifying users
 
