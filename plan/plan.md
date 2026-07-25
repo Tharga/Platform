@@ -44,6 +44,17 @@ Branch: `feature/team-member-visibility` (from `master`)
     from unit tests — only a real provider proves it. 4 tests, all pass.
   - Suite: 883 passed / 0 failed (baseline 868).
 
+- [x] 7c. Sample app: Serilog file logging (requested mid-feature, not part of the fix)
+  - `Serilog.AspNetCore` 10.0.0, console + daily rolling file to `<contentRoot>/logs/sample-.log`,
+    14 files retained, `UseSerilogRequestLogging`. Levels moved from `Logging:LogLevel` to a
+    `Serilog:MinimumLevel` section in both appsettings files (the old section is inert once Serilog
+    is the provider). `logs/` added to `.gitignore`.
+  - `ContentRootPath` rather than the working directory, so the folder is the project's own whether
+    started from the IDE or `dotnet run`.
+  - Verified by running the app: it wrote the Kestrel startup failure, with stack trace, to
+    `logs/sample-20260725.log`.
+  - Committed separately as `chore:` — unrelated to the two issues, so it stays out of the fix commit.
+
 - [ ] 8. Verify in the sample app
   - Sign in as a user without a system role, confirm the page renders, create a team, confirm the
     owner row shows email and avatar, and that the consent drop-down is read-only on unmanaged teams.
