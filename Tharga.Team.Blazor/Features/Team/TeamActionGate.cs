@@ -50,8 +50,12 @@ internal static class TeamActionGate
     public static bool CanLeave(bool isMember, bool isOwner) => isMember && !isOwner;
 
     /// <summary>
-    /// Whether the consent selector should be editable. It stays visible either way so a
-    /// non-administrator can read the consented level without being able to change it.
+    /// Whether the consent selector should be editable: manage rights on this team and administrator
+    /// level on it. It stays visible either way so the consented level can be read without being
+    /// changeable. Access level alone is not sufficient — <c>SetTeamConsentAsync</c> is enforced on
+    /// <c>team:manage</c>, which is issued for the selected team only, so gating on level alone offered
+    /// an edit the service then rejected on every other team (Tharga/Platform#140).
     /// </summary>
-    public static bool CanEditConsent(bool isAdministrator) => isAdministrator;
+    public static bool CanEditConsent(bool hasManageScope, string selectedTeamKey, string teamKey, bool isAdministrator)
+        => CanManage(hasManageScope, selectedTeamKey, teamKey) && isAdministrator;
 }

@@ -17,6 +17,22 @@ public interface IUserService
     IAsyncEnumerable<IUser> GetAsync();
 
     /// <summary>
+    /// The users who share at least one team with the caller, plus the caller themselves. Self-service:
+    /// an authenticated caller is required but no scope, because the result is derived entirely from the
+    /// caller's own team memberships and takes no argument that could widen it.
+    /// </summary>
+    /// <remarks>
+    /// This is the identity source for the team member list when the caller lacks
+    /// <see cref="SystemUserScopes.Manage"/>. A member row's email, display name and icon live on the user
+    /// record rather than on <see cref="ITeamMember"/> — accepting an invitation clears the per-team name
+    /// override and promotes it to <see cref="IUser.Name"/> — so without this projection a team owner would
+    /// see their own accepted members as unidentified.
+    /// The default implementation returns an empty list; <c>AuthorizationUserServiceDecorator</c> supplies
+    /// the real projection, as it holds the undecorated store.
+    /// </remarks>
+    Task<IReadOnlyList<IUser>> GetTeamMemberUsersAsync() => Task.FromResult<IReadOnlyList<IUser>>([]);
+
+    /// <summary>
     /// Sets the user's display name only if it is currently null/empty. Used by the
     /// invitation-accept flow to promote the admin-entered invitation name into the
     /// new user's identity without clobbering an IdP-provided name.

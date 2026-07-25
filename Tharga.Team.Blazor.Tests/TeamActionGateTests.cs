@@ -87,10 +87,13 @@ public class TeamActionGateTests
     }
 
     [Theory]
-    [InlineData(true, true)]
-    [InlineData(false, false)]
-    public void CanEditConsent_RequiresAdministrator(bool isAdministrator, bool expected)
+    [InlineData(true, "t-1", "t-1", true, true)]
+    [InlineData(true, "t-1", "t-1", false, false)]
+    [InlineData(true, "t-1", "t-2", true, false)]
+    [InlineData(false, "t-1", "t-1", true, false)]
+    [InlineData(true, null, "t-1", true, false)]
+    public void CanEditConsent_RequiresSelectedManagedTeamAndAdministrator(bool hasManageScope, string selectedTeamKey, string teamKey, bool isAdministrator, bool expected)
     {
-        Assert.Equal(expected, TeamActionGate.CanEditConsent(isAdministrator));
+        Assert.Equal(expected, TeamActionGate.CanEditConsent(hasManageScope, selectedTeamKey, teamKey, isAdministrator));
     }
 }

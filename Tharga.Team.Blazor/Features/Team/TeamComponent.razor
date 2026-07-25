@@ -355,8 +355,10 @@ else
             _scopeDescriptions = _scopeRegistry.All.ToDictionary(s => s.Name, s => s.Description);
         }
 
-        _users = await UserService.GetAsync().ToArrayAsync();
         _user = await UserService.GetCurrentUserAsync();
+        _users = UserDirectoryGate.Resolve(claims.HasClaim(TeamClaimTypes.Scope, SystemUserScopes.Manage)) == UserDirectorySource.FullDirectory
+            ? await UserService.GetAsync().ToArrayAsync()
+            : [.. await UserService.GetTeamMemberUsersAsync()];
 
         await ReloadTeams();
 
@@ -781,7 +783,7 @@ else
 
     private bool CanEditConsent(ITeam<TMember> team)
     {
-        return TeamActionGate.CanEditConsent(HasAccessLevel(team, AccessLevel.Administrator));
+        return TeamActionGate.CanEditConsent(_canManage, _selectedTeam?.Key, team.Key, HasAccessLevel(team, AccessLevel.Administrator));
     }
 
     private async Task ReloadTeams()
