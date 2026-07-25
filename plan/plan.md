@@ -25,28 +25,29 @@ Branch: `feature/team-bound-service-authorization` (from `master`, which now car
     two team fixtures a `teamKey` first argument (preserving `Circuit_Without_TeamKey_Denies`'s intent)
     and added a system fixture. +5 tests including the load-bearing A-vs-B rejection. Suite: 925 pass.
 
-- [~] 4. Split `IApiKeyManagementService`
-  - Seven `teamKey`-taking methods stay.
-  - `GetSystemKeysAsync`, `CreateSystemKeyAsync`, `RefreshSystemKeyAsync`, `LockSystemKeyAsync`,
-    `DeleteSystemKeyAsync` move to a new `ISystemApiKeyManagementService`.
-  - Update `SystemApiKeyView` (system) and `ApiKeyView` (team) to the split interfaces; the sample's
-    `/api-keys` and `/system-api-keys` pages already separate along this seam.
+- [x] 4. Split `IApiKeyManagementService`
+  - Five `*SystemKeyAsync` methods moved to a new `ISystemApiKeyManagementService`, with a matching
+    `SystemApiKeyManagementService` implementation. They were pure delegations to
+    `IApiKeyAdministrationService` with no per-team owner-scoping, so the seam was clean.
+  - `SystemApiKeyView` was the only affected call site.
 
-- [ ] 5. Relocate `CreateTeamAsync`
-  - Off `ITeamManagementService` onto a lifecycle service. Authorization stays
-    "authenticated + `AllowTeamCreation`" as `RequireCreateAsync` already implements.
-  - Call sites: `TeamComponent.CreateTeam`, plus any sample usage.
+- [x] 5. Relocate `CreateTeamAsync`
+  - New `ITeamLifecycleService`. `TeamManagementService<TMember>` implements both interfaces (one class,
+    two registrations) rather than splitting the implementation — the method is a single delegation and a
+    second class would be ceremony.
+  - `TeamComponent` injects `ITeamLifecycleService` for the create path.
 
-- [ ] 6. `AddTeamService` / `AddSystemService`
-  - Registration APIs that install the matching decorator. Replace the plain
-    `AddScoped<IApiKeyManagementService, …>` in `ControllersRegistration.AddThargaApiKeys`.
-  - Team registration resolves the team key from the call's first argument (one rule for the whole
-    interface — validation of that rule is phase 2).
+- [x] 6. `AddTeamService` / `AddSystemService`
+  - `AddThargaApiKeys` now registers the team service and the system service by kind, replacing the plain
+    `AddScoped` that installed no wrapper at all. **This is the step that closes the live hole** — the
+    binding built in step 3 now actually applies to API key management.
 
-- [ ] 7. Tests
-  - The load-bearing one: holding the scope for team A, call a team service passing team B → rejected.
-  - System service with no team selected → allowed.
-  - Existing `ScopeProxyTests` / `ScopeProxyPrincipalAccessorTests` updated for the new shape.
+- [x] 7. Tests
+  - `ScopeServiceRegistrationTests` (7): the registration APIs through a real container — team B rejected
+    while holding team A's scope, team A allowed, resolved instance is a wrapper not the implementation,
+    system service works with no team selected, and `AddThargaApiKeys` registers via a factory (the shape
+    a plain `AddScoped` cannot produce) with both interfaces present.
+  - Suite: 932 pass (baseline 920).
 
 - [ ] 8. Full suite, then docs review
   - The registration APIs and the interface split are consumer-facing; check `README.md` and
@@ -65,5 +66,9 @@ Branch: `feature/team-bound-service-authorization` (from `master`, which now car
 
 ## Last session
 
-2026-07-25 — Branch created from master, package pass done (ImageSharp held). Plan written; next is the
-baseline build/test at step 2, then the `TeamAuthorizer` consolidation at step 3.
+2026-07-26 — Steps 1–7 complete; phase 1's substance is done and the live hole is closed. 932 tests pass
+(baseline 920). Remaining: step 8 (docs review — the registration APIs and both interface splits are
+consumer-facing) and step 9 (close out).
+
+Phase 2 (two-way registration validation, startup sweep, architecture test) and phase 3 (UI gate helper)
+are unblocked and can follow. Phase 4 waits on the Tharga.MongoDB interception seam, in progress there.
