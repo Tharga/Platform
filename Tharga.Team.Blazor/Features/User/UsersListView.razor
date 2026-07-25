@@ -54,6 +54,7 @@ else if (_loaded)
                                 {
                                     <RadzenSplitButtonItem Text="Verify" Value="@VerifyAction" Icon="person_search" />
                                 }
+                                <RadzenSplitButtonItem Text="Rename" Value="@RenameAction" Icon="edit" />
                                 @if (_showAdminUpload)
                                 {
                                     <RadzenSplitButtonItem Text="Set icon" Value="@SetIconAction" Icon="image" />
@@ -118,6 +119,7 @@ else
     private const string VerifyAction = "verify";
     private const string DeleteAction = "delete";
     private const string SetIconAction = "set-icon";
+    private const string RenameAction = "rename";
 
     private bool _loaded;
     private bool _canAdminister = true;
@@ -169,6 +171,7 @@ else
         {
             Key = u.Key,
             Name = u.Name ?? TeamServiceBase.ResolveDisplayName(u),
+            StoredName = u.Name,
             EMail = u.EMail,
             Icon = u.Icon,
             LastSeen = u.LastSeen,
@@ -199,6 +202,9 @@ else
             case SetIconAction:
                 await SetUserIconAsync(user);
                 break;
+            case RenameAction:
+                await RenameUserAsync(user);
+                break;
             default:
                 await ActionInvoked.InvokeAsync(new UserRowAction(item.Value, user));
                 break;
@@ -216,6 +222,43 @@ else
             new DialogOptions { Width = "480px" });
 
         if (result is true) await LoadDataAsync();
+    }
+
+    /// <summary>
+    /// Administrative edit of a user's root <see cref="IUser.Name"/> — the name they carry everywhere.
+    /// Per-team display names are separate overrides, set on the team surface, and are not affected.
+    /// </summary>
+    private async Task RenameUserAsync(UserViewModel user)
+    {
+        var editedName = user.StoredName;
+
+        var confirmed = await DialogService.OpenAsync($"Rename — {user.EMail ?? user.Name}", ds =>
+            @<RadzenStack Gap="1rem">
+                <RadzenText TextStyle="TextStyle.Body2">
+                    This sets the user's name everywhere. Leave it empty to fall back to a name resolved from their email.
+                </RadzenText>
+                <RadzenTextBox Value="@editedName" ValueChanged="@(v => editedName = v)" Placeholder="Name" Style="width: 100%;" />
+                <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" Gap="0.5rem">
+                    <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(_ => ds.Close(false))" />
+                    <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Click="@(_ => ds.Close(true))" />
+                </RadzenStack>
+            </RadzenStack>,
+            new DialogOptions { Width = "480px" });
+
+        if (confirmed is not true) return;
+
+        var trimmed = string.IsNullOrWhiteSpace(editedName) ? null : editedName.Trim();
+        if (trimmed == user.StoredName) return;
+
+        try
+        {
+            await UserService.SetUserNameAsync(user.Key, trimmed);
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Rename failed", ex.Message);
+        }
     }
 
     private void ToggleDetails(UserViewModel user)
