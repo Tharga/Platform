@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Tharga.Team;
 
@@ -7,10 +7,10 @@ namespace Tharga.Team.Service.Tests;
 public interface IAsyncScopedTestService
 {
     [RequireScope("doc:read")]
-    Task<string> ReadAsync();
+    Task<string> ReadAsync(string teamKey);
 
     [RequireScope("doc:write")]
-    Task WriteAsync();
+    Task WriteAsync(string teamKey);
 }
 
 public class ScopeProxyPrincipalAccessorTests
@@ -31,9 +31,9 @@ public class ScopeProxyPrincipalAccessorTests
     private static IAsyncScopedTestService CreateProxy(ClaimsPrincipal principal)
     {
         var target = Substitute.For<IAsyncScopedTestService>();
-        target.ReadAsync().Returns(Task.FromResult("read-ok"));
-        target.WriteAsync().Returns(Task.CompletedTask);
-        return ScopeProxy<IAsyncScopedTestService>.Create(target, new FixedPrincipalAccessor(principal));
+        target.ReadAsync(Arg.Any<string>()).Returns(Task.FromResult("read-ok"));
+        target.WriteAsync(Arg.Any<string>()).Returns(Task.CompletedTask);
+        return ScopeProxy<IAsyncScopedTestService>.Create(target, new FixedPrincipalAccessor(principal), ServiceScopeKind.Team);
     }
 
     // The circuit case from #97: no HttpContext, principal comes from the accessor (e.g. AuthenticationStateProvider).
@@ -42,21 +42,21 @@ public class ScopeProxyPrincipalAccessorTests
     public async Task Circuit_With_Required_Scope_Allows_AsyncMethod()
     {
         var proxy = CreateProxy(Principal("team-1", "doc:read"));
-        Assert.Equal("read-ok", await proxy.ReadAsync());
+        Assert.Equal("read-ok", await proxy.ReadAsync("team-1"));
     }
 
     [Fact]
     public async Task Circuit_Without_Required_Scope_Denies_AsyncMethod()
     {
         var proxy = CreateProxy(Principal("team-1", "doc:read")); // has read, not write
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => proxy.WriteAsync());
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => proxy.WriteAsync("team-1"));
     }
 
     [Fact]
     public async Task Circuit_Without_TeamKey_Denies()
     {
         var proxy = CreateProxy(Principal(null, "doc:read"));
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => proxy.ReadAsync());
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => proxy.ReadAsync("team-1"));
     }
 
     [Fact]

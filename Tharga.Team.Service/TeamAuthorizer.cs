@@ -42,21 +42,13 @@ public sealed class TeamAuthorizer
     public async ValueTask<bool> HasTeamScopeAsync(string scope, string teamKey)
     {
         var principal = await _principalAccessor.GetCurrentAsync();
-        if (principal == null || string.IsNullOrEmpty(teamKey)) return false;
-
-        var callerTeam = principal.FindFirst(TeamClaimTypes.TeamKey)?.Value;
-        if (string.IsNullOrEmpty(callerTeam) || callerTeam != teamKey) return false;
-
-        return HasScopeClaim(principal, scope);
+        return TeamScopePolicy.HasTeamScope(principal, scope, teamKey);
     }
 
     /// <summary>True when the caller holds the system <paramref name="scope"/> (authorizes any team; no team binding).</summary>
     public async ValueTask<bool> HasSystemScopeAsync(string scope)
     {
         var principal = await _principalAccessor.GetCurrentAsync();
-        return principal != null && HasScopeClaim(principal, scope);
+        return TeamScopePolicy.HasSystemScope(principal, scope);
     }
-
-    private static bool HasScopeClaim(ClaimsPrincipal principal, string scope) =>
-        principal.Claims.Any(c => c.Type == TeamClaimTypes.Scope && c.Value == scope);
 }
