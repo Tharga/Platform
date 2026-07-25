@@ -1,4 +1,4 @@
-@using Microsoft.Extensions.DependencyInjection
+﻿@using Microsoft.Extensions.DependencyInjection
 @using Microsoft.JSInterop
 @using Tharga.Team
 @using Tharga.Team.Blazor.Framework
@@ -13,7 +13,7 @@
         @if (_apiKeyServiceMissing)
         {
             <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat">
-                API key management is not configured. Register <code>IApiKeyManagementService</code> in Program.cs to enable this view.
+                API key management is not configured. Register <code>ISystemApiKeyManagementService</code> in Program.cs to enable this view.
             </RadzenAlert>
         }
         else if (_keys == null)
@@ -147,7 +147,7 @@
         => context.ExpiryDate.HasValue && context.ExpiryDate.Value <= DateTime.UtcNow.AddDays(60);
 
     private bool _apiKeyServiceMissing;
-    private IApiKeyManagementService _apiKeyManagementService;
+    private ISystemApiKeyManagementService _apiKeyManagementService;
     private ISystemScopeRegistry _systemScopeRegistry;
     private SystemApiKeyModel[] _keys;
     private string[] _allScopes = [];
@@ -160,7 +160,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _apiKeyManagementService = ServiceProvider.GetService<IApiKeyManagementService>();
+        _apiKeyManagementService = ServiceProvider.GetService<ISystemApiKeyManagementService>();
         _apiKeyServiceMissing = _apiKeyManagementService == null;
         if (_apiKeyServiceMissing) { await base.OnInitializedAsync(); return; }
 

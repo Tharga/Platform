@@ -1,8 +1,13 @@
 namespace Tharga.Team;
 
 /// <summary>
-/// User-facing service for API key management. All methods require the apikey:manage scope.
+/// User-facing management of a team's API keys. Every operation names the team it acts on as its first
+/// argument, and requires the <see cref="ApiKeyScopes.Manage"/> scope <b>on that team</b> — holding the
+/// scope for one team does not authorize acting on another.
 /// </summary>
+/// <remarks>
+/// System keys, which belong to no team, live on <see cref="ISystemApiKeyManagementService"/>.
+/// </remarks>
 public interface IApiKeyManagementService
 {
     /// <summary>
@@ -32,19 +37,4 @@ public interface IApiKeyManagementService
 
     [RequireScope(ApiKeyScopes.Manage)]
     Task SetRolesAsync(string teamKey, string key, string[] roles);
-
-    [RequireScope(ApiKeyScopes.SystemManage)]
-    IAsyncEnumerable<IApiKey> GetSystemKeysAsync();
-
-    [RequireScope(ApiKeyScopes.SystemManage)]
-    Task<IApiKey> CreateSystemKeyAsync(string name, string[] scopes, DateTime? expiryDate = null);
-
-    [RequireScope(ApiKeyScopes.SystemManage)]
-    Task<IApiKey> RefreshSystemKeyAsync(string key);
-
-    [RequireScope(ApiKeyScopes.SystemManage)]
-    Task LockSystemKeyAsync(string key);
-
-    [RequireScope(ApiKeyScopes.SystemManage)]
-    Task DeleteSystemKeyAsync(string key);
 }

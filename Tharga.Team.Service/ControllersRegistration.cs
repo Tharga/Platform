@@ -85,7 +85,8 @@ public static class ControllersRegistration
     public static IServiceCollection AddThargaApiKeys(this IServiceCollection services)
     {
         services.RegisterApiKeyService();
-        services.AddScoped<IApiKeyManagementService, ApiKeyManagementService>();
+        services.AddTeamService<IApiKeyManagementService, ApiKeyManagementService>();
+        services.AddSystemService<ISystemApiKeyManagementService, SystemApiKeyManagementService>();
         services.AddTransient<IApiKeyRepository, ApiKeyRepository>();
         services.AddTransient<IApiKeyRepositoryCollection, ApiKeyRepositoryCollection>();
         return services;
