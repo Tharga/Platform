@@ -49,6 +49,29 @@ Branch: `feature/team-bound-service-authorization` (from `master`, which now car
     a plain `AddScoped` cannot produce) with both interfaces present.
   - Suite: 932 pass (baseline 920).
 
+- [x] 7b. Phase 2 — two-way classification validation (brought forward; PR is deferred anyway)
+  - `ServiceScopeValidation` rejects a team service whose method names no team, **and** a system service
+    that takes one — the second direction is what stops a mixed interface being registered as a system
+    service to dodge the team check.
+  - Matched by parameter **name**, not type: `RefreshSystemKeyAsync(string key)` takes a string first and
+    is not team-bound, so type alone cannot tell them apart. `ScopeProxy.ResolveTeamKey` tightened to the
+    same rule so the proxy and the validation agree.
+  - `ServiceScopeArchitectureTests` asserts every scope-bearing public interface is wholly one kind,
+    running over types so a bad method fails before anyone registers it. 6 interfaces discovered, all
+    homogeneous after the step 4/5 splits.
+
+- [x] 7c. Phase 3 (part) — `TeamScopeGate` and the API key view
+  - `HasTeamScope` / `HasSystemScope` for components, so the unbound `HasClaim` form is not the easy one.
+  - `ApiKeyView` now resolves the selected team **before** the access check and binds to it. No team
+    selected is not a denial — that still renders "No team selected".
+  - 8 gate tests. Suite: 948 pass (baseline 920).
+
+- [ ] 7d. **BLOCKED — `AuditLogView` gate needs a decision.** Scope claims carry no provenance: team-level
+  and system-level grants are both `TeamClaimTypes.Scope`, so `HasSystemScope` cannot tell them apart.
+  `audit:read` is registered at Administrator level *and* mapped to the Developer system role, and an
+  unpinned `AuditLogView` queries every team — so a team Administrator can read the whole system's audit
+  log. See §6c of the spec for the three candidate fixes.
+
 - [ ] 8. Full suite, then docs review
   - The registration APIs and the interface split are consumer-facing; check `README.md` and
     `docs/articles/` for content on service registration and scopes.
