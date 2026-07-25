@@ -41,15 +41,20 @@
                 </ValueTemplate>
                 <Template Context="team">
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.4rem">
-                        @if (_canSeeAllTeams)
-                        {
-                            <span style="@ConsentDotStyle((ITeam)team)" title="@TeamVisibility.Label(TeamVisibility.Resolve(((ITeam)team).ConsentedRoles, ((ITeam)team).ConsentAccessLevel))"></span>
-                        }
                         <TeamAvatar Team="@((ITeam)team)" Size="20px" />
                         <span>@(((ITeam)team).Name)</span>
                     </RadzenStack>
                 </Template>
             </RadzenDropDown>
+        }
+
+        @if (AccessLevelBadge.ShouldShow(context.User, SelectedTeam != null))
+        {
+            var accessLevel = AccessLevelBadge.Resolve(context.User);
+            <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(AccessLevelBadge.Style(accessLevel)))"
+                         Variant="Variant.Flat"
+                         Text="@AccessLevelBadge.Text(accessLevel)"
+                         title="Your access level on the selected team" />
         }
     </Authorized>
 </AuthorizeView>
@@ -124,13 +129,6 @@
         var selectedTeam = await TeamStateService.GetSelectedTeamAsync();
         SelectedTeam ??= selectedTeam;
         StateHasChanged();
-    }
-
-    private string ConsentDotStyle(ITeam team)
-    {
-        var visibility = TeamVisibility.Resolve(team.ConsentedRoles, team.ConsentAccessLevel);
-        var token = TeamVisibility.BadgeStyle(visibility).ToLowerInvariant();
-        return $"display:inline-block; width:.5rem; height:.5rem; border-radius:50%; background: var(--rz-{token}); margin-right:.4rem;";
     }
 
     private async Task InvokeCreateTeamRequested()

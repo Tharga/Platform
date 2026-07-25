@@ -768,9 +768,10 @@ else
     {
         _teams = null;
         _selectedTeam = await TeamStateService.GetSelectedTeamAsync();
-        _teams = _canSeeAllTeams
+        var teams = _canSeeAllTeams
             ? await TeamService.GetAllTeamsAsync<TMember>().ToArrayAsync()
             : await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
+        _teams = teams.OrderBy(x => x.Name).ToArray();
         await BuildVisibleRolesAsync();
         StateHasChanged();
     }
