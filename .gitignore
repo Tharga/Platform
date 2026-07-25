@@ -405,3 +405,6 @@ FodyWeavers.xsd
 # DocFX generated documentation site
 docs/_site/
 docs/api/
+
+# Serilog file sink output (sample app)
+logs/
