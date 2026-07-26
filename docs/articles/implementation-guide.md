@@ -793,9 +793,30 @@ builder.Services.AddThargaScopes(scopes =>
     scopes.Register("feature:manage", AccessLevel.Administrator);
 });
 
-// Register services with scope enforcement
-builder.Services.AddScopedWithScopes<IMyService, MyService>();
+// Register services with scope enforcement — as a team service or a system service
+builder.Services.AddTeamService<IMyService, MyService>();
+builder.Services.AddSystemService<IMyAdminService, MyAdminService>();
 ```
+
+### Team services and system services
+
+Every scope-enforced service is registered as exactly one of two kinds. The choice is made once, at
+registration, and applies to every method — including ones added later, which is the point: there is no
+per-method annotation to forget.
+
+| | `AddTeamService` | `AddSystemService` |
+|---|---|---|
+| Every method | takes the team it acts on as its first parameter, named `teamKey` | takes no `teamKey` |
+| The scope must be held | **for the team named in that call** | as a system scope |
+| A team must be selected | yes | no |
+
+Registration validates the interface against its declared kind **in both directions** and throws at
+startup otherwise. Rejecting a team service whose method names no team is the obvious half; rejecting a
+system service that *does* take a `teamKey` is what stops a mixed interface being registered as a system
+service to escape the team check.
+
+An interface must therefore be wholly one kind. Split it if it is not — that is why
+`ISystemApiKeyManagementService` exists separately from `IApiKeyManagementService`.
 
 ### Service implementation
 
@@ -805,14 +826,21 @@ Decorate service methods with the required scope:
 public class MyService : IMyService
 {
     [RequireScope("feature:read")]
-    public Task<Data> GetAsync() { ... }
+    public Task<Data> GetAsync(string teamKey) { ... }
 
     [RequireScope("feature:write")]
-    public Task SaveAsync(Data data) { ... }
+    public Task SaveAsync(string teamKey, Data data) { ... }
 }
 ```
 
-The `ScopeProxy<T>` automatically checks that the current user has the required scope before calling the method. If the scope is denied, an `UnauthorizedAccessException` is thrown.
+`ScopeProxy<T>` checks the scope before calling the method and throws `UnauthorizedAccessException`
+otherwise. On a team service it checks the scope against `teamKey` **as passed in the call**, not merely
+against whichever team the caller happens to have selected — so holding `feature:write` for one team does
+not authorize writing to another.
+
+> **The attribute alone enforces nothing.** Enforcement comes from the registration installing the proxy.
+> A service registered with a plain `AddScoped` carries its `[RequireScope]` attributes as documentation
+> and is not checked at all.
 
 > **Works in interactive Blazor Server too.** The proxy resolves the caller via `ITeamPrincipalAccessor`. The default implementation reads `IHttpContextAccessor` (controllers/API). `AddThargaPlatform` / `AddThargaTeamBlazor` automatically swap in a circuit-aware accessor that uses `HttpContext` when present and falls back to `AuthenticationStateProvider` otherwise — so a single `[RequireScope]` / `[RequireAccessLevel]` enforces both your API and interactive Blazor callers (no `HttpContext` is needed in a circuit). To plug in a different principal source, register your own `ITeamPrincipalAccessor`.
 
