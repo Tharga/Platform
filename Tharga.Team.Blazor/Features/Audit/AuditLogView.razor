@@ -33,10 +33,11 @@ else
                         <RadzenLabel Text="Period" />
                         <RadzenSelectBar @bind-Value="_datePeriod" TValue="string" Change="@OnFilterChanged" Size="ButtonSize.Small">
                             <Items>
-                                <RadzenSelectBarItem Text="Today" Value="@("today")" />
-                                <RadzenSelectBarItem Text="This Week" Value="@("week")" />
-                                <RadzenSelectBarItem Text="This Month" Value="@("month")" />
-                                <RadzenSelectBarItem Text="All" Value="@("all")" />
+                                <RadzenSelectBarItem Text="Today" Value="@AuditPeriod.Today" />
+                                <RadzenSelectBarItem Text="7 days" Value="@AuditPeriod.SevenDays" />
+                                <RadzenSelectBarItem Text="30 days" Value="@AuditPeriod.ThirtyDays" />
+                                <RadzenSelectBarItem Text="90 days" Value="@AuditPeriod.NinetyDays" />
+                                <RadzenSelectBarItem Text="All" Value="@AuditPeriod.All" />
                             </Items>
                         </RadzenSelectBar>
                     </RadzenStack>

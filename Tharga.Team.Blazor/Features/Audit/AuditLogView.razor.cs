@@ -43,7 +43,7 @@ public partial class AuditLogView : ComponentBase
     internal Dictionary<string, string> _callerNameCache = new(StringComparer.OrdinalIgnoreCase);
 
     // Top-bar filters
-    private string _datePeriod = "today";
+    private string _datePeriod = AuditPeriod.Today;
     private IEnumerable<string> _filterTeams = Enumerable.Empty<string>();
     private IEnumerable<string> _filterSources = Enumerable.Empty<string>();
     private IEnumerable<string> _filterFeatures = Enumerable.Empty<string>();
@@ -283,14 +283,7 @@ public partial class AuditLogView : ComponentBase
 
     private (DateTime? from, DateTime? to) GetDateRange()
     {
-        var now = DateTime.UtcNow;
-        return _datePeriod switch
-        {
-            "today" => (DateTime.Today.ToUniversalTime(), null),
-            "week" => (AuditPeriod.StartOfWeek(DateTime.Today).ToUniversalTime(), null),
-            "month" => (new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc), null),
-            _ => (null, null)
-        };
+        return (AuditPeriod.ResolveFrom(_datePeriod, DateTime.UtcNow, DateTime.Today), null);
     }
 
 

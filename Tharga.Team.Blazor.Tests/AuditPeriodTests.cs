@@ -3,46 +3,57 @@ using Tharga.Team.Blazor.Features.Audit;
 namespace Tharga.Team.Blazor.Tests;
 
 /// <summary>
-/// "This week" must mean the whole week. The previous <c>AddDays(-(int)DayOfWeek)</c> counted from
-/// Sunday, so on a Sunday it subtracted nothing and the filter silently showed only today — entries from
-/// yesterday and the day before were missing, while "This month" showed them.
+/// The period filter reads back a fixed number of days from now. It replaced calendar "This week" /
+/// "This month" options, whose week arithmetic counted from Sunday — so on a Sunday "This week"
+/// subtracted nothing and silently showed only today, while "This month" showed the missing entries.
+/// A rolling window has no week-start to get wrong.
 /// </summary>
 public class AuditPeriodTests
 {
+    private static readonly DateTime UtcNow = new(2026, 7, 26, 9, 30, 0, DateTimeKind.Utc);
+    private static readonly DateTime LocalToday = new(2026, 7, 26, 0, 0, 0, DateTimeKind.Local);
+
     [Theory]
-    // Every day of one ISO week resolves to the same Monday.
-    [InlineData("2026-07-20", "2026-07-20")] // Monday
-    [InlineData("2026-07-21", "2026-07-20")] // Tuesday
-    [InlineData("2026-07-22", "2026-07-20")] // Wednesday
-    [InlineData("2026-07-23", "2026-07-20")] // Thursday
-    [InlineData("2026-07-24", "2026-07-20")] // Friday
-    [InlineData("2026-07-25", "2026-07-20")] // Saturday
-    [InlineData("2026-07-26", "2026-07-20")] // Sunday — the day the bug was reported
-    public void StartOfWeek_IsTheMonday(string day, string expected)
+    [InlineData(AuditPeriod.SevenDays, 7)]
+    [InlineData(AuditPeriod.ThirtyDays, 30)]
+    [InlineData(AuditPeriod.NinetyDays, 90)]
+    public void RollingWindow_CountsBackFromNow(string period, int days)
     {
-        Assert.Equal(DateTime.Parse(expected), AuditPeriod.StartOfWeek(DateTime.Parse(day)));
+        var from = AuditPeriod.ResolveFrom(period, UtcNow, LocalToday);
+
+        Assert.Equal(UtcNow.AddDays(-days), from);
+    }
+
+    [Theory]
+    [InlineData("2026-07-20")] // Monday
+    [InlineData("2026-07-24")] // Friday
+    [InlineData("2026-07-26")] // Sunday — the day the calendar-week bug surfaced
+    public void RollingWindow_IsTheSameLengthOnEveryWeekday(string today)
+    {
+        var now = DateTime.SpecifyKind(DateTime.Parse(today).AddHours(9), DateTimeKind.Utc);
+
+        var from = AuditPeriod.ResolveFrom(AuditPeriod.SevenDays, now, now.Date);
+
+        Assert.Equal(7, (now - from!.Value).TotalDays);
     }
 
     [Fact]
-    public void StartOfWeek_OnSunday_LooksBackSixDays()
+    public void Today_IsTheReadersCalendarDay()
     {
-        var sunday = new DateTime(2026, 7, 26);
+        var from = AuditPeriod.ResolveFrom(AuditPeriod.Today, UtcNow, LocalToday);
 
-        Assert.Equal(6, (sunday - AuditPeriod.StartOfWeek(sunday)).TotalDays);
+        Assert.Equal(LocalToday.ToUniversalTime(), from);
     }
 
     [Fact]
-    public void StartOfWeek_DiscardsTheTimeOfDay()
+    public void All_HasNoLowerBound()
     {
-        var sundayAfternoon = new DateTime(2026, 7, 26, 14, 30, 0);
-
-        Assert.Equal(new DateTime(2026, 7, 20), AuditPeriod.StartOfWeek(sundayAfternoon));
+        Assert.Null(AuditPeriod.ResolveFrom(AuditPeriod.All, UtcNow, LocalToday));
     }
 
     [Fact]
-    public void StartOfWeek_CrossesAMonthBoundary()
+    public void AnUnknownPeriod_HasNoLowerBound()
     {
-        // Wednesday 1 July 2026 — the week starts in June.
-        Assert.Equal(new DateTime(2026, 6, 29), AuditPeriod.StartOfWeek(new DateTime(2026, 7, 1)));
+        Assert.Null(AuditPeriod.ResolveFrom("whenever", UtcNow, LocalToday));
     }
 }
