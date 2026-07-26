@@ -287,11 +287,12 @@ public partial class AuditLogView : ComponentBase
         return _datePeriod switch
         {
             "today" => (DateTime.Today.ToUniversalTime(), null),
-            "week" => (DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek).ToUniversalTime(), null),
+            "week" => (AuditPeriod.StartOfWeek(DateTime.Today).ToUniversalTime(), null),
             "month" => (new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc), null),
             _ => (null, null)
         };
     }
+
 
     private async Task LoadChartDataAsync()
     {

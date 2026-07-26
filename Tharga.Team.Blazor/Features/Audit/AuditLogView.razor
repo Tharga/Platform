@@ -42,17 +42,14 @@ else
                     </RadzenStack>
                     <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_teams.Any() && PinnedFilter?.TeamKey == null)">
                         <RadzenLabel Text="Team" />
-                        <RadzenSelectBar @bind-Value="_filterTeams" TValue="IEnumerable<string>" Multiple="true"
-                                         Change="@OnFilterChanged" Size="ButtonSize.Small">
-                            <Items>
-                                @foreach (var team in _teams)
-                                {
-                                    <RadzenSelectBarItem Text="@team.Name" Value="@team.Key" />
-                                }
-                            </Items>
-                        </RadzenSelectBar>
+                        <RadzenDropDown @bind-Value="_filterTeams" TValue="IEnumerable<string>" Data="@_teams"
+                                        TextProperty="@nameof(TeamInfo.Name)" ValueProperty="@nameof(TeamInfo.Key)"
+                                        Multiple="true" AllowClear="true" AllowFiltering="true"
+                                        Placeholder="All" Change="@(_ => OnFilterChanged())"
+                                        Style="width: 200px;" />
                     </RadzenStack>
-                    <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_sources.Any())">
+                    @* A single source tells the reader nothing they can act on — one option is not a filter. *@
+                    <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_sources.Count > 1)">
                         <RadzenLabel Text="Source" />
                         <RadzenSelectBar @bind-Value="_filterSources" TValue="IEnumerable<string>" Multiple="true"
                                          Change="@OnFilterChanged" Size="ButtonSize.Small">
