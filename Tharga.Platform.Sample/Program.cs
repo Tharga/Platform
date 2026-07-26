@@ -130,10 +130,11 @@ builder.Services.AddThargaMcp(mcp =>
     mcp.AddPlatform();
 });
 
-// Defence in depth: refuses any database call that no authorization decision covers, catching code that
-// reaches the store without passing through the authorization layer. Deliberate exceptions declare
-// themselves — see TeamAccess.System(reason) / TeamAccess.Unchecked(reason).
-builder.AddMongoDB(o => o.AddCollectionInterceptor<TeamAccessInterceptor>());
+// TeamAccessInterceptor is deliberately NOT registered yet. Claim construction reads the user record to
+// decide what the caller may do, so it necessarily precedes any authorization decision — and every
+// self-service operation passes through its decorator without one either. Both are legitimately
+// unauthorized, so the guard rejected them and took the site down. See the notes in TeamAccessInterceptor.
+builder.AddMongoDB();
 
 builder.Services.AddScoped<AppUserAdminService>();
 
