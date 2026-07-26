@@ -4,10 +4,15 @@ namespace Tharga.Team.Blazor.Features.Audit;
 
 /// <summary>
 /// Locks one or more <see cref="AuditLogView"/> filter dimensions to a fixed value.
-/// Pinned dimensions are visible in the UI but disabled, and they are forced into the
-/// underlying <see cref="AuditQuery"/> regardless of any in-component filter state.
+/// Pinned dimensions are <b>hidden</b> from the filter bar — the caller cannot change them, so showing
+/// a disabled control is only clutter — and are forced into the underlying <see cref="AuditQuery"/>
+/// regardless of any in-component filter state.
 /// Use to scope the audit log to a single API key, team, caller, etc.
 /// </summary>
+/// <remarks>
+/// The component does not announce the scope it is showing. The host chose it and can describe it in its
+/// own words, with names rather than the keys pinned here.
+/// </remarks>
 public sealed record AuditPinnedFilter
 {
     /// <summary>Pin to a specific API key Guid string.</summary>
