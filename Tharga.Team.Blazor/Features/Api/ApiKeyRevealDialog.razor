@@ -4,14 +4,25 @@
 @inject NotificationService NotificationService
 
 @*
-    Shown once, immediately after an API key is created or regenerated. This is the only time the raw
-    key value is available — it is not stored and cannot be retrieved again (and when auto-lock is on
-    it is locked the moment it's created). Give the user a clear, copyable view with a warning.
+    Shown immediately after an API key is created or regenerated. Whether this is the *only* chance to
+    read the value depends on the host's ApiKeyOptions.AutoLockKeys: locking clears the stored value
+    (ApiKeyRepository.LockKeyAsync sets ApiKey to null), so with auto-lock on the key really is
+    unrecoverable — but that is off by default, and an unlocked key stays readable from the key list.
+    Claiming otherwise would misdescribe the host's security posture and prompt needless regeneration.
 *@
 <RadzenStack Gap="1rem">
-    <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat" AllowClose="false">
-        Copy this key now. For security it is <b>shown only once</b> and is <b>not stored</b> — you will not be able to retrieve it again. If you lose it, regenerate the key to get a new one.
-    </RadzenAlert>
+    @if (RemainsRetrievable)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" Variant="Variant.Flat" AllowClose="false">
+            Copy this key now, or read it later from the key list — it stays <b>stored</b> until the key is locked. Lock it once you have copied it, to clear the stored value.
+        </RadzenAlert>
+    }
+    else
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat" AllowClose="false">
+            Copy this key now. For security it is <b>shown only once</b> and is <b>not stored</b> — you will not be able to retrieve it again. If you lose it, regenerate the key to get a new one.
+        </RadzenAlert>
+    }
 
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
         <RadzenTextBox Value="@ApiKey" ReadOnly="true" Style="width: 100%; font-family: monospace;" />
@@ -24,8 +35,15 @@
 </RadzenStack>
 
 @code {
-    /// <summary>The raw API key value to reveal (shown once).</summary>
+    /// <summary>The raw API key value to reveal.</summary>
     [Parameter] public string ApiKey { get; set; }
+
+    /// <summary>
+    /// Whether the value remains readable after this dialog closes — true unless the key is locked on
+    /// creation (<see cref="ApiKeyOptions.AutoLockKeys"/>), which clears the stored value. Drives the
+    /// warning, so that it describes what the host is actually configured to do.
+    /// </summary>
+    [Parameter] public bool RemainsRetrievable { get; set; }
 
     private async Task CopyAsync()
     {

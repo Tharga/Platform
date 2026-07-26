@@ -1,7 +1,9 @@
 ﻿@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Options
 @using Microsoft.JSInterop
 @using Tharga.Team
 @using Tharga.Team.Blazor.Framework
+@inject IOptions<ApiKeyOptions> ApiKeyOptionsAccessor
 @inject IServiceProvider ServiceProvider
 @inject IJSRuntime Js
 @inject DialogService DialogService
@@ -227,7 +229,11 @@
         if (key == null || string.IsNullOrEmpty(key.ApiKey)) return;
         await DialogService.OpenAsync<ApiKeyRevealDialog>(
             $"System API key — {key.Name}",
-            new Dictionary<string, object> { [nameof(ApiKeyRevealDialog.ApiKey)] = key.ApiKey },
+            new Dictionary<string, object>
+            {
+                [nameof(ApiKeyRevealDialog.ApiKey)] = key.ApiKey,
+                [nameof(ApiKeyRevealDialog.RemainsRetrievable)] = !ApiKeyOptionsAccessor.Value.AutoLockKeys
+            },
             new DialogOptions { Width = "640px", CloseDialogOnOverlayClick = false });
     }
 
