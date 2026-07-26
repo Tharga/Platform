@@ -10,6 +10,7 @@ using Tharga.Platform.Sample.Framework.Team;
 using Tharga.Team;
 using Tharga.Team.Blazor.Framework;
 using Tharga.Team.Entra;
+using Tharga.Team.Service;
 using Tharga.Team.Images;
 using Tharga.Team.MongoDB;
 using Tharga.Team.Service.Audit;
@@ -129,6 +130,10 @@ builder.Services.AddThargaMcp(mcp =>
     mcp.AddPlatform();
 });
 
+// TeamAccessInterceptor is deliberately NOT registered yet. Claim construction reads the user record to
+// decide what the caller may do, so it necessarily precedes any authorization decision — and every
+// self-service operation passes through its decorator without one either. Both are legitimately
+// unauthorized, so the guard rejected them and took the site down. See the notes in TeamAccessInterceptor.
 builder.AddMongoDB();
 
 builder.Services.AddScoped<AppUserAdminService>();

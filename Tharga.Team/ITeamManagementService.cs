@@ -1,4 +1,4 @@
-namespace Tharga.Team;
+﻿namespace Tharga.Team;
 
 /// <summary>
 /// Team management mutations. Authorization is enforced in the service layer by
@@ -8,9 +8,6 @@ namespace Tharga.Team;
 /// </summary>
 public interface ITeamManagementService
 {
-    /// <summary>Create a team. Gated by <c>AllowTeamCreation</c> + authentication (no scope) — self-service.</summary>
-    Task<ITeam> CreateTeamAsync(string name = null);
-
     [RequireScope(TeamScopes.Manage)]
     Task RenameTeamAsync(string teamKey, string name);
 

@@ -95,13 +95,6 @@ public class ApiKeyManagementService : IApiKeyManagementService
         await _inner.SetRolesAsync(teamKey, key, roles);
     }
 
-    public IAsyncEnumerable<IApiKey> GetSystemKeysAsync() => _inner.GetSystemKeysAsync();
-    public Task<IApiKey> CreateSystemKeyAsync(string name, string[] scopes, DateTime? expiryDate = null)
-        => _inner.CreateSystemKeyAsync(name, scopes, expiryDate, GetCurrentUserIdentity());
-    public Task<IApiKey> RefreshSystemKeyAsync(string key) => _inner.RefreshSystemKeyAsync(key);
-    public Task LockSystemKeyAsync(string key) => _inner.LockSystemKeyAsync(key);
-    public Task DeleteSystemKeyAsync(string key) => _inner.DeleteSystemKeyAsync(key);
-
     /// <summary>
     /// Guards mutation of an owner-scoped (private) key: only the owner, or a Developer-role caller (audit
     /// escape), may recycle/lock/delete/edit it. Team-wide keys (and unknown keys) pass through.

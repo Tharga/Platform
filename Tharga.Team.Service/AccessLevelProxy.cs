@@ -40,7 +40,11 @@ public class AccessLevelProxy<T> : DispatchProxy where T : class
                 $"All methods on services registered with AddScopedWithAccessLevel must declare their required access level.");
 
         return ProxyInvoker.Invoke(targetMethod, args, _target, _principalAccessor,
-            enforce: principal => CheckAccessLevel(principal, attribute.MinimumLevel),
+            enforce: principal =>
+            {
+                CheckAccessLevel(principal, attribute.MinimumLevel);
+                return TeamAccess.ForTeam(principal?.FindFirst(TeamClaimTypes.TeamKey)?.Value);
+            },
             audit: (principal, ms, success, ex) =>
             {
                 var eventType = !success && ex is UnauthorizedAccessException ? AuditEventType.AccessLevelDenial : (AuditEventType?)null;

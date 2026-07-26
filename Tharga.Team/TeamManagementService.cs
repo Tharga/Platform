@@ -1,4 +1,4 @@
-namespace Tharga.Team;
+﻿namespace Tharga.Team;
 
 /// <summary>
 /// Delegates to <see cref="ITeamService"/> for all operations.
@@ -6,7 +6,7 @@ namespace Tharga.Team;
 /// Generic methods (GetTeamsAsync, DeleteTeamAsync, RenameTeamAsync) call non-generic
 /// internal versions since the proxy resolves the member type from the team data.
 /// </summary>
-public class TeamManagementService<TMember> : ITeamManagementService
+public class TeamManagementService<TMember> : ITeamManagementService, ITeamLifecycleService
     where TMember : class, ITeamMember
 {
     private readonly ITeamService _inner;

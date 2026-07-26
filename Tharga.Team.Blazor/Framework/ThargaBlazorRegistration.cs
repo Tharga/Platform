@@ -55,7 +55,9 @@ public static class ThargaBlazorRegistration
             if (o._memberType != null)
             {
                 var managementServiceType = typeof(TeamManagementService<>).MakeGenericType(o._memberType);
-                services.AddScoped(typeof(ITeamManagementService), managementServiceType);
+                services.AddScoped(managementServiceType);
+                services.AddScoped(typeof(ITeamManagementService), sp => sp.GetRequiredService(managementServiceType));
+                services.AddScoped(typeof(ITeamLifecycleService), sp => sp.GetRequiredService(managementServiceType));
             }
 
             if (o._apiKeyService != null)
