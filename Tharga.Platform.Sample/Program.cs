@@ -10,6 +10,7 @@ using Tharga.Platform.Sample.Framework.Team;
 using Tharga.Team;
 using Tharga.Team.Blazor.Framework;
 using Tharga.Team.Entra;
+using Tharga.Team.Service;
 using Tharga.Team.Images;
 using Tharga.Team.MongoDB;
 using Tharga.Team.Service.Audit;
@@ -129,7 +130,10 @@ builder.Services.AddThargaMcp(mcp =>
     mcp.AddPlatform();
 });
 
-builder.AddMongoDB();
+// Defence in depth: refuses any database call that no authorization decision covers, catching code that
+// reaches the store without passing through the authorization layer. Deliberate exceptions declare
+// themselves — see TeamAccess.System(reason) / TeamAccess.Unchecked(reason).
+builder.AddMongoDB(o => o.AddCollectionInterceptor<TeamAccessInterceptor>());
 
 builder.Services.AddScoped<AppUserAdminService>();
 

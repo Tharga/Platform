@@ -49,7 +49,13 @@ public class ScopeProxy<T> : DispatchProxy where T : class
         var (feature, action) = AuditEntry.ParseScope(attribute.Scope);
 
         return ProxyInvoker.Invoke(targetMethod, args, _target, _principalAccessor,
-            enforce: principal => CheckScope(principal, attribute.Scope, _scopeKind, targetMethod, args),
+            enforce: principal =>
+            {
+                CheckScope(principal, attribute.Scope, _scopeKind, targetMethod, args);
+                return _scopeKind == ServiceScopeKind.Team
+                    ? TeamAccess.ForTeam(ResolveTeamKey(targetMethod, args))
+                    : TeamAccess.System(attribute.Scope);
+            },
             audit: (principal, ms, success, ex) =>
             {
                 var scopeResult = !success && ex is UnauthorizedAccessException uae && uae.Message.Contains("Missing required scope")

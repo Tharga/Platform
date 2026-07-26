@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Security.Claims;
 
 namespace Tharga.Team.Service;
@@ -19,12 +19,17 @@ internal static class ProxyInvoker
     /// <param name="args">The arguments passed to <paramref name="method"/>.</param>
     /// <param name="target">The concrete service the proxy wraps.</param>
     /// <param name="accessor">Resolves the current <see cref="ClaimsPrincipal"/> (sync or async).</param>
-    /// <param name="enforce">Throws <see cref="UnauthorizedAccessException"/> if the principal is not allowed.</param>
+    /// <param name="enforce">
+    /// Throws <see cref="UnauthorizedAccessException"/> if the principal is not allowed; otherwise returns a
+    /// scope recording that the call is authorized, held open for the duration of the call and disposed
+    /// after. Returning the scope rather than opening it inline matters for the synchronous path, which is
+    /// not an async method and so would otherwise leak the ambient value to its caller.
+    /// </param>
     /// <param name="audit">Invoked with (principal, durationMs, success, exception-or-null) after the call.</param>
     public static object Invoke(
         MethodInfo method, object[] args, object target,
         ITeamPrincipalAccessor accessor,
-        Action<ClaimsPrincipal> enforce,
+        Func<ClaimsPrincipal, IDisposable> enforce,
         Action<ClaimsPrincipal, long, bool, Exception> audit)
     {
         var returnType = method.ReturnType;
@@ -46,14 +51,14 @@ internal static class ProxyInvoker
     private static object InvokeSync(
         MethodInfo method, object[] args, object target,
         ITeamPrincipalAccessor accessor,
-        Action<ClaimsPrincipal> enforce,
+        Func<ClaimsPrincipal, IDisposable> enforce,
         Action<ClaimsPrincipal, long, bool, Exception> audit)
     {
         var principal = accessor.GetCurrentAsync().GetAwaiter().GetResult();
         var startedAt = StartTimestamp();
         try
         {
-            enforce(principal);
+            using var accessScope = enforce(principal);
             var result = Unwrap(() => method.Invoke(target, args));
             audit(principal, ElapsedMs(startedAt), true, null);
             return result;
@@ -68,14 +73,14 @@ internal static class ProxyInvoker
     private static async Task InvokeAsync(
         MethodInfo method, object[] args, object target,
         ITeamPrincipalAccessor accessor,
-        Action<ClaimsPrincipal> enforce,
+        Func<ClaimsPrincipal, IDisposable> enforce,
         Action<ClaimsPrincipal, long, bool, Exception> audit)
     {
         var principal = await accessor.GetCurrentAsync();
         var startedAt = StartTimestamp();
         try
         {
-            enforce(principal);
+            using var accessScope = enforce(principal);
             await (Task)Unwrap(() => method.Invoke(target, args));
             audit(principal, ElapsedMs(startedAt), true, null);
         }
@@ -89,14 +94,14 @@ internal static class ProxyInvoker
     private static async Task<TResult> InvokeAsyncGeneric<TResult>(
         MethodInfo method, object[] args, object target,
         ITeamPrincipalAccessor accessor,
-        Action<ClaimsPrincipal> enforce,
+        Func<ClaimsPrincipal, IDisposable> enforce,
         Action<ClaimsPrincipal, long, bool, Exception> audit)
     {
         var principal = await accessor.GetCurrentAsync();
         var startedAt = StartTimestamp();
         try
         {
-            enforce(principal);
+            using var accessScope = enforce(principal);
             var result = await (Task<TResult>)Unwrap(() => method.Invoke(target, args));
             audit(principal, ElapsedMs(startedAt), true, null);
             return result;
