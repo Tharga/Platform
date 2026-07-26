@@ -33,9 +33,13 @@ public class TenantRoleService : ITenantRoleService
     public async Task<IReadOnlyList<string>> GetEffectiveScopesAsync(string teamKey, AccessLevel accessLevel, IEnumerable<string> roleNames, IEnumerable<string> scopeOverrides = null)
     {
         var roleNameList = roleNames?.ToArray() ?? [];
+        // Materialised once: scopeOverrides is passed to GetEffectiveScopes and
+        // then enumerated again by the fallback, which would walk a lazy sequence
+        // twice.
+        var overrideList = scopeOverrides?.ToArray();
 
-        var baseScopes = _scopeRegistry?.GetEffectiveScopes(accessLevel, roleNameList, scopeOverrides)
-                         ?? (scopeOverrides?.Distinct().ToArray() ?? (IReadOnlyList<string>)[]);
+        var baseScopes = _scopeRegistry?.GetEffectiveScopes(accessLevel, roleNameList, overrideList)
+                         ?? (overrideList?.Distinct().ToArray() ?? (IReadOnlyList<string>)[]);
 
         var customRoles = await _teamService.GetTeamCustomRolesAsync(teamKey);
         var customScopes = customRoles
