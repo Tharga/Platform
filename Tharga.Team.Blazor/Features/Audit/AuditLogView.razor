@@ -1,4 +1,4 @@
-@using Tharga.Team.Service.Audit
+﻿@using Tharga.Team.Service.Audit
 
 @if (!_hasAccess)
 {
@@ -25,48 +25,32 @@ else
     <RadzenTabs Change="@OnTabChange">
         <Tabs>
             <RadzenTabsItem Text="Log">
-                @if (PinnedFilter != null)
-                {
-                    <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" Variant="Variant.Flat" AllowClose="false" class="rz-mb-3">
-                        <RadzenText TextStyle="TextStyle.Body2">
-                            Scoped view —
-                            @if (PinnedFilter.CallerKeyId != null) { <span>API key <code>@PinnedFilter.CallerKeyId</code> </span> }
-                            @if (PinnedFilter.CallerType != null) { <span>caller type <code>@PinnedFilter.CallerType</code> </span> }
-                            @if (PinnedFilter.TeamKey != null) { <span>team <code>@PinnedFilter.TeamKey</code> </span> }
-                            @if (PinnedFilter.CallerIdentity != null) { <span>caller <code>@PinnedFilter.CallerIdentity</code> </span> }
-                            @if (PinnedFilter.Feature != null) { <span>feature <code>@PinnedFilter.Feature</code> </span> }
-                            @if (PinnedFilter.Action != null) { <span>action <code>@PinnedFilter.Action</code> </span> }
-                        </RadzenText>
-                    </RadzenAlert>
-                }
-
-                @* Top-bar filters — all RadzenSelectBar multi-select *@
+                @* Pinned dimensions are hidden rather than announced: the host chose the scope and says so
+                   in its own words, and a banner naming raw keys is noise on a page built for one team. *@
+                @* Top-bar filters *@
                 <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.End" class="rz-mb-4 rz-mt-2" Wrap="FlexWrap.Wrap">
                     <RadzenStack Orientation="Orientation.Vertical" Gap="0">
                         <RadzenLabel Text="Period" />
                         <RadzenSelectBar @bind-Value="_datePeriod" TValue="string" Change="@OnFilterChanged" Size="ButtonSize.Small">
                             <Items>
-                                <RadzenSelectBarItem Text="Today" Value="@("today")" />
-                                <RadzenSelectBarItem Text="This Week" Value="@("week")" />
-                                <RadzenSelectBarItem Text="This Month" Value="@("month")" />
-                                <RadzenSelectBarItem Text="All" Value="@("all")" />
+                                <RadzenSelectBarItem Text="Today" Value="@AuditPeriod.Today" />
+                                <RadzenSelectBarItem Text="7 days" Value="@AuditPeriod.SevenDays" />
+                                <RadzenSelectBarItem Text="30 days" Value="@AuditPeriod.ThirtyDays" />
+                                <RadzenSelectBarItem Text="90 days" Value="@AuditPeriod.NinetyDays" />
+                                <RadzenSelectBarItem Text="All" Value="@AuditPeriod.All" />
                             </Items>
                         </RadzenSelectBar>
                     </RadzenStack>
-                    <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_teams.Any())">
+                    <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_teams.Any() && PinnedFilter?.TeamKey == null)">
                         <RadzenLabel Text="Team" />
-                        <RadzenSelectBar @bind-Value="_filterTeams" TValue="IEnumerable<string>" Multiple="true"
-                                         Change="@OnFilterChanged" Size="ButtonSize.Small"
-                                         Disabled="@(PinnedFilter?.TeamKey != null)">
-                            <Items>
-                                @foreach (var team in _teams)
-                                {
-                                    <RadzenSelectBarItem Text="@team.Name" Value="@team.Key" />
-                                }
-                            </Items>
-                        </RadzenSelectBar>
+                        <RadzenDropDown @bind-Value="_filterTeams" TValue="IEnumerable<string>" Data="@_teams"
+                                        TextProperty="@nameof(TeamInfo.Name)" ValueProperty="@nameof(TeamInfo.Key)"
+                                        Multiple="true" AllowClear="true" AllowFiltering="true"
+                                        Placeholder="All" Change="@(_ => OnFilterChanged())"
+                                        Style="width: 200px;" />
                     </RadzenStack>
-                    <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_sources.Any())">
+                    @* A single source tells the reader nothing they can act on — one option is not a filter. *@
+                    <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_sources.Count > 1)">
                         <RadzenLabel Text="Source" />
                         <RadzenSelectBar @bind-Value="_filterSources" TValue="IEnumerable<string>" Multiple="true"
                                          Change="@OnFilterChanged" Size="ButtonSize.Small">
@@ -78,11 +62,14 @@ else
                             </Items>
                         </RadzenSelectBar>
                     </RadzenStack>
-                    <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_features.Any())">
-                        <RadzenLabel Text="Feature" />
+                    @* Feature and Action are the required scope split on its colon — apikey:manage is
+                       feature "apikey", action "manage". Labelled as such so the connection to the Scope
+                       column is visible, and kept as two filters so "everything that changed anything"
+                       (action: manage, across features) stays one click. *@
+                    <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_features.Any() && PinnedFilter?.Feature == null)">
+                        <RadzenLabel Text="Scope feature" />
                         <RadzenSelectBar @bind-Value="_filterFeatures" TValue="IEnumerable<string>" Multiple="true"
-                                         Change="@OnFilterChanged" Size="ButtonSize.Small"
-                                         Disabled="@(PinnedFilter?.Feature != null)">
+                                         Change="@OnFilterChanged" Size="ButtonSize.Small">
                             <Items>
                                 @foreach (var f in _features)
                                 {
@@ -91,33 +78,25 @@ else
                             </Items>
                         </RadzenSelectBar>
                     </RadzenStack>
-                    <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_actions.Any())">
-                        <RadzenLabel Text="Action" />
-                        <RadzenSelectBar @bind-Value="_filterActions" TValue="IEnumerable<string>" Multiple="true"
-                                         Change="@OnFilterChanged" Size="ButtonSize.Small"
-                                         Disabled="@(PinnedFilter?.Action != null)">
-                            <Items>
-                                @foreach (var a in _actions)
-                                {
-                                    <RadzenSelectBarItem Text="@a" Value="@a" />
-                                }
-                            </Items>
-                        </RadzenSelectBar>
+                    @* Action and Event carry many values and grow with the app, so they are drop-downs
+                       rather than select bars — a bar of every action wraps to several rows and pushes
+                       the grid off screen. *@
+                    <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_actions.Any() && PinnedFilter?.Action == null)">
+                        <RadzenLabel Text="Scope action" />
+                        <RadzenDropDown @bind-Value="_filterActions" TValue="IEnumerable<string>" Data="@_actions"
+                                        Multiple="true" AllowClear="true" AllowFiltering="true"
+                                        Placeholder="All" Change="@(_ => OnFilterChanged())"
+                                        Style="width: 200px;" />
                     </RadzenStack>
                     <RadzenStack Orientation="Orientation.Vertical" Gap="0">
                         <RadzenLabel Text="Event" />
-                        <RadzenSelectBar @bind-Value="_filterEventTypes" TValue="IEnumerable<AuditEventType>" Multiple="true"
-                                         Change="@OnFilterChanged" Size="ButtonSize.Small">
-                            <Items>
-                                @foreach (var et in EventTypeOptions)
-                                {
-                                    <RadzenSelectBarItem Text="@et.ToString()" Value="@et" />
-                                }
-                            </Items>
-                        </RadzenSelectBar>
+                        <RadzenDropDown @bind-Value="_filterEventTypes" TValue="IEnumerable<AuditEventType>" Data="@EventTypeOptions"
+                                        Multiple="true" AllowClear="true"
+                                        Placeholder="All" Change="@(_ => OnFilterChanged())"
+                                        Style="width: 200px;" />
                     </RadzenStack>
                     <RadzenStack Orientation="Orientation.Vertical" Gap="0">
-                        <RadzenLabel Text="OK" />
+                        <RadzenLabel Text="Result" />
                         <RadzenSelectBar @bind-Value="_filterSuccess" TValue="IEnumerable<bool>" Multiple="true"
                                          Change="@OnFilterChanged" Size="ButtonSize.Small">
                             <Items>
@@ -174,7 +153,7 @@ else
                         <RadzenDataGridColumn Title="Event" Width="110px" Filterable="false" Sortable="false">
                             <Template>@context.EventType</Template>
                         </RadzenDataGridColumn>
-                        <RadzenDataGridColumn Title="OK" Width="160px" Filterable="false" Sortable="false">
+                        <RadzenDataGridColumn Title="Result" Width="160px" Filterable="false" Sortable="false">
                             <Template>
                                 @if (context.Success)
                                 {
@@ -218,7 +197,9 @@ else
                     </Template>
                 </RadzenDataGrid>
 
-                <RadzenText TextStyle="TextStyle.Caption" class="rz-mt-1">@_totalCount total entries</RadzenText>
+                @* Sits with the count, so an unexpectedly short history reads as retention rather than as
+                   nothing having happened. *@
+                <RadzenText TextStyle="TextStyle.Caption" class="rz-mt-1">@_totalCount total entries. @RetentionText</RadzenText>
             </RadzenTabsItem>
 
             <RadzenTabsItem Text="Usage">

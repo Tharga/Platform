@@ -20,11 +20,19 @@ public partial class AuditLogView : ComponentBase
     [Parameter] public AuditCallerType? RestrictCallerType { get; set; }
 
     /// <summary>
-    /// Optional fixed filter dimensions. When set, the matching top-bar controls render
-    /// disabled with the pinned values selected, and the underlying query is forced to
-    /// the pinned values regardless of in-component state.
+    /// Optional fixed filter dimensions. When set, the matching top-bar controls are hidden — the caller
+    /// cannot change them — and the underlying query is forced to the pinned values regardless of
+    /// in-component state.
     /// </summary>
     [Parameter] public AuditPinnedFilter PinnedFilter { get; set; }
+
+    /// <summary>
+    /// How long entries are kept, described for the reader. Null when retention is unlimited, so that an
+    /// empty result reads as "nothing happened" rather than "it aged out".
+    /// </summary>
+    private string RetentionText
+        => AuditRetentionText.Describe(
+            ServiceProvider.GetService<Microsoft.Extensions.Options.IOptions<AuditOptions>>()?.Value.RetentionDays);
 
     private const int ChartQueryLimit = 5000;
 
@@ -43,7 +51,7 @@ public partial class AuditLogView : ComponentBase
     internal Dictionary<string, string> _callerNameCache = new(StringComparer.OrdinalIgnoreCase);
 
     // Top-bar filters
-    private string _datePeriod = "today";
+    private string _datePeriod = AuditPeriod.Today;
     private IEnumerable<string> _filterTeams = Enumerable.Empty<string>();
     private IEnumerable<string> _filterSources = Enumerable.Empty<string>();
     private IEnumerable<string> _filterFeatures = Enumerable.Empty<string>();
@@ -283,15 +291,9 @@ public partial class AuditLogView : ComponentBase
 
     private (DateTime? from, DateTime? to) GetDateRange()
     {
-        var now = DateTime.UtcNow;
-        return _datePeriod switch
-        {
-            "today" => (DateTime.Today.ToUniversalTime(), null),
-            "week" => (DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek).ToUniversalTime(), null),
-            "month" => (new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc), null),
-            _ => (null, null)
-        };
+        return (AuditPeriod.ResolveFrom(_datePeriod, DateTime.UtcNow, DateTime.Today), null);
     }
+
 
     private async Task LoadChartDataAsync()
     {
