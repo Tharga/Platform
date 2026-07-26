@@ -62,8 +62,12 @@ else
                             </Items>
                         </RadzenSelectBar>
                     </RadzenStack>
+                    @* Feature and Action are the required scope split on its colon — apikey:manage is
+                       feature "apikey", action "manage". Labelled as such so the connection to the Scope
+                       column is visible, and kept as two filters so "everything that changed anything"
+                       (action: manage, across features) stays one click. *@
                     <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_features.Any() && PinnedFilter?.Feature == null)">
-                        <RadzenLabel Text="Feature" />
+                        <RadzenLabel Text="Scope feature" />
                         <RadzenSelectBar @bind-Value="_filterFeatures" TValue="IEnumerable<string>" Multiple="true"
                                          Change="@OnFilterChanged" Size="ButtonSize.Small">
                             <Items>
@@ -78,7 +82,7 @@ else
                        rather than select bars — a bar of every action wraps to several rows and pushes
                        the grid off screen. *@
                     <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_actions.Any() && PinnedFilter?.Action == null)">
-                        <RadzenLabel Text="Action" />
+                        <RadzenLabel Text="Scope action" />
                         <RadzenDropDown @bind-Value="_filterActions" TValue="IEnumerable<string>" Data="@_actions"
                                         Multiple="true" AllowClear="true" AllowFiltering="true"
                                         Placeholder="All" Change="@(_ => OnFilterChanged())"
@@ -193,7 +197,9 @@ else
                     </Template>
                 </RadzenDataGrid>
 
-                <RadzenText TextStyle="TextStyle.Caption" class="rz-mt-1">@_totalCount total entries</RadzenText>
+                @* Sits with the count, so an unexpectedly short history reads as retention rather than as
+                   nothing having happened. *@
+                <RadzenText TextStyle="TextStyle.Caption" class="rz-mt-1">@_totalCount total entries. @RetentionText</RadzenText>
             </RadzenTabsItem>
 
             <RadzenTabsItem Text="Usage">
