@@ -6,7 +6,7 @@
     <Company>Thargelion AB</Company>
     <Product>Tharga Team Service</Product>
     <Description>Server-side API-key authentication, authorization enforcement, controller registration, OpenAPI/Swagger setup, and audit logging for ASP.NET Core projects.</Description>
-    <PackageIconUrl>https://thargelion.net/assets/component-platform.png</PackageIconUrl>
+    <PackageIconUrl>https://thargelion.net/assets/component-team.png</PackageIconUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>

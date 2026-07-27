@@ -6,7 +6,7 @@
     <Company>Thargelion AB</Company>
     <Product>Tharga Team Images</Product>
     <Description>Image processing for Tharga Team icons — automatic downscaling of uploaded icons via ImageSharp.</Description>
-    <PackageIconUrl>https://thargelion.net/assets/component-platform.png</PackageIconUrl>
+    <PackageIconUrl>https://thargelion.net/assets/component-team.png</PackageIconUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
