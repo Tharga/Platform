@@ -3,27 +3,27 @@ using Microsoft.AspNetCore.Http;
 using Tharga.Mcp;
 using Tharga.Team;
 
-namespace Tharga.Platform.Mcp;
+namespace Tharga.Team.Mcp;
 
 /// <summary>
 /// MCP resource provider that surfaces the authenticated caller's own user identity and
-/// team memberships under <c>platform://me</c>. Scope is <see cref="McpScope.User"/> —
+/// team memberships under <c>team://me</c>. Scope is <see cref="McpScope.User"/> —
 /// the dispatcher's hierarchy filter lets Team and System callers see this too.
 /// </summary>
-public sealed class PlatformUserResourceProvider : IMcpResourceProvider
+public sealed class TeamUserResourceProvider : IMcpResourceProvider
 {
     private readonly IUserService _userService;
     private readonly ITeamService _teamService;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public const string MeUri = "platform://me";
+    public const string MeUri = "team://me";
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         WriteIndented = true,
     };
 
-    public PlatformUserResourceProvider(
+    public TeamUserResourceProvider(
         IUserService userService,
         ITeamService teamService,
         IHttpContextAccessor httpContextAccessor)

@@ -2,12 +2,12 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Tharga.Mcp;
-using Tharga.Platform.Mcp;
+using Tharga.Team.Mcp;
 using Tharga.Team;
 
-namespace Tharga.Platform.Mcp.Tests;
+namespace Tharga.Team.Mcp.Tests;
 
-public class PlatformUserResourceProviderTests
+public class TeamUserResourceProviderTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
@@ -27,7 +27,7 @@ public class PlatformUserResourceProviderTests
         await Task.CompletedTask;
     }
 
-    private PlatformUserResourceProvider CreateSut()
+    private TeamUserResourceProvider CreateSut()
         => new(_userService, _teamService, _httpContextAccessor);
 
     [Fact]
@@ -48,7 +48,7 @@ public class PlatformUserResourceProviderTests
         var result = await sut.ListResourcesAsync(MakeContext(userId: "u-1"), TestContext.Current.CancellationToken);
 
         var descriptor = Assert.Single(result);
-        Assert.Equal(PlatformUserResourceProvider.MeUri, descriptor.Uri);
+        Assert.Equal(TeamUserResourceProvider.MeUri, descriptor.Uri);
         Assert.Equal("application/json", descriptor.MimeType);
     }
 
@@ -58,7 +58,7 @@ public class PlatformUserResourceProviderTests
         var sut = CreateSut();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.ReadResourceAsync("platform://nope", MakeContext("u-1"), TestContext.Current.CancellationToken));
+            sut.ReadResourceAsync("team://nope", MakeContext("u-1"), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -68,7 +68,7 @@ public class PlatformUserResourceProviderTests
         var sut = CreateSut();
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            sut.ReadResourceAsync(PlatformUserResourceProvider.MeUri, MakeContext("u-1"), TestContext.Current.CancellationToken));
+            sut.ReadResourceAsync(TeamUserResourceProvider.MeUri, MakeContext("u-1"), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -104,9 +104,9 @@ public class PlatformUserResourceProviderTests
         _teamService.GetMembersAsync("T-2").Returns(ToAsyncEnumerable(aliceInT2));
 
         var sut = CreateSut();
-        var content = await sut.ReadResourceAsync(PlatformUserResourceProvider.MeUri, MakeContext("u-alice"), TestContext.Current.CancellationToken);
+        var content = await sut.ReadResourceAsync(TeamUserResourceProvider.MeUri, MakeContext("u-alice"), TestContext.Current.CancellationToken);
 
-        Assert.Equal(PlatformUserResourceProvider.MeUri, content.Uri);
+        Assert.Equal(TeamUserResourceProvider.MeUri, content.Uri);
         Assert.Equal("application/json", content.MimeType);
 
         using var doc = JsonDocument.Parse(content.Text);

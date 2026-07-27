@@ -3,11 +3,11 @@ using Microsoft.Extensions.Options;
 using Tharga.Mcp;
 using Tharga.Team;
 
-namespace Tharga.Platform.Mcp;
+namespace Tharga.Team.Mcp;
 
 /// <summary>
 /// <see cref="IMcpContextAccessor"/> implementation that builds an <see cref="IMcpContext"/> from the current
-/// <see cref="HttpContext"/> on demand. Replaces the default AsyncLocal-backed accessor when <c>AddPlatform</c>
+/// <see cref="HttpContext"/> on demand. Replaces the default AsyncLocal-backed accessor when <c>AddTeam</c>
 /// is registered.
 /// </summary>
 /// <remarks>
@@ -16,9 +16,9 @@ namespace Tharga.Platform.Mcp;
 public sealed class HttpContextMcpContextAccessor : IMcpContextAccessor
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly McpPlatformOptions _options;
+    private readonly McpTeamOptions _options;
 
-    public HttpContextMcpContextAccessor(IHttpContextAccessor httpContextAccessor, IOptions<McpPlatformOptions> options)
+    public HttpContextMcpContextAccessor(IHttpContextAccessor httpContextAccessor, IOptions<McpTeamOptions> options)
     {
         _httpContextAccessor = httpContextAccessor;
         _options = options.Value;
@@ -47,7 +47,7 @@ public sealed class HttpContextMcpContextAccessor : IMcpContextAccessor
                     ? McpScope.Team
                 : McpScope.User;
 
-            return new PlatformMcpContext(user, scope, _options.DeveloperRole);
+            return new TeamMcpContext(user, scope, _options.DeveloperRole);
         }
         set
         {

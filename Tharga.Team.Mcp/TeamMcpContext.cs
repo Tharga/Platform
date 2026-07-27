@@ -2,18 +2,18 @@ using System.Security.Claims;
 using Tharga.Mcp;
 using Tharga.Team;
 
-namespace Tharga.Platform.Mcp;
+namespace Tharga.Team.Mcp;
 
 /// <summary>
 /// <see cref="IMcpContext"/> implementation backed by a <see cref="ClaimsPrincipal"/>.
-/// Reads UserId, TeamId, and the Developer role from standard Platform claim types.
+/// Reads UserId, TeamId, and the Developer role from standard Team claim types.
 /// </summary>
-public sealed class PlatformMcpContext : IMcpContext
+public sealed class TeamMcpContext : IMcpContext
 {
     /// <param name="principal">The authenticated user, or null for anonymous.</param>
     /// <param name="scope">The MCP scope this call belongs to.</param>
     /// <param name="developerRole">Role name that gates <see cref="McpScope.System"/> calls.</param>
-    public PlatformMcpContext(ClaimsPrincipal principal, McpScope scope, string developerRole)
+    public TeamMcpContext(ClaimsPrincipal principal, McpScope scope, string developerRole)
     {
         Scope = scope;
         UserId = principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value

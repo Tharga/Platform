@@ -4,8 +4,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Authors>Daniel Bohlin</Authors>
     <Company>Thargelion AB</Company>
-    <Product>Tharga Platform Mcp</Product>
-    <Description>Platform bridge for Tharga.Mcp. Provides Platform-backed IMcpContext, scope enforcement, audit logging, and authentication for MCP tool and resource invocations.</Description>
+    <Product>Tharga Team Mcp</Product>
+    <Description>Team bridge for Tharga.Mcp. Provides Team-backed IMcpContext, scope enforcement, audit logging, and authentication for MCP tool and resource invocations.</Description>
     <PackageIconUrl>https://thargelion.net/assets/component-platform.png</PackageIconUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
@@ -16,7 +16,7 @@
     <IncludeSource>true</IncludeSource>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <InternalsVisibleTo>Tharga.Platform.Mcp.Tests</InternalsVisibleTo>
+    <InternalsVisibleTo>Tharga.Team.Mcp.Tests</InternalsVisibleTo>
   </PropertyGroup>
   <PropertyGroup>
     <!--

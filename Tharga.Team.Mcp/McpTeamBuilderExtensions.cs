@@ -5,23 +5,23 @@ using Tharga.Mcp;
 using Tharga.Team;
 using Tharga.Team.Service;
 
-namespace Tharga.Platform.Mcp;
+namespace Tharga.Team.Mcp;
 
 /// <summary>
-/// Extension methods on <see cref="IThargaMcpBuilder"/> for wiring the Tharga.Platform bridge
+/// Extension methods on <see cref="IThargaMcpBuilder"/> for wiring the Tharga.Team bridge
 /// into the MCP pipeline.
 /// </summary>
-public static class McpPlatformBuilderExtensions
+public static class McpTeamBuilderExtensions
 {
     /// <summary>
-    /// Registers the Platform bridge: populates <see cref="IMcpContext"/> from the current <see cref="HttpContext"/>,
+    /// Registers the Team bridge: populates <see cref="IMcpContext"/> from the current <see cref="HttpContext"/>,
     /// enables <see cref="IMcpScopeChecker"/>, and registers built-in <c>mcp:*</c> scopes.
     /// </summary>
-    public static IThargaMcpBuilder AddPlatform(this IThargaMcpBuilder builder, Action<McpPlatformOptions> configure = null)
+    public static IThargaMcpBuilder AddTeam(this IThargaMcpBuilder builder, Action<McpTeamOptions> configure = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        var options = new McpPlatformOptions();
+        var options = new McpTeamOptions();
         configure?.Invoke(options);
 
         builder.Services.AddHttpContextAccessor();
@@ -42,13 +42,13 @@ public static class McpPlatformBuilderExtensions
 
         // Always-on user-scope and team-scope resource providers. They self-gate on the
         // principal's UserId / TeamKey claim, so anonymous and system-only callers see nothing.
-        builder.AddResourceProvider<PlatformUserResourceProvider>();
-        builder.AddResourceProvider<PlatformTeamResourceProvider>();
+        builder.AddResourceProvider<TeamUserResourceProvider>();
+        builder.AddResourceProvider<TeamResourceProvider>();
 
         // Opt-in system-scope resource providers (diagnostic data for Developers).
         if (options.ExposeSystemResources)
         {
-            builder.AddResourceProvider<PlatformSystemResourceProvider>();
+            builder.AddResourceProvider<TeamSystemResourceProvider>();
         }
 
         return builder;

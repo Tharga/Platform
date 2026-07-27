@@ -1,9 +1,9 @@
 ﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
-using Tharga.Platform.Mcp;
+using Tharga.Team.Mcp;
 using Tharga.Team;
 
-namespace Tharga.Platform.Mcp.Tests;
+namespace Tharga.Team.Mcp.Tests;
 
 public class McpScopeCheckerTests
 {

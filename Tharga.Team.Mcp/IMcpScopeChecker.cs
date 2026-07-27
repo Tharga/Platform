@@ -1,9 +1,9 @@
-namespace Tharga.Platform.Mcp;
+namespace Tharga.Team.Mcp;
 
 /// <summary>
 /// Helper for MCP tool implementations to enforce fine-grained scopes imperatively.
-/// Use when a tool is pure infrastructure (no Platform service behind it) — when a tool wraps
-/// a Platform service method, rely on <c>[RequireScope]</c> and the existing <c>ScopeProxy</c> instead.
+/// Use when a tool is pure infrastructure (no Team service behind it) — when a tool wraps
+/// a Team service method, rely on <c>[RequireScope]</c> and the existing <c>ScopeProxy</c> instead.
 /// </summary>
 public interface IMcpScopeChecker
 {

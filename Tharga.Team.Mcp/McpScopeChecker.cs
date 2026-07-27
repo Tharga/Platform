@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Tharga.Team;
 
-namespace Tharga.Platform.Mcp;
+namespace Tharga.Team.Mcp;
 
 /// <summary>
 /// Default <see cref="IMcpScopeChecker"/> implementation backed by the current <see cref="HttpContext"/>.

@@ -1,11 +1,11 @@
 using System.Text.Json;
 using Tharga.Mcp;
-using Tharga.Platform.Mcp;
+using Tharga.Team.Mcp;
 using Tharga.Team;
 
-namespace Tharga.Platform.Mcp.Tests;
+namespace Tharga.Team.Mcp.Tests;
 
-public class PlatformTeamResourceProviderTests
+public class TeamResourceProviderTests
 {
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IApiKeyAdministrationService _apiKeyService = Substitute.For<IApiKeyAdministrationService>();
@@ -27,7 +27,7 @@ public class PlatformTeamResourceProviderTests
     [Fact]
     public async Task ListResourcesAsync_NoTeamId_ReturnsEmpty()
     {
-        var sut = new PlatformTeamResourceProvider(_teamService, _apiKeyService);
+        var sut = new TeamResourceProvider(_teamService, _apiKeyService);
 
         var result = await sut.ListResourcesAsync(MakeContext(teamId: null), TestContext.Current.CancellationToken);
 
@@ -37,43 +37,43 @@ public class PlatformTeamResourceProviderTests
     [Fact]
     public async Task ListResourcesAsync_WithTeamId_Returns_Three_When_ApiKeyServiceRegistered()
     {
-        var sut = new PlatformTeamResourceProvider(_teamService, _apiKeyService);
+        var sut = new TeamResourceProvider(_teamService, _apiKeyService);
 
         var result = await sut.ListResourcesAsync(MakeContext("T-1"), TestContext.Current.CancellationToken);
 
         Assert.Equal(3, result.Count);
-        Assert.Contains(result, r => r.Uri == PlatformTeamResourceProvider.TeamUri);
-        Assert.Contains(result, r => r.Uri == PlatformTeamResourceProvider.MembersUri);
-        Assert.Contains(result, r => r.Uri == PlatformTeamResourceProvider.ApiKeysUri);
+        Assert.Contains(result, r => r.Uri == TeamResourceProvider.TeamUri);
+        Assert.Contains(result, r => r.Uri == TeamResourceProvider.MembersUri);
+        Assert.Contains(result, r => r.Uri == TeamResourceProvider.ApiKeysUri);
     }
 
     [Fact]
     public async Task ListResourcesAsync_WithTeamId_OmitsApiKeys_When_ApiKeyServiceNotRegistered()
     {
-        var sut = new PlatformTeamResourceProvider(_teamService, apiKeyAdministrationService: null);
+        var sut = new TeamResourceProvider(_teamService, apiKeyAdministrationService: null);
 
         var result = await sut.ListResourcesAsync(MakeContext("T-1"), TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.Count);
-        Assert.DoesNotContain(result, r => r.Uri == PlatformTeamResourceProvider.ApiKeysUri);
+        Assert.DoesNotContain(result, r => r.Uri == TeamResourceProvider.ApiKeysUri);
     }
 
     [Fact]
     public async Task ReadResourceAsync_NoTeamId_Throws()
     {
-        var sut = new PlatformTeamResourceProvider(_teamService, _apiKeyService);
+        var sut = new TeamResourceProvider(_teamService, _apiKeyService);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            sut.ReadResourceAsync(PlatformTeamResourceProvider.TeamUri, MakeContext(teamId: null), TestContext.Current.CancellationToken));
+            sut.ReadResourceAsync(TeamResourceProvider.TeamUri, MakeContext(teamId: null), TestContext.Current.CancellationToken));
     }
 
     [Fact]
     public async Task ReadResourceAsync_UnknownUri_Throws()
     {
-        var sut = new PlatformTeamResourceProvider(_teamService, _apiKeyService);
+        var sut = new TeamResourceProvider(_teamService, _apiKeyService);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.ReadResourceAsync("platform://team/bogus", MakeContext("T-1"), TestContext.Current.CancellationToken));
+            sut.ReadResourceAsync("team://team/bogus", MakeContext("T-1"), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -86,8 +86,8 @@ public class PlatformTeamResourceProviderTests
         team.ConsentedRoles.Returns(new[] { "viewer" });
         _teamService.GetTeamsAsync().Returns(ToAsyncEnumerable(team));
 
-        var sut = new PlatformTeamResourceProvider(_teamService, _apiKeyService);
-        var content = await sut.ReadResourceAsync(PlatformTeamResourceProvider.TeamUri, MakeContext("T-1"), TestContext.Current.CancellationToken);
+        var sut = new TeamResourceProvider(_teamService, _apiKeyService);
+        var content = await sut.ReadResourceAsync(TeamResourceProvider.TeamUri, MakeContext("T-1"), TestContext.Current.CancellationToken);
 
         using var doc = JsonDocument.Parse(content.Text);
         var root = doc.RootElement;
@@ -104,10 +104,10 @@ public class PlatformTeamResourceProviderTests
         otherTeam.Key.Returns("T-OTHER");
         _teamService.GetTeamsAsync().Returns(ToAsyncEnumerable(otherTeam));
 
-        var sut = new PlatformTeamResourceProvider(_teamService, _apiKeyService);
+        var sut = new TeamResourceProvider(_teamService, _apiKeyService);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.ReadResourceAsync(PlatformTeamResourceProvider.TeamUri, MakeContext("T-1"), TestContext.Current.CancellationToken));
+            sut.ReadResourceAsync(TeamResourceProvider.TeamUri, MakeContext("T-1"), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -124,8 +124,8 @@ public class PlatformTeamResourceProviderTests
         m2.Invitation.Returns(new Invitation { InviteKey = "inv-abc", EMail = "two@example.com", InviteTime = DateTime.UtcNow });
         _teamService.GetMembersAsync("T-1").Returns(ToAsyncEnumerable(m1, m2));
 
-        var sut = new PlatformTeamResourceProvider(_teamService, _apiKeyService);
-        var content = await sut.ReadResourceAsync(PlatformTeamResourceProvider.MembersUri, MakeContext("T-1"), TestContext.Current.CancellationToken);
+        var sut = new TeamResourceProvider(_teamService, _apiKeyService);
+        var content = await sut.ReadResourceAsync(TeamResourceProvider.MembersUri, MakeContext("T-1"), TestContext.Current.CancellationToken);
 
         using var doc = JsonDocument.Parse(content.Text);
         var root = doc.RootElement;
@@ -148,8 +148,8 @@ public class PlatformTeamResourceProviderTests
         key.CreatedBy.Returns("alice");
         _apiKeyService.GetKeysAsync("T-1").Returns(ToAsyncEnumerable(key));
 
-        var sut = new PlatformTeamResourceProvider(_teamService, _apiKeyService);
-        var content = await sut.ReadResourceAsync(PlatformTeamResourceProvider.ApiKeysUri, MakeContext("T-1"), TestContext.Current.CancellationToken);
+        var sut = new TeamResourceProvider(_teamService, _apiKeyService);
+        var content = await sut.ReadResourceAsync(TeamResourceProvider.ApiKeysUri, MakeContext("T-1"), TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain("RAW-SECRET-VALUE", content.Text);
 
@@ -164,9 +164,9 @@ public class PlatformTeamResourceProviderTests
     [Fact]
     public async Task ReadResourceAsync_ApiKeysUri_NoApiKeyService_Throws()
     {
-        var sut = new PlatformTeamResourceProvider(_teamService, apiKeyAdministrationService: null);
+        var sut = new TeamResourceProvider(_teamService, apiKeyAdministrationService: null);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.ReadResourceAsync(PlatformTeamResourceProvider.ApiKeysUri, MakeContext("T-1"), TestContext.Current.CancellationToken));
+            sut.ReadResourceAsync(TeamResourceProvider.ApiKeysUri, MakeContext("T-1"), TestContext.Current.CancellationToken));
     }
 }

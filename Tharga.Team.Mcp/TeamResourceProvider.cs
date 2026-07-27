@@ -2,10 +2,10 @@ using System.Text.Json;
 using Tharga.Mcp;
 using Tharga.Team;
 
-namespace Tharga.Platform.Mcp;
+namespace Tharga.Team.Mcp;
 
 /// <summary>
-/// MCP resource provider that surfaces the caller's *current* team under <c>platform://team*</c>.
+/// MCP resource provider that surfaces the caller's *current* team under <c>team://team*</c>.
 /// Scope is <see cref="McpScope.Team"/>; the resource set is gated on a <c>TeamKey</c> claim being
 /// present on the principal — anonymous or non-team callers see no resources and read attempts throw
 /// <see cref="UnauthorizedAccessException"/>.
@@ -14,21 +14,21 @@ namespace Tharga.Platform.Mcp;
 /// not supported here — that lives in a System-scope provider once <c>ITeamService.GetAllTeamsAsync</c>
 /// is added.
 /// </summary>
-public sealed class PlatformTeamResourceProvider : IMcpResourceProvider
+public sealed class TeamResourceProvider : IMcpResourceProvider
 {
     private readonly ITeamService _teamService;
     private readonly IApiKeyAdministrationService _apiKeyAdministrationService;
 
-    public const string TeamUri = "platform://team";
-    public const string MembersUri = "platform://team/members";
-    public const string ApiKeysUri = "platform://team/apikeys";
+    public const string TeamUri = "team://team";
+    public const string MembersUri = "team://team/members";
+    public const string ApiKeysUri = "team://team/apikeys";
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         WriteIndented = true,
     };
 
-    public PlatformTeamResourceProvider(
+    public TeamResourceProvider(
         ITeamService teamService,
         IApiKeyAdministrationService apiKeyAdministrationService = null)
     {

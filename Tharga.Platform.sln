@@ -26,9 +26,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tharga.Platform.Sample", "T
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sample", "Sample", "{9A5C496D-952A-4BD1-83A0-64950EC8AE3C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tharga.Platform.Mcp", "Tharga.Platform.Mcp\Tharga.Platform.Mcp.csproj", "{CDC62BA6-295F-44CF-A6FE-909A803E6EC3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tharga.Team.Mcp", "Tharga.Team.Mcp\Tharga.Team.Mcp.csproj", "{CDC62BA6-295F-44CF-A6FE-909A803E6EC3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tharga.Platform.Mcp.Tests", "Tharga.Platform.Mcp.Tests\Tharga.Platform.Mcp.Tests.csproj", "{32F3F58A-486D-44FB-AAD1-DF6CB19100B0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tharga.Team.Mcp.Tests", "Tharga.Team.Mcp.Tests\Tharga.Team.Mcp.Tests.csproj", "{32F3F58A-486D-44FB-AAD1-DF6CB19100B0}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tharga.Team.MongoDB.Tests", "Tharga.Team.MongoDB.Tests\Tharga.Team.MongoDB.Tests.csproj", "{F53219A8-CB6D-423C-9314-1397F08E1202}"
 EndProject

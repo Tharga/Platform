@@ -1,16 +1,16 @@
 using System.Security.Claims;
 using Tharga.Mcp;
-using Tharga.Platform.Mcp;
+using Tharga.Team.Mcp;
 using Tharga.Team;
 
-namespace Tharga.Platform.Mcp.Tests;
+namespace Tharga.Team.Mcp.Tests;
 
-public class PlatformMcpContextTests
+public class TeamMcpContextTests
 {
     [Fact]
     public void NullPrincipal_ReturnsAnonymousContext()
     {
-        var ctx = new PlatformMcpContext(null, McpScope.User, "Developer");
+        var ctx = new TeamMcpContext(null, McpScope.User, "Developer");
 
         Assert.Null(ctx.UserId);
         Assert.Null(ctx.TeamId);
@@ -27,7 +27,7 @@ public class PlatformMcpContextTests
         }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
-        var ctx = new PlatformMcpContext(principal, McpScope.User, "Developer");
+        var ctx = new TeamMcpContext(principal, McpScope.User, "Developer");
 
         Assert.Equal("user-123", ctx.UserId);
     }
@@ -41,7 +41,7 @@ public class PlatformMcpContextTests
         }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
-        var ctx = new PlatformMcpContext(principal, McpScope.User, "Developer");
+        var ctx = new TeamMcpContext(principal, McpScope.User, "Developer");
 
         Assert.Equal("user-from-sub", ctx.UserId);
     }
@@ -55,7 +55,7 @@ public class PlatformMcpContextTests
         }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
-        var ctx = new PlatformMcpContext(principal, McpScope.Team, "Developer");
+        var ctx = new TeamMcpContext(principal, McpScope.Team, "Developer");
 
         Assert.Equal("team-abc", ctx.TeamId);
     }
@@ -69,7 +69,7 @@ public class PlatformMcpContextTests
         }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
-        var ctx = new PlatformMcpContext(principal, McpScope.System, "Developer");
+        var ctx = new TeamMcpContext(principal, McpScope.System, "Developer");
 
         Assert.True(ctx.IsDeveloper);
     }
@@ -83,7 +83,7 @@ public class PlatformMcpContextTests
         }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
-        var ctx = new PlatformMcpContext(principal, McpScope.System, "Developer");
+        var ctx = new TeamMcpContext(principal, McpScope.System, "Developer");
 
         Assert.False(ctx.IsDeveloper);
     }
@@ -97,7 +97,7 @@ public class PlatformMcpContextTests
         }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
-        var ctx = new PlatformMcpContext(principal, McpScope.System, "SuperAdmin");
+        var ctx = new TeamMcpContext(principal, McpScope.System, "SuperAdmin");
 
         Assert.True(ctx.IsDeveloper);
     }

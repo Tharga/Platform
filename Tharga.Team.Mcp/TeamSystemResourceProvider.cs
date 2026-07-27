@@ -3,29 +3,29 @@ using Tharga.Mcp;
 using Tharga.Team;
 using Tharga.Team.Service.Audit;
 
-namespace Tharga.Platform.Mcp;
+namespace Tharga.Team.Mcp;
 
 /// <summary>
-/// Read-only MCP resource provider that surfaces system-scope Platform data for diagnostic use.
+/// Read-only MCP resource provider that surfaces system-scope Team data for diagnostic use.
 /// Only available to callers with the Developer role (see <see cref="IMcpContext.IsDeveloper"/>).
-/// Registered by <c>AddPlatform</c> when <see cref="McpPlatformOptions.ExposeSystemResources"/> is true.
+/// Registered by <c>AddTeam</c> when <see cref="McpTeamOptions.ExposeSystemResources"/> is true.
 /// </summary>
-public sealed class PlatformSystemResourceProvider : IMcpResourceProvider
+public sealed class TeamSystemResourceProvider : IMcpResourceProvider
 {
     private readonly IApiKeyAdministrationService _apiKeyAdministrationService;
     private readonly ITenantRoleRegistry _tenantRoleRegistry;
     private readonly CompositeAuditLogger _auditLogger;
 
-    public const string SystemKeysUri = "platform://system/apikeys";
-    public const string RolesUri = "platform://system/roles";
-    public const string AuditUri = "platform://system/audit";
+    public const string SystemKeysUri = "team://system/apikeys";
+    public const string RolesUri = "team://system/roles";
+    public const string AuditUri = "team://system/audit";
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         WriteIndented = true,
     };
 
-    public PlatformSystemResourceProvider(
+    public TeamSystemResourceProvider(
         IApiKeyAdministrationService apiKeyAdministrationService = null,
         ITenantRoleRegistry tenantRoleRegistry = null,
         CompositeAuditLogger auditLogger = null)

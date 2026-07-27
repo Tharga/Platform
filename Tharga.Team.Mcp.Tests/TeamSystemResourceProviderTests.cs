@@ -1,18 +1,18 @@
 using Microsoft.Extensions.Options;
 using Tharga.Mcp;
-using Tharga.Platform.Mcp;
+using Tharga.Team.Mcp;
 using Tharga.Team;
 using Tharga.Team.Service.Audit;
 
-namespace Tharga.Platform.Mcp.Tests;
+namespace Tharga.Team.Mcp.Tests;
 
-public class PlatformSystemResourceProviderTests
+public class TeamSystemResourceProviderTests
 {
     private readonly IApiKeyAdministrationService _apiKeyService = Substitute.For<IApiKeyAdministrationService>();
     private readonly ITenantRoleRegistry _roleRegistry = Substitute.For<ITenantRoleRegistry>();
     private readonly CompositeAuditLogger _auditLogger;
 
-    public PlatformSystemResourceProviderTests()
+    public TeamSystemResourceProviderTests()
     {
         _auditLogger = new CompositeAuditLogger(
             Enumerable.Empty<IAuditLogger>(),
@@ -36,7 +36,7 @@ public class PlatformSystemResourceProviderTests
     [Fact]
     public async Task ListResourcesAsync_NonDeveloper_ReturnsEmpty()
     {
-        var sut = new PlatformSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
+        var sut = new TeamSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
 
         var result = await sut.ListResourcesAsync(MakeContext(isDeveloper: false), TestContext.Current.CancellationToken);
 
@@ -46,43 +46,43 @@ public class PlatformSystemResourceProviderTests
     [Fact]
     public async Task ListResourcesAsync_Developer_ReturnsAllAvailableResources()
     {
-        var sut = new PlatformSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
+        var sut = new TeamSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
 
         var result = await sut.ListResourcesAsync(MakeContext(isDeveloper: true), TestContext.Current.CancellationToken);
 
         Assert.Equal(3, result.Count);
-        Assert.Contains(result, r => r.Uri == PlatformSystemResourceProvider.SystemKeysUri);
-        Assert.Contains(result, r => r.Uri == PlatformSystemResourceProvider.RolesUri);
-        Assert.Contains(result, r => r.Uri == PlatformSystemResourceProvider.AuditUri);
+        Assert.Contains(result, r => r.Uri == TeamSystemResourceProvider.SystemKeysUri);
+        Assert.Contains(result, r => r.Uri == TeamSystemResourceProvider.RolesUri);
+        Assert.Contains(result, r => r.Uri == TeamSystemResourceProvider.AuditUri);
     }
 
     [Fact]
     public async Task ListResourcesAsync_OmitsAuditWhenAuditLoggerNotRegistered()
     {
-        var sut = new PlatformSystemResourceProvider(_apiKeyService, _roleRegistry, auditLogger: null);
+        var sut = new TeamSystemResourceProvider(_apiKeyService, _roleRegistry, auditLogger: null);
 
         var result = await sut.ListResourcesAsync(MakeContext(isDeveloper: true), TestContext.Current.CancellationToken);
 
-        Assert.DoesNotContain(result, r => r.Uri == PlatformSystemResourceProvider.AuditUri);
+        Assert.DoesNotContain(result, r => r.Uri == TeamSystemResourceProvider.AuditUri);
         Assert.Equal(2, result.Count);
     }
 
     [Fact]
     public async Task ReadResourceAsync_NonDeveloper_Throws()
     {
-        var sut = new PlatformSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
+        var sut = new TeamSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            sut.ReadResourceAsync(PlatformSystemResourceProvider.RolesUri, MakeContext(isDeveloper: false), TestContext.Current.CancellationToken));
+            sut.ReadResourceAsync(TeamSystemResourceProvider.RolesUri, MakeContext(isDeveloper: false), TestContext.Current.CancellationToken));
     }
 
     [Fact]
     public async Task ReadResourceAsync_UnknownUri_Throws()
     {
-        var sut = new PlatformSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
+        var sut = new TeamSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.ReadResourceAsync("platform://system/unknown", MakeContext(isDeveloper: true), TestContext.Current.CancellationToken));
+            sut.ReadResourceAsync("team://system/unknown", MakeContext(isDeveloper: true), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -96,9 +96,9 @@ public class PlatformSystemResourceProviderTests
         key.CreatedBy.Returns("daniel");
         _apiKeyService.GetSystemKeysAsync().Returns(ToAsyncEnumerable(key));
 
-        var sut = new PlatformSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
+        var sut = new TeamSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
 
-        var content = await sut.ReadResourceAsync(PlatformSystemResourceProvider.SystemKeysUri, MakeContext(isDeveloper: true), TestContext.Current.CancellationToken);
+        var content = await sut.ReadResourceAsync(TeamSystemResourceProvider.SystemKeysUri, MakeContext(isDeveloper: true), TestContext.Current.CancellationToken);
 
         Assert.NotNull(content.Text);
         Assert.Contains("mcp-gate", content.Text);
@@ -114,9 +114,9 @@ public class PlatformSystemResourceProviderTests
         var role = new TenantRoleDefinition("Editor", new[] { "feature:read", "feature:write" });
         _roleRegistry.All.Returns(new[] { role });
 
-        var sut = new PlatformSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
+        var sut = new TeamSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
 
-        var content = await sut.ReadResourceAsync(PlatformSystemResourceProvider.RolesUri, MakeContext(isDeveloper: true), TestContext.Current.CancellationToken);
+        var content = await sut.ReadResourceAsync(TeamSystemResourceProvider.RolesUri, MakeContext(isDeveloper: true), TestContext.Current.CancellationToken);
 
         Assert.Contains("Editor", content.Text);
         Assert.Contains("feature:read", content.Text);
@@ -125,9 +125,9 @@ public class PlatformSystemResourceProviderTests
     [Fact]
     public async Task ReadResourceAsync_Audit_ReturnsQueryResult()
     {
-        var sut = new PlatformSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
+        var sut = new TeamSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
 
-        var content = await sut.ReadResourceAsync(PlatformSystemResourceProvider.AuditUri, MakeContext(isDeveloper: true), TestContext.Current.CancellationToken);
+        var content = await sut.ReadResourceAsync(TeamSystemResourceProvider.AuditUri, MakeContext(isDeveloper: true), TestContext.Current.CancellationToken);
 
         Assert.NotNull(content.Text);
         Assert.Contains("items", content.Text);
@@ -137,7 +137,7 @@ public class PlatformSystemResourceProviderTests
     [Fact]
     public void Scope_IsSystem()
     {
-        var sut = new PlatformSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
+        var sut = new TeamSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
         Assert.Equal(McpScope.System, sut.Scope);
     }
 }

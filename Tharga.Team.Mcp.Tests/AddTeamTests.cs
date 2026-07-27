@@ -1,11 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using Tharga.Mcp;
-using Tharga.Platform.Mcp;
+using Tharga.Team.Mcp;
 using Tharga.Team;
 
-namespace Tharga.Platform.Mcp.Tests;
+namespace Tharga.Team.Mcp.Tests;
 
-public class AddPlatformTests
+public class AddTeamTests
 {
     [Fact]
     public void ReplacesDefaultContextAccessorWithHttpContextBacked()
@@ -14,7 +14,7 @@ public class AddPlatformTests
 
         services.AddThargaMcp(mcp =>
         {
-            mcp.AddPlatform();
+            mcp.AddTeam();
         });
 
         var provider = services.BuildServiceProvider();
@@ -30,10 +30,10 @@ public class AddPlatformTests
 
         services.AddThargaMcp(mcp =>
         {
-            mcp.AddPlatform(o => o.ExposeSystemResources = false);
+            mcp.AddTeam(o => o.ExposeSystemResources = false);
         });
 
-        Assert.DoesNotContain(services, d => d.ServiceType == typeof(PlatformSystemResourceProvider));
+        Assert.DoesNotContain(services, d => d.ServiceType == typeof(TeamSystemResourceProvider));
     }
 
     [Fact]
@@ -43,10 +43,10 @@ public class AddPlatformTests
 
         services.AddThargaMcp(mcp =>
         {
-            mcp.AddPlatform(o => o.ExposeSystemResources = true);
+            mcp.AddTeam(o => o.ExposeSystemResources = true);
         });
 
-        Assert.Contains(services, d => d.ServiceType == typeof(PlatformSystemResourceProvider));
+        Assert.Contains(services, d => d.ServiceType == typeof(TeamSystemResourceProvider));
         Assert.Contains(services, d =>
             d.ServiceType == typeof(IMcpResourceProvider) &&
             d.Lifetime == ServiceLifetime.Transient);
@@ -59,7 +59,7 @@ public class AddPlatformTests
 
         services.AddThargaMcp(mcp =>
         {
-            mcp.AddPlatform();
+            mcp.AddTeam();
         });
 
         var provider = services.BuildServiceProvider();
@@ -75,7 +75,7 @@ public class AddPlatformTests
 
         services.AddThargaMcp(mcp =>
         {
-            mcp.AddPlatform();
+            mcp.AddTeam();
         });
 
         var provider = services.BuildServiceProvider();
@@ -91,11 +91,11 @@ public class AddPlatformTests
 
         services.AddThargaMcp(mcp =>
         {
-            mcp.AddPlatform(o => o.DeveloperRole = "SuperAdmin");
+            mcp.AddTeam(o => o.DeveloperRole = "SuperAdmin");
         });
 
         var provider = services.BuildServiceProvider();
-        var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<McpPlatformOptions>>();
+        var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<McpTeamOptions>>();
 
         Assert.Equal("SuperAdmin", options.Value.DeveloperRole);
     }

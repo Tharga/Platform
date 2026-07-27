@@ -1,13 +1,13 @@
-namespace Tharga.Platform.Mcp;
+namespace Tharga.Team.Mcp;
 
 /// <summary>
-/// Configuration for the Tharga.Platform.Mcp bridge.
+/// Configuration for the Tharga.Team.Mcp bridge.
 /// </summary>
-public sealed class McpPlatformOptions
+public sealed class McpTeamOptions
 {
     /// <summary>
     /// Role that must be present on the caller for <see cref="Tharga.Mcp.McpScope.System"/> calls.
-    /// Defaults to <c>"Developer"</c> to match Tharga.Platform conventions.
+    /// Defaults to <c>"Developer"</c> to match Tharga.Team conventions.
     /// </summary>
     public string DeveloperRole { get; set; } = "Developer";
 

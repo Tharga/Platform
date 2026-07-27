@@ -2,10 +2,10 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Tharga.Mcp;
-using Tharga.Platform.Mcp;
+using Tharga.Team.Mcp;
 using Tharga.Team;
 
-namespace Tharga.Platform.Mcp.Tests;
+namespace Tharga.Team.Mcp.Tests;
 
 public class HttpContextMcpContextAccessorTests
 {
@@ -14,7 +14,7 @@ public class HttpContextMcpContextAccessorTests
     {
         var accessor = Substitute.For<IHttpContextAccessor>();
         accessor.HttpContext.Returns((HttpContext)null);
-        var sut = new HttpContextMcpContextAccessor(accessor, Options.Create(new McpPlatformOptions()));
+        var sut = new HttpContextMcpContextAccessor(accessor, Options.Create(new McpTeamOptions()));
 
         Assert.Null(sut.Current);
     }
@@ -31,7 +31,7 @@ public class HttpContextMcpContextAccessorTests
         var httpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
         var accessor = Substitute.For<IHttpContextAccessor>();
         accessor.HttpContext.Returns(httpContext);
-        var sut = new HttpContextMcpContextAccessor(accessor, Options.Create(new McpPlatformOptions()));
+        var sut = new HttpContextMcpContextAccessor(accessor, Options.Create(new McpTeamOptions()));
 
         var ctx = sut.Current;
 
@@ -47,7 +47,7 @@ public class HttpContextMcpContextAccessorTests
         var httpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity("TestAuth")) };
         var accessor = Substitute.For<IHttpContextAccessor>();
         accessor.HttpContext.Returns(httpContext);
-        var sut = new HttpContextMcpContextAccessor(accessor, Options.Create(new McpPlatformOptions()));
+        var sut = new HttpContextMcpContextAccessor(accessor, Options.Create(new McpTeamOptions()));
 
         // Setter should not throw even though it's a no-op
         sut.Current = null;
@@ -100,7 +100,7 @@ public class HttpContextMcpContextAccessorTests
     [Fact]
     public void Custom_DeveloperRole_Is_Honored()
     {
-        var options = Options.Create(new McpPlatformOptions { DeveloperRole = "SuperAdmin" });
+        var options = Options.Create(new McpTeamOptions { DeveloperRole = "SuperAdmin" });
         var identity = new ClaimsIdentity(new[] { new Claim(ClaimTypes.Role, "SuperAdmin") }, "TestAuth");
         var httpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
         var accessor = Substitute.For<IHttpContextAccessor>();
@@ -116,7 +116,7 @@ public class HttpContextMcpContextAccessorTests
         var httpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
         var accessor = Substitute.For<IHttpContextAccessor>();
         accessor.HttpContext.Returns(httpContext);
-        var sut = new HttpContextMcpContextAccessor(accessor, Options.Create(new McpPlatformOptions()));
+        var sut = new HttpContextMcpContextAccessor(accessor, Options.Create(new McpTeamOptions()));
         return sut.Current;
     }
 }

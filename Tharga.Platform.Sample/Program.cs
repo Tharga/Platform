@@ -3,7 +3,7 @@ using Serilog;
 using Serilog.Events;
 using Tharga.Mcp;
 using Tharga.MongoDB;
-using Tharga.Platform.Mcp;
+using Tharga.Team.Mcp;
 using Tharga.Platform.Sample.Components;
 using Tharga.Platform.Sample.Framework;
 using Tharga.Platform.Sample.Framework.Team;
@@ -136,7 +136,7 @@ if (!string.IsNullOrEmpty(builder.Configuration["AzureAd:ClientSecret"]))
 
 builder.Services.AddThargaMcp(mcp =>
 {
-    mcp.AddPlatform();
+    mcp.AddTeam();
 });
 
 // TeamAccessInterceptor is deliberately NOT registered yet. Claim construction reads the user record to
