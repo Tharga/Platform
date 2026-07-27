@@ -164,7 +164,7 @@ an enricher cannot overwrite a key the toolkit (or an earlier enricher) set — 
 **singleton** (read request state via `IHttpContextAccessor`), and one that throws is logged and skipped so
 enrichment can never fail the audited operation.
 
-See the [implementation guide](https://platform.tharga.net) for the full reference.
+See the [implementation guide](https://team.tharga.net) for the full reference.
 
 ## Capturing the private token
 

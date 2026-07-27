@@ -6,7 +6,7 @@
     <Company>Thargelion AB</Company>
     <Product>Tharga Team Entra</Product>
     <Description>Microsoft Entra ID user-directory provider for Tharga Team: verify users against Entra, list directory-only users, and delete users from the directory via Microsoft Graph.</Description>
-    <PackageIconUrl>https://thargelion.net/assets/component-platform.png</PackageIconUrl>
+    <PackageIconUrl>https://thargelion.net/assets/component-team.png</PackageIconUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>

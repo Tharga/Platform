@@ -6,7 +6,7 @@
     <Company>Thargelion AB</Company>
     <Product>Tharga Team Blazor</Product>
     <Description>Team management Blazor components for multi-tenant applications. Works with both Blazor Server and WebAssembly.</Description>
-    <PackageIconUrl>https://thargelion.net/assets/component-platform.png</PackageIconUrl>
+    <PackageIconUrl>https://thargelion.net/assets/component-team.png</PackageIconUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>

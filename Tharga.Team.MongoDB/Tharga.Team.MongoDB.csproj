@@ -6,7 +6,7 @@
     <Company>Thargelion AB</Company>
     <Product>Tharga Team MongoDB</Product>
     <Description>MontoDB Team features for Tharga Blazor.</Description>
-    <PackageIconUrl>https://thargelion.net/assets/component-platform.png</PackageIconUrl>
+    <PackageIconUrl>https://thargelion.net/assets/component-team.png</PackageIconUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
