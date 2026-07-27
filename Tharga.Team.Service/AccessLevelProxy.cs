@@ -103,7 +103,12 @@ public class AccessLevelProxy<T> : DispatchProxy where T : class
     {
         var teamKey = user?.FindFirst(TeamClaimTypes.TeamKey)?.Value;
         if (string.IsNullOrEmpty(teamKey))
-            throw new UnauthorizedAccessException("No team selected.");
+        {
+            var selectedTeamKey = user?.FindFirst(TeamClaimTypes.SelectedTeamKey)?.Value;
+            throw new UnauthorizedAccessException(string.IsNullOrEmpty(selectedTeamKey)
+                ? "No team selected."
+                : $"Access denied for the selected team '{selectedTeamKey}'.");
+        }
 
         var accessLevelValue = user?.FindFirst(TeamClaimTypes.AccessLevel)?.Value;
         if (accessLevelValue == null || !Enum.TryParse<AccessLevel>(accessLevelValue, out var accessLevel))

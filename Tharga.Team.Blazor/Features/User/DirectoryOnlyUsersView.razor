@@ -54,7 +54,8 @@ else
 }
 
 @code {
-    private readonly List<DirectoryUser> _users = [];
+    // Reassigned, never mutated in place: RadzenDataGrid keys its view off the Data reference.
+    private List<DirectoryUser> _users = [];
     private bool _loading;
     private bool _loadedOnce;
     private CancellationTokenSource _cancellation;
@@ -65,16 +66,22 @@ else
         _cancellation = new CancellationTokenSource();
         var token = _cancellation.Token;
 
-        _users.Clear();
+        var loaded = new List<DirectoryUser>();
+        _users = [];
         _loading = true;
         try
         {
             await foreach (var user in UserManagementService.GetDirectoryOnlyUsersAsync(token))
             {
-                _users.Add(user);
-                if (_users.Count % 25 == 0) StateHasChanged();
+                loaded.Add(user);
+                if (loaded.Count % 25 == 0)
+                {
+                    _users = [.. loaded];
+                    StateHasChanged();
+                }
             }
 
+            _users = [.. loaded];
             _loadedOnce = true;
         }
         catch (OperationCanceledException)
