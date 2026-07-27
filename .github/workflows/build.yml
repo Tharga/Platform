@@ -7,7 +7,8 @@ on:
     branches: [master]
 
 env:
-  MAJOR_MINOR: '3.5'
+  # Bump by hand when a release breaks compatibility or adds public API; only the patch is automatic.
+  MAJOR_MINOR: '3.6'
 
 permissions:
   contents: write
