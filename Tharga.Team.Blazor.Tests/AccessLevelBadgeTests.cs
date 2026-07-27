@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Tharga.Team;
 using Tharga.Team.Blazor.Features.Team;
 using Tharga.Team.Blazor.Framework;
@@ -15,7 +15,7 @@ public class AccessLevelBadgeTests
     private static ClaimsPrincipal Principal(params Claim[] claims)
         => new(new ClaimsIdentity(claims, "Test"));
 
-    private static Claim Oversight() => new(TeamClaimTypes.Scope, SystemTeamScopes.Read);
+    private static Claim Oversight() => new(TeamClaimTypes.SystemScope, SystemTeamScopes.Read);
 
     private static Claim Level(AccessLevel accessLevel) => new(TeamClaimTypes.AccessLevel, accessLevel.ToString());
 

@@ -1,4 +1,4 @@
-@page "/access"
+﻿@page "/access"
 @rendermode InteractiveServer
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
@@ -152,7 +152,7 @@
 
         _roles = user.FindAll(ClaimTypes.Role).Select(x => x.Value).Distinct().OrderBy(x => x).ToArray();
 
-        var held = user.FindAll(TeamClaimTypes.Scope).Select(x => x.Value).ToHashSet(StringComparer.Ordinal);
+        var held = user.Claims.Where(c => c.Type is TeamClaimTypes.Scope or TeamClaimTypes.SystemScope).Select(c => c.Value).ToHashSet(StringComparer.Ordinal);
         var teamScopes = ServiceProvider.GetService<IScopeRegistry>()?.All ?? [];
         var systemScopes = ServiceProvider.GetService<ISystemScopeRegistry>()?.All ?? [];
 

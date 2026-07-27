@@ -20,13 +20,12 @@
         <RadzenPanelMenuItem Text="Home" Path="" Icon="home" />
         <CascadingAuthenticationState>
 
-            <RadzenPanelMenuItem Text="Scopes" Path="scopes" Icon="shield"/>
-
             <AuthorizeView>
                 <Authorized>
                     <RadzenPanelMenuItem Text="Profile" Path="profile" Icon="person"/>
                     <RadzenPanelMenuItem Text="Team" Path="team" Icon="groups"/>
-                    <RadzenPanelMenuItem Text="Invites" Path="invites" Icon="mail"/>
+                    <RadzenPanelMenuItem Text="Scopes" Path="scopes" Icon="shield"/>
+                    @* <RadzenPanelMenuItem Text="Invites" Path="invites" Icon="mail"/> *@
                     <RadzenPanelMenuItem Text="Custom roles" Path="roles" Icon="admin_panel_settings"/>
                     <RadzenPanelMenuItem Text="Access" Path="access" Icon="verified_user"/>
                     @if (_hasTeam)

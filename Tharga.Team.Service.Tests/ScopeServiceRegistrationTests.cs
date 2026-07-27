@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Tharga.Team;
@@ -30,7 +30,10 @@ public class ScopeServiceRegistrationTests
     {
         var claims = new List<Claim>();
         if (teamKey != null) claims.Add(new Claim(TeamClaimTypes.TeamKey, teamKey));
-        foreach (var scope in scopes) claims.Add(new Claim(TeamClaimTypes.Scope, scope));
+        // A system service is authorized by a system grant, which is a different claim type — the fixture
+        // hands out whichever kind the service under test expects.
+        var claimType = teamKey == null ? TeamClaimTypes.SystemScope : TeamClaimTypes.Scope;
+        foreach (var scope in scopes) claims.Add(new Claim(claimType, scope));
 
         var context = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test")) };
         var accessor = Substitute.For<IHttpContextAccessor>();

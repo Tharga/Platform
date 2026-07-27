@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Tharga.Team;
 using Tharga.Team.Blazor.Features.Team;
 using Tharga.Team.Blazor.Framework;
@@ -13,7 +13,7 @@ public class TeamVisibilityTests
 {
     private static ClaimsPrincipal Principal(params string[] scopes)
     {
-        var claims = scopes.Select(s => new Claim(TeamClaimTypes.Scope, s));
+        var claims = scopes.Select(s => new Claim(TeamClaimTypes.SystemScope, s));
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
     }
 

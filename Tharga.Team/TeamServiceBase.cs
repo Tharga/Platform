@@ -182,8 +182,25 @@ public abstract class TeamServiceBase : ITeamService
         TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
     }
 
+    /// <summary>
+    /// Sets a member's access level. Ownership is not settable here — it changes only through
+    /// <see cref="TransferOwnershipAsync{TMember}"/>, which checks that the caller is the current owner.
+    /// </summary>
+    /// <remarks>
+    /// Both directions are refused. Granting Owner would let any holder of the member-manage scope promote
+    /// themselves past that check; demoting the sitting owner would leave a team nobody can transfer, because
+    /// transfer requires the caller to be the owner. Transfer itself is unaffected — it calls the protected
+    /// <see cref="SetTeamMemberRoleAsync"/> directly.
+    /// </remarks>
     public async Task SetMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel)
     {
+        if (accessLevel == AccessLevel.Owner)
+            throw new InvalidOperationException("A member cannot be made owner directly. Transfer ownership instead.");
+
+        var current = await GetTeamMemberAsync(teamKey, userKey);
+        if (current?.AccessLevel == AccessLevel.Owner)
+            throw new InvalidOperationException("The owner's access level cannot be changed. Transfer ownership first.");
+
         await SetTeamMemberRoleAsync(teamKey, userKey, accessLevel);
         _teamMemberCache.TryRemove($"{teamKey}.{userKey}", out _);
         TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());

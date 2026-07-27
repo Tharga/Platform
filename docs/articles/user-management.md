@@ -118,7 +118,10 @@ Authorization is enforced in the service layer by decorators over `IUserManageme
   setting another user's name, activity/directory writes, and deletion.
 
 Team access level never grants `users:manage` — it is a *system* scope, mapped from app roles, while
-access levels grant only team scopes. A team owner is therefore an ordinary caller here, and the
+access levels grant only team scopes. The two arrive as different claim types
+(`TeamClaimTypes.SystemScope` and `TeamClaimTypes.Scope`), so a team-level grant of a scope name cannot
+satisfy a system-wide check even where the same name is registered at both levels.
+A team owner is therefore an ordinary caller here, and the
 co-member projection is what lets `<TeamComponent />` show member emails, names and avatars without it.
 Without that projection a member row falls back to "Unknown" with no email, because accepting an
 invitation clears the per-team name override and promotes it to `IUser.Name`.

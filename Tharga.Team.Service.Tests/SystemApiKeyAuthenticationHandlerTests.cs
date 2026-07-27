@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
@@ -71,7 +71,7 @@ public class SystemApiKeyAuthenticationHandlerTests
         var result = await handler.AuthenticateAsync();
 
         Assert.True(result.Succeeded);
-        var scopes = result.Principal!.Claims.Where(c => c.Type == TeamClaimTypes.Scope).Select(c => c.Value).ToArray();
+        var scopes = result.Principal!.Claims.Where(c => c.Type == TeamClaimTypes.SystemScope).Select(c => c.Value).ToArray();
         Assert.Contains("mcp:discover", scopes);
         Assert.Contains("mcp:mongodb:read", scopes);
     }
@@ -106,6 +106,6 @@ public class SystemApiKeyAuthenticationHandlerTests
         var result = await handler.AuthenticateAsync();
 
         Assert.True(result.Succeeded);
-        Assert.DoesNotContain(result.Principal!.Claims, c => c.Type == TeamClaimTypes.Scope);
+        Assert.DoesNotContain(result.Principal!.Claims, c => c.Type is TeamClaimTypes.Scope or TeamClaimTypes.SystemScope);
     }
 }

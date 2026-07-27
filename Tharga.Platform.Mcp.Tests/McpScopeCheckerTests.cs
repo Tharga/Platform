@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Tharga.Platform.Mcp;
 using Tharga.Team;
@@ -10,7 +10,7 @@ public class McpScopeCheckerTests
     [Fact]
     public void Has_True_WhenScopeClaimPresent()
     {
-        var sut = CreateChecker(new Claim(TeamClaimTypes.Scope, "mcp:mongodb:read"));
+        var sut = CreateChecker(new Claim(TeamClaimTypes.SystemScope, "mcp:mongodb:read"));
 
         Assert.True(sut.Has("mcp:mongodb:read"));
     }
@@ -18,7 +18,7 @@ public class McpScopeCheckerTests
     [Fact]
     public void Has_False_WhenScopeMissing()
     {
-        var sut = CreateChecker(new Claim(TeamClaimTypes.Scope, "other:scope"));
+        var sut = CreateChecker(new Claim(TeamClaimTypes.SystemScope, "other:scope"));
 
         Assert.False(sut.Has("mcp:mongodb:read"));
     }
@@ -45,7 +45,7 @@ public class McpScopeCheckerTests
     [Fact]
     public void Require_DoesNotThrow_WhenScopePresent()
     {
-        var sut = CreateChecker(new Claim(TeamClaimTypes.Scope, "mcp:mongodb:admin"));
+        var sut = CreateChecker(new Claim(TeamClaimTypes.SystemScope, "mcp:mongodb:admin"));
 
         sut.Require("mcp:mongodb:admin"); // should not throw
     }

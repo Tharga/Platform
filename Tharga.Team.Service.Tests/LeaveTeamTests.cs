@@ -1,4 +1,4 @@
-namespace Tharga.Team.Service.Tests;
+﻿namespace Tharga.Team.Service.Tests;
 
 public class LeaveTeamTests
 {
@@ -125,6 +125,60 @@ public class LeaveTeamTests
             () => sut.TransferOwnershipAsync<TestMember>("team-1", "user-99"));
 
         Assert.Contains("not a member", ex.Message);
+    }
+
+    // ---- Ownership may only change through TransferOwnership ----
+    //
+    // SetMemberRoleAsync is authorized on member:manage alone, so without these guards a team
+    // administrator can promote themselves to Owner (bypassing the ownership check that
+    // TransferOwnershipAsync performs) or demote the sitting Owner, leaving a team that cannot
+    // transfer ownership at all because transfer requires the caller to be the owner.
+
+    [Fact]
+    public async Task SetMemberRole_CannotGrantOwner()
+    {
+        var sut = CreateService(
+            new TestMember { Key = "user-1", AccessLevel = AccessLevel.Owner, State = MembershipState.Member },
+            new TestMember { Key = "user-2", AccessLevel = AccessLevel.Administrator, State = MembershipState.Member });
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.SetMemberRoleAsync("team-1", "user-2", AccessLevel.Owner));
+
+        Assert.Contains("Transfer ownership", ex.Message);
+    }
+
+    [Fact]
+    public async Task SetMemberRole_CannotDemoteTheOwner()
+    {
+        var sut = CreateService(
+            new TestMember { Key = "user-1", AccessLevel = AccessLevel.Owner, State = MembershipState.Member },
+            new TestMember { Key = "user-2", AccessLevel = AccessLevel.Administrator, State = MembershipState.Member });
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.SetMemberRoleAsync("team-1", "user-1", AccessLevel.Administrator));
+
+        Assert.Contains("Transfer ownership", ex.Message);
+    }
+
+    [Fact]
+    public async Task SetMemberRole_BetweenNonOwnerLevels_IsAllowed()
+    {
+        var sut = CreateService(
+            new TestMember { Key = "user-1", AccessLevel = AccessLevel.Owner, State = MembershipState.Member },
+            new TestMember { Key = "user-2", AccessLevel = AccessLevel.User, State = MembershipState.Member });
+
+        await sut.SetMemberRoleAsync("team-1", "user-2", AccessLevel.Administrator);
+    }
+
+    [Fact]
+    public async Task TransferOwnership_StillPromotesAndDemotes()
+    {
+        // Transfer goes through the protected storage method, so the guards above must not block it.
+        var sut = CreateService(
+            new TestMember { Key = "user-1", AccessLevel = AccessLevel.Owner, State = MembershipState.Member },
+            new TestMember { Key = "user-2", AccessLevel = AccessLevel.User, State = MembershipState.Member });
+
+        await sut.TransferOwnershipAsync<TestMember>("team-1", "user-2");
     }
 
     private TestTeamService CreateService(params TestMember[] members)

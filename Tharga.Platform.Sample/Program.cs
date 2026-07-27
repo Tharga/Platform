@@ -10,7 +10,6 @@ using Tharga.Platform.Sample.Framework.Team;
 using Tharga.Team;
 using Tharga.Team.Blazor.Framework;
 using Tharga.Team.Entra;
-using Tharga.Team.Service;
 using Tharga.Team.Images;
 using Tharga.Team.MongoDB;
 using Tharga.Team.Service.Audit;
@@ -105,10 +104,17 @@ builder.AddThargaPlatform(o =>
     // the composition case (Map would throw on an already-mapped role; the toolkit-side grant merges).
     o.ConfigureSystemRoles = roles =>
     {
-        // apikey:system-manage gates the /system-api-keys page. It was missing here and the page still
-        // worked, because IApiKeyManagementService was registered without an enforcing wrapper and its
-        // [RequireScope] was decorative. Now that the registration installs one, the grant has to be real.
-        roles.Map("Developer", "system:metrics:read", "mcp:discover", ApiKeyScopes.Manage, ApiKeyScopes.SystemManage, "audit:read", SystemUserScopes.Manage);
+        // Everything mapped here is granted **system-wide** and carries the SystemScope claim type, so it
+        // never satisfies a check that asks for a scope on a specific team.
+        //
+        // audit:read appears here *and* is registered as a team scope at Administrator level. That is not a
+        // conflict: the system grant opens the cross-team /audit view, while a team administrator's
+        // access-level grant only opens their own team's log. Before the two claim types existed, the team
+        // grant satisfied the cross-team gate — any team administrator could read the whole system's log.
+        //
+        // apikey:manage is deliberately absent. It belongs to a team administrator, earned through access
+        // level; a Developer should not manage a team's keys merely for being a Developer.
+        roles.Map("Developer", "system:metrics:read", "mcp:discover", ApiKeyScopes.SystemManage, AuditScopes.Read, SystemUserScopes.Manage);
     };
 
     // Logger | MongoDB so the audit entries are both logged and queryable by AuditLogView — the default

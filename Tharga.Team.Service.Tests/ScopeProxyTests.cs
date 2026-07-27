@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Tharga.Team;
 
@@ -29,11 +29,23 @@ public interface ISystemScopedTestService
 public class ScopeProxyTests
 {
     private static IHttpContextAccessor CreateAccessor(string teamKey, params string[] scopes)
+        => BuildAccessor(teamKey, scopes, []);
+
+    /// <summary>
+    /// A system grant carries a different claim type, so a fixture must say which kind it is handing out —
+    /// a team-level scope does not satisfy a system service and vice versa.
+    /// </summary>
+    private static IHttpContextAccessor CreateSystemAccessor(string teamKey, params string[] systemScopes)
+        => BuildAccessor(teamKey, [], systemScopes);
+
+    private static IHttpContextAccessor BuildAccessor(string teamKey, string[] scopes, string[] systemScopes)
     {
         var claims = new List<Claim>();
         if (teamKey != null) claims.Add(new Claim(TeamClaimTypes.TeamKey, teamKey));
         foreach (var scope in scopes)
             claims.Add(new Claim(TeamClaimTypes.Scope, scope));
+        foreach (var scope in systemScopes)
+            claims.Add(new Claim(TeamClaimTypes.SystemScope, scope));
 
         var identity = new ClaimsIdentity(claims, "Test");
         var principal = new ClaimsPrincipal(identity);
@@ -56,12 +68,12 @@ public class ScopeProxyTests
         return ScopeProxy<IScopedTestService>.Create(target, accessor, ServiceScopeKind.Team);
     }
 
-    private static ISystemScopedTestService CreateSystemProxy(string teamKey, params string[] scopes)
+    private static ISystemScopedTestService CreateSystemProxy(string teamKey, params string[] systemScopes)
     {
         var target = Substitute.For<ISystemScopedTestService>();
         target.ReadMethod().Returns("read-ok");
 
-        var accessor = CreateAccessor(teamKey, scopes);
+        var accessor = CreateSystemAccessor(teamKey, systemScopes);
         return ScopeProxy<ISystemScopedTestService>.Create(target, accessor, ServiceScopeKind.System);
     }
 

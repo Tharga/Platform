@@ -32,11 +32,20 @@ internal static class TeamScopePolicy
 
     /// <summary>
     /// Whether the caller holds the system <paramref name="scope"/>. Authorizes across any team and
-    /// requires no team to be selected — system scopes come from app roles, independently of membership.
+    /// requires no team to be selected — system scopes come from app roles or a system API key,
+    /// independently of membership.
     /// </summary>
+    /// <remarks>
+    /// Reads <see cref="TeamClaimTypes.SystemScope"/> only. A team-level grant of the same scope name does
+    /// not satisfy this: an access level that happens to include <c>audit:read</c> must not authorize
+    /// reading every team's audit log.
+    /// </remarks>
     public static bool HasSystemScope(ClaimsPrincipal principal, string scope)
-        => principal != null && HasScopeClaim(principal, scope);
+        => principal != null && HasClaim(principal, TeamClaimTypes.SystemScope, scope);
 
     private static bool HasScopeClaim(ClaimsPrincipal principal, string scope)
-        => principal.Claims.Any(c => c.Type == TeamClaimTypes.Scope && c.Value == scope);
+        => HasClaim(principal, TeamClaimTypes.Scope, scope);
+
+    private static bool HasClaim(ClaimsPrincipal principal, string claimType, string scope)
+        => principal.Claims.Any(c => c.Type == claimType && c.Value == scope);
 }

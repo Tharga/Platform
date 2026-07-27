@@ -76,11 +76,12 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
 
         if (key.TeamKey == null)
         {
-            // System key: explicit scopes, no team claim
+            // System key: explicit scopes, no team claim. These are system grants, so they carry the
+            // system claim type — a system key must not satisfy a check that asks for a scope on a team.
             claims.Add(new Claim(TeamClaimTypes.IsSystemKey, "true"));
             foreach (var scope in key.SystemScopes ?? Array.Empty<string>())
             {
-                claims.Add(new Claim(TeamClaimTypes.Scope, scope));
+                claims.Add(new Claim(TeamClaimTypes.SystemScope, scope));
             }
         }
         else

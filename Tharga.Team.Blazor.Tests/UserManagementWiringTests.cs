@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
@@ -152,7 +152,7 @@ public class UserManagementWiringTests
         public override Task<AuthenticationState> GetAuthenticationStateAsync()
         {
             var claims = new List<Claim>();
-            if (withScope) claims.Add(new Claim(TeamClaimTypes.Scope, SystemUserScopes.Manage));
+            if (withScope) claims.Add(new Claim(TeamClaimTypes.SystemScope, SystemUserScopes.Manage));
             var identity = new ClaimsIdentity(claims, authenticationType: "Test");
             return Task.FromResult(new AuthenticationState(new ClaimsPrincipal(identity)));
         }

@@ -1,4 +1,4 @@
-@using Microsoft.Extensions.DependencyInjection
+﻿@using Microsoft.Extensions.DependencyInjection
 @using Tharga.Team
 @typeparam TMember where TMember : class, Tharga.Team.ITeamMember
 @inject IServiceProvider ServiceProvider
@@ -51,7 +51,7 @@
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var hasUsersManage = authState.User.HasClaim(TeamClaimTypes.Scope, SystemUserScopes.Manage);
+        var hasUsersManage = TeamScopeGate.HasSystemScope(authState.User, SystemUserScopes.Manage);
         var directoryRegistered = ServiceProvider.GetService<IUserDirectoryService>() != null;
         _showDirectoryTab = UserAdminGate.ShowDirectoryFeatures(hasUsersManage, directoryRegistered);
 

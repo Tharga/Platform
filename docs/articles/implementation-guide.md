@@ -807,7 +807,7 @@ per-method annotation to forget.
 | | `AddTeamService` | `AddSystemService` |
 |---|---|---|
 | Every method | takes the team it acts on as its first parameter, named `teamKey` | takes no `teamKey` |
-| The scope must be held | **for the team named in that call** | as a system scope |
+| The scope must be held | **for the team named in that call** (`Scope` claim) | as a system grant (`SystemScope` claim) |
 | A team must be selected | yes | no |
 
 Registration validates the interface against its declared kind **in both directions** and throws at
@@ -983,7 +983,16 @@ A principal's effective scopes are the **union** of four sources:
 | **Scope overrides** (explicit) | team members, team API keys | per-principal, edited in the UI |
 | **System scopes** (global, flat) | **system API keys**, and **users** via role mapping | `o.ConfigureSystemScopes`; `o.ConfigureSystemRoles` (app role → system scopes) |
 
-All four surface as `Scope` claims, so service methods gate uniformly with `[RequireScope("…")]` regardless of whether the caller is a team member, a team key, a system key, or a privileged user.
+Service methods gate uniformly with `[RequireScope("…")]` regardless of whether the caller is a team member, a team key, a system key, or a privileged user — but the **claim carries where the grant came from**, and the two are not interchangeable:
+
+| Granted by | Claim type | Authorizes |
+|---|---|---|
+| Access level, tenant roles, scope overrides — the first three rows above | `TeamClaimTypes.Scope` | the caller's **selected team only** |
+| A system API key, or an app role via `ConfigureSystemRoles` | `TeamClaimTypes.SystemScope` | **system-wide**, no team needed |
+
+A scope name may legitimately appear in both. `audit:read` is registered at `AccessLevel.Administrator` *and* commonly mapped to a system role: the team grant opens that team's audit log, the system grant opens the cross-team view. Because the claim types differ, a team administrator can no longer satisfy a system-wide check — which, while both were emitted as `Scope`, meant any team administrator could read every team's audit log.
+
+> **Breaking in 4.0.** Code reading `TeamClaimTypes.Scope` directly to detect a *system* grant must read `TeamClaimTypes.SystemScope` instead. Anything gating through `[RequireScope]`, `TeamScopeGate` or the authorization decorators needs no change.
 
 > **Tip:** drop the `<ScopeView />` component (Tharga.Team.Blazor) on a page to explore the configured **team** scopes interactively. Pick an access level and roles and the scopes a member would have light up while the rest grey out; it defaults to the signed-in member's own access level, roles, and overrides (overrides are highlighted). It builds itself from `IScopeRegistry` / `ITenantRoleRegistry`, so it always matches the running configuration. When the signed-in user holds any **system** scopes, a separate **System scopes** table appears listing them (it's hidden entirely when they hold none; set `ShowSystemScopes="false"` to disable it) — so you can tell at a glance which of your scopes are team vs system.
 

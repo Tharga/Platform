@@ -1,4 +1,4 @@
-@using Tharga.Team
+﻿@using Tharga.Team
 @using Microsoft.AspNetCore.Components.Authorization
 @using Tharga.Team.Blazor.Features.Team
 @typeparam TMember where TMember : class, Tharga.Team.ITeamMember
@@ -110,7 +110,7 @@ else
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         _canSeeAllTeams = TeamVisibility.CanSeeAllTeams(authState.User);
         _canAdminister = UserAdminGate.CanAdministerUsers(
-            authState.User.HasClaim(TeamClaimTypes.Scope, SystemUserScopes.Manage));
+            TeamScopeGate.HasSystemScope(authState.User, SystemUserScopes.Manage));
 
         if (_canAdminister)
         {

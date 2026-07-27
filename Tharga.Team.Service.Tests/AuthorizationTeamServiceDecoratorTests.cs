@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Tharga.Team;
 using Tharga.Team.Service;
 
@@ -21,10 +21,18 @@ public class AuthorizationTeamServiceDecoratorTests
     }
 
     private static ClaimsPrincipal Principal(string teamKey, params string[] scopes)
+        => Principal(teamKey, scopes, []);
+
+    /// <summary>
+    /// Team scopes and system scopes are separate claim types, so a fixture has to say which it is granting.
+    /// A team-level grant must not satisfy a system check, and vice versa.
+    /// </summary>
+    private static ClaimsPrincipal Principal(string teamKey, string[] scopes, string[] systemScopes)
     {
         var claims = new List<Claim>();
         if (teamKey != null) claims.Add(new Claim(TeamClaimTypes.TeamKey, teamKey));
         foreach (var s in scopes) claims.Add(new Claim(TeamClaimTypes.Scope, s));
+        foreach (var s in systemScopes) claims.Add(new Claim(TeamClaimTypes.SystemScope, s));
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
     }
 
@@ -74,7 +82,7 @@ public class AuthorizationTeamServiceDecoratorTests
     [Fact]
     public async Task Delete_SystemScope_AnyTeam_EvenAllowCreationFalse_Delegates()
     {
-        var (sut, inner) = Build(Principal(null, SystemTeamScopes.Delete), allowCreation: false);
+        var (sut, inner) = Build(Principal(null, [], [SystemTeamScopes.Delete]), allowCreation: false);
         await sut.DeleteTeamAsync<TestMember>("T-other");
         await inner.Received(1).DeleteTeamAsync<TestMember>("T-other");
     }

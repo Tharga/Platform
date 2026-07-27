@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Tharga.Team.Blazor.Framework;
 
 namespace Tharga.Team.Blazor.Features.Team;
@@ -20,7 +20,7 @@ internal static class TeamVisibility
     /// </summary>
     public static bool CanSeeAllTeams(ClaimsPrincipal principal)
     {
-        return principal?.HasClaim(TeamClaimTypes.Scope, SystemTeamScopes.Read) ?? false;
+        return TeamScopeGate.HasSystemScope(principal, SystemTeamScopes.Read);
     }
 
     /// <summary>

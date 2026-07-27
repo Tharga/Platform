@@ -32,9 +32,9 @@ public static class TeamScopeGate
     }
 
     /// <summary>
-    /// Whether the caller holds the system <paramref name="scope"/>. Not bound to any team — use only for
-    /// operations that genuinely act across the system.
+    /// Whether the caller holds the system <paramref name="scope"/> — granted by an app role or a system API
+    /// key, not by an access level on some team. Use for operations that genuinely act across the system.
     /// </summary>
     public static bool HasSystemScope(ClaimsPrincipal principal, string scope)
-        => principal?.HasClaim(TeamClaimTypes.Scope, scope) ?? false;
+        => principal?.HasClaim(TeamClaimTypes.SystemScope, scope) ?? false;
 }

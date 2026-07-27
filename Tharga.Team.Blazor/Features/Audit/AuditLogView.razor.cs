@@ -1,9 +1,10 @@
-using Microsoft.AspNetCore.Components;
+﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 using Radzen;
 using Radzen.Blazor;
+using Tharga.Team.Blazor.Framework;
 using Tharga.Team.Service.Audit;
 
 namespace Tharga.Team.Blazor.Features.Audit;
@@ -72,9 +73,14 @@ public partial class AuditLogView : ComponentBase
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
-        // Access is granted by the audit:read scope. Team admins get it via their access level; cross-team
-        // (Developer) access comes from the global role→system-scope mapping (o.ConfigureSystemRoles).
-        _hasAccess = user.HasClaim(TeamClaimTypes.Scope, AuditScopes.Read);
+
+        // Pinned to a team: audit:read on that team is enough, however the caller came by it.
+        // Unpinned: the view queries every team, so it takes a system-wide grant. Without the distinction a
+        // team administrator whose access level includes audit:read could read the whole system's log.
+        _hasAccess = PinnedFilter?.TeamKey is { } pinnedTeam
+            ? TeamScopeGate.HasTeamScope(user, AuditScopes.Read, pinnedTeam)
+              || TeamScopeGate.HasSystemScope(user, AuditScopes.Read)
+            : TeamScopeGate.HasSystemScope(user, AuditScopes.Read);
         if (!_hasAccess) return;
 
         _auditLogger = ServiceProvider.GetService<CompositeAuditLogger>();
