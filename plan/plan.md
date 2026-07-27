@@ -69,10 +69,18 @@ Branch: `feature/oversight-defects` (from `master`)
 - [x] **6. Full verification** — `dotnet build -c Release` 0 errors; `dotnet test -c Release` **989 passing**,
       0 failed, up exactly 4 from the 985 baseline. No pre-existing test changed behaviour.
 
-- [ ] **7. Documentation review** — check both surfaces per the Feature Workflow: root `README.md` and the
-      `docs/` site. #149 changes a user-visible error message and #150 changes what an oversight admin sees;
-      check whether either is described anywhere. Land as a separate `docs:` commit, or state explicitly that
-      no consumer-visible doc surface covers these.
+- [x] **7. Documentation review** — both surfaces checked; landed as commit `ac5645b`.
+  - `docs/articles/implementation-guide.md` — the claims-enrichment list now says what `team_id` and
+    `TeamKey` each *mean* (selection marker vs access anchor) rather than just naming them; the cross-team
+    visibility section now includes the Users tab in what `teams:read` widens, and documents the new
+    "Access denied for the selected team" message against "No team selected."
+  - `docs/articles/user-management.md` — the users admin list section now documents the **Teams** column and
+    that its count depends on the caller's own visibility, linking to the oversight section.
+  - `README.md` — **no change needed**; it does not mention claims, scopes or these components' internals
+    (verified by grep, not assumption).
+  - #151 needs no doc change: the docs already describe the directory-only tab as streaming results into a
+    list, which is what it now actually does. The bug was that it did not match the documentation.
+  - No **new** article warranted — all three defects fall inside topics the existing articles already own.
 
 - [ ] **8. Push the branch** for the user to test from origin. Do **not** open the PR yet, and do **not**
       close the feature — wait for the user to confirm.
@@ -93,5 +101,19 @@ Branch: `feature/oversight-defects` (from `master`)
 ## Last session
 
 Session of 2026-07-27. Preflight clean (tree clean, master level with origin, packages current). Confirmed all
-three issue diagnoses against source before planning. Branch created, plan written, awaiting confirmation
-before any code change.
+three issue diagnoses against source before planning, then implemented all three.
+
+**Done:** steps 1-7. Commits `b15a9bc` (the three fixes) and `ac5645b` (docs). 989 tests passing, up 4 from
+the 985 baseline; build clean.
+
+**Next:** step 8 — push the branch for the user to test. Then wait: do **not** open the PR and do **not**
+run close-out until the user confirms the fixes work, in particular the two that have no automated coverage
+(#150 oversight counts, #151 directory grid with fewer than 25 users).
+
+**Also outstanding, unrelated:** delete the stale
+`$DOC_ROOT/Tharga/plans/Toolkit/Platform/planned/02-authorization-defects.md`. Attempted this session; the
+`rm` was blocked by the permission classifier, so it needs the user.
+
+**Backlog added this session** (user request, not part of this feature): highlight the current user on the
+users page, mirroring `TeamComponent`'s member highlight — recorded under Features in
+`$DOC_ROOT/Tharga/Toolkit/Platform.md`.
