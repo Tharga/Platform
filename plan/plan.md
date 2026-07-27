@@ -82,8 +82,9 @@ Branch: `feature/oversight-defects` (from `master`)
     list, which is what it now actually does. The bug was that it did not match the documentation.
   - No **new** article warranted — all three defects fall inside topics the existing articles already own.
 
-- [ ] **8. Push the branch** for the user to test from origin. Do **not** open the PR yet, and do **not**
-      close the feature — wait for the user to confirm.
+- [x] **8. Pushed** `feature/oversight-defects` to origin. PR deliberately **not** opened — per the Feature
+      Workflow the close-out commit must be the last one on the branch, so opening early risks stranding
+      `plan/` on master. Awaiting the user's test.
 
 ## Close-out (only when the user says it is done)
 
