@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Tharga.Team;
 using Tharga.Team.Blazor.Framework;
 
@@ -16,6 +16,12 @@ public class TeamScopeGateTests
         var claims = new List<Claim>();
         if (teamKey != null) claims.Add(new Claim(TeamClaimTypes.TeamKey, teamKey));
         foreach (var scope in scopes) claims.Add(new Claim(TeamClaimTypes.Scope, scope));
+        return new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
+    }
+
+    private static ClaimsPrincipal SystemPrincipal(params string[] systemScopes)
+    {
+        var claims = systemScopes.Select(s => new Claim(TeamClaimTypes.SystemScope, s));
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
     }
 
@@ -58,7 +64,7 @@ public class TeamScopeGateTests
     [Fact]
     public void HasSystemScope_WithTheScope_IsTrue()
     {
-        Assert.True(TeamScopeGate.HasSystemScope(Principal(null, SystemUserScopes.Manage), SystemUserScopes.Manage));
+        Assert.True(TeamScopeGate.HasSystemScope(SystemPrincipal(SystemUserScopes.Manage), SystemUserScopes.Manage));
     }
 
     [Fact]

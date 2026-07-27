@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Tharga.Team;
 
 namespace Tharga.Team.Service.Tests;
@@ -19,7 +19,7 @@ public class AuthorizationUserManagementServiceDecoratorTests
     }
 
     private static ClaimsPrincipal WithScopes(params string[] scopes)
-        => new(new ClaimsIdentity(scopes.Select(s => new Claim(TeamClaimTypes.Scope, s)), "Test"));
+        => new(new ClaimsIdentity(scopes.Select(s => new Claim(TeamClaimTypes.SystemScope, s)), "Test"));
 
     private static ClaimsPrincipal Anonymous() => new(new ClaimsIdentity());
 

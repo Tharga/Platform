@@ -1,4 +1,4 @@
-@namespace Tharga.Team.Blazor.Features.Scopes
+﻿@namespace Tharga.Team.Blazor.Features.Scopes
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.DependencyInjection
@@ -185,7 +185,7 @@
         // System scopes the current user holds: their Scope claims that are registered system scopes.
         _systemScopes = ScopeReference.UserSystemScopes(
             systemRegistry,
-            principal?.Claims.Where(c => c.Type == TeamClaimTypes.Scope).Select(c => c.Value) ?? Enumerable.Empty<string>());
+            principal?.Claims.Where(c => c.Type is TeamClaimTypes.Scope or TeamClaimTypes.SystemScope).Select(c => c.Value) ?? Enumerable.Empty<string>());
 
         if (_rows.Count > 0 && principal != null)
             await ApplyCurrentUserDefaultsAsync(principal);

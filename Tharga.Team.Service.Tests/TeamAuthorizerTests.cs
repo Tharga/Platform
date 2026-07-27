@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Tharga.Team;
 using Tharga.Team.Service;
 
@@ -21,7 +21,7 @@ public class TeamAuthorizerTests
     {
         var claims = new List<Claim>();
         if (teamKey != null) claims.Add(new Claim(TeamClaimTypes.TeamKey, teamKey));
-        foreach (var s in scopes) claims.Add(new Claim(TeamClaimTypes.Scope, s));
+        foreach (var s in scopes) claims.Add(new Claim(teamKey == null ? TeamClaimTypes.SystemScope : TeamClaimTypes.Scope, s));
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
     }
 

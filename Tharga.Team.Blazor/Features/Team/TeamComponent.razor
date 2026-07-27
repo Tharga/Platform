@@ -358,7 +358,7 @@ else
         }
 
         _user = await UserService.GetCurrentUserAsync();
-        _users = UserDirectoryGate.Resolve(claims.HasClaim(TeamClaimTypes.Scope, SystemUserScopes.Manage)) == UserDirectorySource.FullDirectory
+        _users = UserDirectoryGate.Resolve(TeamScopeGate.HasSystemScope(claims, SystemUserScopes.Manage)) == UserDirectorySource.FullDirectory
             ? await UserService.GetAsync().ToArrayAsync()
             : [.. await UserService.GetTeamMemberUsersAsync()];
 

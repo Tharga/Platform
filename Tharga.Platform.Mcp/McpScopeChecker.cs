@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Tharga.Team;
 
 namespace Tharga.Platform.Mcp;
@@ -18,7 +18,7 @@ public sealed class McpScopeChecker : IMcpScopeChecker
     public bool Has(string scope)
     {
         var user = _httpContextAccessor.HttpContext?.User;
-        return user?.Claims.Any(c => c.Type == TeamClaimTypes.Scope && c.Value == scope) ?? false;
+        return user?.Claims.Any(c => c.Type == TeamClaimTypes.SystemScope && c.Value == scope) ?? false;
     }
 
     public void Require(string scope)

@@ -49,7 +49,7 @@ internal class TeamServerClaimsTransformation : IClaimsTransformation
         {
             var appRoles = identity.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value).ToArray();
             foreach (var scope in _systemRoleRegistry.GetScopesForRoles(appRoles))
-                AddClaimSafe(identity, TeamClaimTypes.Scope, scope);
+                AddClaimSafe(identity, TeamClaimTypes.SystemScope, scope);
         }
 
         var httpContext = _httpContextAccessor.HttpContext;
