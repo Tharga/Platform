@@ -6,7 +6,7 @@ using Tharga.Team.Blazor.Framework;
 namespace Tharga.Team.Blazor.Tests;
 
 /// <summary>
-/// Tests for the host-override of the built-in "Create team" action (Tharga/Platform#123):
+/// Tests for the host-override of the built-in "Create team" action (Tharga/Team#123):
 /// the <see cref="ThargaBlazorOptions.CreateTeamPath"/> option, the <c>CreateTeamRequested</c>
 /// callback parameter on <c>TeamSelector</c>/<c>TeamComponent</c>, and the precedence resolver.
 /// Reflection-based to match the other component parameter tests (no bUnit in this project).

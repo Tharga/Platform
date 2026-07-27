@@ -852,7 +852,7 @@ not authorize writing to another.
 2. **Tenant roles** — Additional scopes granted by assigned roles (see Step 7).
 3. **Scope overrides** — Per-member overrides set in the team management UI (when `ShowScopeOverrides = true`).
 
-> **`AccessLevel.Custom` — least-privilege keys/members.** Use `Custom` when a principal should carry *only* its explicitly assigned roles and scope overrides, with nothing inherited from the access-level tier — e.g. a machine API key minted with a single scope. Its effective scopes are exactly `roles ∪ scopeOverrides`. Set it **explicitly**: a key created without an access level still defaults to a non-`Custom` level. `Custom` is surfaced in the `ApiKeyView` create card; it is intentionally hidden from the team-member pickers until member scope/role editing lands ([#76](https://github.com/Tharga/Platform/issues/76)).
+> **`AccessLevel.Custom` — least-privilege keys/members.** Use `Custom` when a principal should carry *only* its explicitly assigned roles and scope overrides, with nothing inherited from the access-level tier — e.g. a machine API key minted with a single scope. Its effective scopes are exactly `roles ∪ scopeOverrides`. Set it **explicitly**: a key created without an access level still defaults to a non-`Custom` level. `Custom` is surfaced in the `ApiKeyView` create card; it is intentionally hidden from the team-member pickers until member scope/role editing lands ([#76](https://github.com/Tharga/Team/issues/76)).
 
 ### Built-in scopes
 

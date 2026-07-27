@@ -6,7 +6,7 @@ using Tharga.MongoDB;
 namespace Tharga.Team.MongoDB.Tests;
 
 /// <summary>
-/// Verifies the consumer-facing index extension point added under Tharga/Platform#65:
+/// Verifies the consumer-facing index extension point added under Tharga/Team#65:
 /// <see cref="ThargaTeamOptions.RegisterUserRepository{TUserEntity, TCollection}"/> registers a
 /// subclass of <see cref="UserRepositoryCollection{TUserEntity}"/> as the implementation of
 /// <see cref="IUserRepositoryCollection{TUserEntity}"/>, so consumers can declare per-deployment indices.

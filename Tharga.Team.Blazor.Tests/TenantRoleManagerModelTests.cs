@@ -4,7 +4,7 @@ using Tharga.Team.Blazor.Features.Roles;
 namespace Tharga.Team.Blazor.Tests;
 
 /// <summary>
-/// Editing working-set behind the <c>TenantRoleManager</c> component (Tharga/Platform#117):
+/// Editing working-set behind the <c>TenantRoleManager</c> component (Tharga/Team#117):
 /// load/add/remove/validate/project custom roles.
 /// </summary>
 public class TenantRoleManagerModelTests

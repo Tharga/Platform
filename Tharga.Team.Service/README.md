@@ -203,5 +203,5 @@ A throwing handler propagates out of the originating operation (capture failures
 
 ## Links
 
-- [GitHub repository](https://github.com/Tharga/Platform)
-- [Report an issue](https://github.com/Tharga/Platform/issues)
+- [GitHub repository](https://github.com/Tharga/Team)
+- [Report an issue](https://github.com/Tharga/Team/issues)

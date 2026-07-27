@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Components;
 namespace Tharga.Team.Blazor.Tests;
 
 /// <summary>
-/// Tests for the <c>LoginDisplay</c> team-menu role gating (Tharga/Platform#100). Mirrors the
+/// Tests for the <c>LoginDisplay</c> team-menu role gating (Tharga/Team#100). Mirrors the
 /// reflection-based style of the other component parameter tests (no bUnit in this project).
 /// </summary>
 public class LoginDisplayTests

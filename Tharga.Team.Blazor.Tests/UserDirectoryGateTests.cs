@@ -5,7 +5,7 @@ namespace Tharga.Team.Blazor.Tests;
 /// <summary>
 /// The team surface must render for callers without <c>users:manage</c> — team access level never grants
 /// that system scope, so every ordinary member and every team owner reads the co-member projection
-/// instead (Tharga/Platform#139).
+/// instead (Tharga/Team#139).
 /// </summary>
 public class UserDirectoryGateTests
 {

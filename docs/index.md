@@ -50,4 +50,4 @@ See [Roles & scopes](articles/implementation-guide.md#step-7b-managing-roles--sc
 
 - **[Articles](articles/index.md)** — getting started and the full implementation guide
 - **[API reference](xref:Tharga.Team)** — every public type, method, and option, generated from XML doc comments
-- **[GitHub](https://github.com/Tharga/Platform)** — source, issues, releases
+- **[GitHub](https://github.com/Tharga/Team)** — source, issues, releases

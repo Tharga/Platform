@@ -101,9 +101,11 @@ Branch: `feature/rename-platform-to-team` (from `master`)
     comment that deliberately names the obsolete caller.
   - **Legitimate history**: `Tharga/Platform#64/71/75/100/117/120/123/125/139` issue references in test
     docs. These are real issue IDs; GitHub redirects them after the repo rename.
-  - **Pending the repo rename**: `github.com/Tharga/Platform` URLs in `README.md`, `docs/index.md`,
-    `docs/docfx.json` (`_gitContribute.repo`) and `Tharga.Team.Service/README.md`. **Left on purpose** —
-    a `Tharga/Team` URL 404s today, whereas the current one redirects once renamed. Update after hand-off C.
+  - ~~**Pending the repo rename**~~ — **done 2026-07-27.** The repo was renamed before the PR opened, so all
+    27 files were flipped `Tharga/Platform` → `Tharga/Team` inside this PR rather than needing a follow-up.
+    That includes the historical `Tharga/Platform#NN` shorthand in test/code doc comments: issues move with
+    the repo, so `Tharga/Team#64` is the same issue, and keeping the old path would have preserved exactly
+    the name this feature removes.
   - **External, hand-off F**: the `$DOC_ROOT` paths in `.claude/mission.md`.
   - **MSBuild noise**: `SolutionConfigurationPlatforms` / `ProjectConfigurationPlatforms`.
   - **Left by choice**: the sample's dev Mongo database name `Tharga_Platform{environment}_Sample2{part}`
@@ -130,9 +132,10 @@ is a package *swap*, not a version upgrade.
       already exist. Select *all* versions, reason "Other", alternate `Tharga.Team.Mcp`, and a message naming
       the two breaking changes (`AddPlatform` → `AddTeam`, `platform://` → `team://`). Deprecate, do **not**
       unlist — unlisting breaks restore for consumers who have not migrated.
-- [ ] **C. Rename the GitHub repo** `Tharga/Platform` → `Tharga/Team` — **after A**, so 3.6.0's release run
-      completes on a stable name and any failure is one change to debug, not two. GitHub redirects the old
-      URL; I update the local remote afterwards.
+- [x] **C. Rename the GitHub repo** — **done 2026-07-27**, after 3.5.4 published and before this PR opened.
+      Local remote updated to `https://github.com/Tharga/Team.git` and fetch verified. Doing it in this order
+      (rather than after 3.6.0, as first planned) let the URL rewrites land inside this PR instead of a
+      follow-up.
 - [ ] **D. Add the `team.tharga.net` DNS record**, verify it resolves, **then** flip `docs/CNAME` in a
       separate one-line PR. **`docs/CNAME` is deliberately NOT changed in this PR.** GitHub Pages serves one
       custom domain: if the file said `team.tharga.net` before DNS existed, merging would take the docs site

@@ -32,7 +32,7 @@ public class ApiKeyAdministrationServiceTests
     {
         // Hash-collision scenario: two stored keys both verify true against the raw key.
         // Previously: .SingleOrDefault threw InvalidOperationException ("Sequence contains more than one element").
-        // After Tharga/Platform#64 fix: resilient pick returns the first match and logs a warning.
+        // After Tharga/Team#64 fix: resilient pick returns the first match and logs a warning.
         var entity1 = CreateEntity("key-1", "hash-1", "team-1");
         var entity2 = CreateEntity("key-2", "hash-2", "team-2");
         _repository.GetAsync().Returns(ToAsyncEnumerable(entity1, entity2));

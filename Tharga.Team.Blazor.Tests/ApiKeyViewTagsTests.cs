@@ -5,7 +5,7 @@ namespace Tharga.Team.Blazor.Tests;
 
 /// <summary>
 /// Smoke tests for the <c>ApiKeyView.ChipTagKeys</c> parameter added under
-/// <see href="https://github.com/Tharga/Platform/issues/75">Tharga/Platform#75</see>.
+/// <see href="https://github.com/Tharga/Team/issues/75">Tharga/Team#75</see>.
 /// </summary>
 public class ApiKeyViewTagsTests
 {

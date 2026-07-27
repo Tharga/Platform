@@ -4,7 +4,7 @@ using Tharga.Team.Blazor.Framework;
 namespace Tharga.Team.Blazor.Tests;
 
 /// <summary>
-/// Tests for the standard text-provider contract (Tharga/Platform#101): the default English behavior,
+/// Tests for the standard text-provider contract (Tharga/Team#101): the default English behavior,
 /// DI registration + consumer override, and the <see cref="TeamMenuText"/> key catalog.
 /// </summary>
 public class ThargaTextProviderTests

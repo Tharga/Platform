@@ -3,7 +3,7 @@ using Tharga.Team.Blazor.Features.Team;
 namespace Tharga.Team.Blazor.Tests;
 
 /// <summary>
-/// Tests for the per-team action gates (Tharga/Platform#125). The <c>team:manage</c> scope is
+/// Tests for the per-team action gates (Tharga/Team#125). The <c>team:manage</c> scope is
 /// emitted only for the currently-selected team, so a global scope flag must never authorize an
 /// action on a different team. Pure-function tests to match the other gating tests in this project
 /// (no bUnit here, so razor markup cannot be asserted directly).

@@ -5,7 +5,7 @@ namespace Tharga.Team.Blazor.Tests;
 
 /// <summary>
 /// Smoke tests for the <c>ApiKeyView.ShowScopeOverrides</c> parameter added under
-/// <see href="https://github.com/Tharga/Platform/issues/71">Tharga/Platform#71</see>.
+/// <see href="https://github.com/Tharga/Team/issues/71">Tharga/Team#71</see>.
 /// </summary>
 public class ApiKeyViewScopeOverridesTests
 {

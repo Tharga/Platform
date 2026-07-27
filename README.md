@@ -159,4 +159,4 @@ Individual `Add*` methods remain available for partial/custom setups. See the **
 
 - [Implementation Guide](docs/articles/implementation-guide.md)
 - [Documentation site](https://platform.tharga.net)
-- [Report an issue](https://github.com/Tharga/Platform/issues)
+- [Report an issue](https://github.com/Tharga/Team/issues)

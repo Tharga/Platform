@@ -4,7 +4,7 @@ namespace Tharga.Team;
 
 /// <summary>
 /// Resilient lookup against in-memory sequences that are expected to contain at most one match
-/// but where duplicate rows have been observed in production data (see GitHub issue Tharga/Platform#64).
+/// but where duplicate rows have been observed in production data (see GitHub issue Tharga/Team#64).
 /// Returns the first match and logs a warning when more than one match is present, instead of
 /// throwing the way <see cref="System.Linq.Enumerable.Single{TSource}(IEnumerable{TSource}, Func{TSource, bool})"/>
 /// would. Duplicates are surfaced via <c>ILogger</c> so they can be found and cleaned up out of band.
@@ -66,7 +66,7 @@ public static class ResilientMemberLookup
     /// Returns a new array containing every element of <paramref name="source"/>, with the single instance
     /// referentially equal to <paramref name="target"/> replaced by <paramref name="replacement"/>.
     /// Used by repository write paths to update a picked row without stripping its duplicate-keyed siblings
-    /// (issue Tharga/Platform#64).
+    /// (issue Tharga/Team#64).
     /// </summary>
     public static T[] ReplaceByReference<T>(this IEnumerable<T> source, T target, T replacement)
     {

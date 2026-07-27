@@ -4,7 +4,7 @@ using MongoDB.Bson.Serialization;
 namespace Tharga.Team.MongoDB.Tests;
 
 /// <summary>
-/// Verifies the runtime-defined <see cref="TeamEntityBase{T}.CustomRoles"/> field (Tharga/Platform#117)
+/// Verifies the runtime-defined <see cref="TeamEntityBase{T}.CustomRoles"/> field (Tharga/Team#117)
 /// round-trips through the MongoDB serializer — including each role's nested scope list — and that a
 /// null value is omitted from the document (<c>[BsonIgnoreIfNull]</c>), matching <c>ConsentedRoles</c>.
 /// </summary>
