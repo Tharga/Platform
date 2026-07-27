@@ -6,7 +6,24 @@ namespace Tharga.Team;
 public static class TeamClaimTypes
 {
     /// <summary>Claim type for the team key.</summary>
+    /// <remarks>
+    /// This is the <b>access anchor</b>: it is emitted only once access to the team has resolved, so its
+    /// presence means "the caller may act on this team". It is not a record of what the caller picked —
+    /// that is <see cref="SelectedTeamKey"/>. The two differ whenever a team is selected but grants the
+    /// caller nothing.
+    /// </remarks>
     public const string TeamKey = "TeamKey";
+
+    /// <summary>
+    /// Claim type marking which team the caller currently has <b>selected</b>, independent of whether that
+    /// selection grants any access.
+    /// </summary>
+    /// <remarks>
+    /// Emitted from the selected-team cookie before access is resolved, so it is present even when
+    /// <see cref="TeamKey"/> is not. Consult it to tell "no team is selected" apart from "a team is
+    /// selected that the caller cannot reach" — keying only off <see cref="TeamKey"/> conflates the two.
+    /// </remarks>
+    public const string SelectedTeamKey = "team_id";
 
     /// <summary>Claim type for the access level.</summary>
     public const string AccessLevel = "AccessLevel";

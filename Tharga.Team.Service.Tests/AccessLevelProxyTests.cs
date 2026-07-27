@@ -20,11 +20,12 @@ public interface ITestService
 
 public class AccessLevelProxyTests
 {
-    private static IHttpContextAccessor CreateAccessor(string teamKey, string accessLevel)
+    private static IHttpContextAccessor CreateAccessor(string teamKey, string accessLevel, string selectedTeamKey = null)
     {
         var claims = new List<Claim>();
         if (teamKey != null) claims.Add(new Claim(TeamClaimTypes.TeamKey, teamKey));
         if (accessLevel != null) claims.Add(new Claim(TeamClaimTypes.AccessLevel, accessLevel));
+        if (selectedTeamKey != null) claims.Add(new Claim(TeamClaimTypes.SelectedTeamKey, selectedTeamKey));
 
         var identity = new ClaimsIdentity(claims, "Test");
         var principal = new ClaimsPrincipal(identity);
@@ -35,7 +36,7 @@ public class AccessLevelProxyTests
         return accessor;
     }
 
-    private static ITestService CreateProxy(string teamKey, string accessLevel)
+    private static ITestService CreateProxy(string teamKey, string accessLevel, string selectedTeamKey = null)
     {
         var target = Substitute.For<ITestService>();
         target.ViewerMethod().Returns("viewer-ok");
@@ -43,7 +44,7 @@ public class AccessLevelProxyTests
         target.AdminMethod().Returns("admin-ok");
         target.UnprotectedMethod().Returns("unprotected-ok");
 
-        var accessor = CreateAccessor(teamKey, accessLevel);
+        var accessor = CreateAccessor(teamKey, accessLevel, selectedTeamKey);
         return AccessLevelProxy<ITestService>.Create(target, accessor);
     }
 
@@ -115,6 +116,40 @@ public class AccessLevelProxyTests
     {
         var proxy = CreateProxy(null, "Administrator");
         Assert.Throws<UnauthorizedAccessException>(() => proxy.ViewerMethod());
+    }
+
+    [Fact]
+    public void No_Team_Selected_And_None_Marked_Reports_No_Selection()
+    {
+        var proxy = CreateProxy(null, "Administrator");
+        var exception = Assert.Throws<UnauthorizedAccessException>(() => proxy.ViewerMethod());
+        Assert.Equal("No team selected.", exception.Message);
+    }
+
+    [Fact]
+    public void Selected_Team_Without_Access_Reports_Denial_Not_Missing_Selection()
+    {
+        // The selection marker holds a team, but no access resolved for it — so no TeamKey anchor was
+        // emitted. Reporting "No team selected." here is simply untrue: a team *is* selected.
+        var proxy = CreateProxy(null, "Administrator", selectedTeamKey: "84UV9FMB");
+        var exception = Assert.Throws<UnauthorizedAccessException>(() => proxy.ViewerMethod());
+        Assert.DoesNotContain("No team selected", exception.Message);
+    }
+
+    [Fact]
+    public void Selected_Team_Without_Access_Names_The_Selected_Team()
+    {
+        var proxy = CreateProxy(null, "Administrator", selectedTeamKey: "84UV9FMB");
+        var exception = Assert.Throws<UnauthorizedAccessException>(() => proxy.ViewerMethod());
+        Assert.Contains("84UV9FMB", exception.Message);
+    }
+
+    [Fact]
+    public void Access_Anchor_Wins_Over_Selection_Marker()
+    {
+        // Both present is the ordinary authorized case — the anchor resolved, so the call proceeds.
+        var proxy = CreateProxy("team-1", "Administrator", selectedTeamKey: "team-1");
+        Assert.Equal("viewer-ok", proxy.ViewerMethod());
     }
 
     [Fact]

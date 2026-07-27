@@ -40,6 +40,12 @@ public class UserService : UserServiceRepositoryBase<UserEntity>
 The users admin list (`<UsersView />` → Users tab) shows a **Last seen** column. This is distinct from
 the per-team-member `LastSeen`, which tracks when a member last selected that team.
 
+The same list shows a **Teams** count per user, with the memberships behind it. How much it counts depends
+on the caller's own visibility: without the `teams:read` system scope it counts only teams the caller
+belongs to, so a user whose teams the caller shares none of reads as **0**. Grant `teams:read` — see
+[cross-team visibility](implementation-guide.md#cross-team-visibility-for-oversight-roles) — and the count
+covers every team, matching the Teams tab of the same component.
+
 ## Directory linking (`DirectoryId`)
 
 Directory operations resolve the user by the Entra object id (`oid`). The toolkit captures it two ways:

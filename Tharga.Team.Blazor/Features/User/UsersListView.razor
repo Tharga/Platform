@@ -1,4 +1,5 @@
 ﻿@using Microsoft.Extensions.DependencyInjection
+@using Tharga.Team.Blazor.Features.Team
 @typeparam TMember where TMember : class, Tharga.Team.ITeamMember
 @inject ITeamService TeamService
 @inject IUserService UserService
@@ -128,6 +129,7 @@ else
     private bool _verifying;
     private IUser[] _users;
     private ITeam<TMember>[] _teams;
+    private bool _canSeeAllTeams;
 
     private List<UserViewModel> _allUsers = new();
     private UserViewModel _selectedUser;
@@ -137,6 +139,7 @@ else
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var hasUsersManage = TeamScopeGate.HasSystemScope(authState.User, SystemUserScopes.Manage);
         var directoryRegistered = ServiceProvider.GetService<IUserDirectoryService>() != null;
+        _canSeeAllTeams = TeamVisibility.CanSeeAllTeams(authState.User);
         _canAdminister = UserAdminGate.CanAdministerUsers(hasUsersManage);
         _showDirectory = UserAdminGate.ShowDirectoryFeatures(hasUsersManage, directoryRegistered);
         _showAdminUpload = hasUsersManage && IconSettings.AllowAdminUpload && ServiceProvider.GetService<IIconStore>() != null;
@@ -153,7 +156,9 @@ else
     private async Task LoadDataAsync()
     {
         _users = await UserService.GetAsync().ToArrayAsync();
-        _teams = await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
+        _teams = _canSeeAllTeams
+            ? await TeamService.GetAllTeamsAsync<TMember>().ToArrayAsync()
+            : await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
 
         BuildViewModels();
     }

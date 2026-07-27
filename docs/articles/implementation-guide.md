@@ -546,8 +546,10 @@ Team, role, access level, and scope claims are automatically enriched on the `Cl
 | **Client-side** | `AuthenticationStateProvider` decorator reads from LocalStorage via JS interop | Standalone WASM only |
 
 The server-side path is **always registered** — no configuration needed. It adds:
-- `team_id` — selected team key
-- `TeamKey` — team key claim
+- `team_id` — selected team key (`TeamClaimTypes.SelectedTeamKey`). Records the *selection*, and is added
+  whether or not that team grants the caller anything
+- `TeamKey` — team key claim (`TeamClaimTypes.TeamKey`). The *access anchor* — added only once access to the
+  selected team resolves, so it is absent when a team is selected but consented nothing
 - `Role: TeamMember` — membership role
 - `Role: Team{AccessLevel}` — access level role (e.g. `TeamOwner`, `TeamAdministrator`)
 - `AccessLevel` — raw access level value
@@ -1038,7 +1040,8 @@ Support and administration roles often need to see the whole estate. The `teams:
 grants exactly that — **discovery, and nothing else**:
 
 - **Discovery is global.** A caller holding `teams:read` sees every team in `TeamComponent`,
-  `TeamSelector` and the developer `UsersView` → Teams tab.
+  `TeamSelector` and the developer `UsersView` — both the Teams tab and the per-user team counts and
+  membership lists on the Users tab.
 - **Access stays per-team and consent-governed.** Selecting a team they are not a member of grants only
   the scopes that team has consented to. A team that consented to nothing yields no access — the team is
   visible, its data is not.
@@ -1065,6 +1068,13 @@ teams they don't belong to. The `TeamSelector` shows the same state as a tinted 
 choice is remembered across visits like any other — returning to the site re-selects it. Selection on its
 own carries **no access**: the claims transformation still grants only what that team has consented to, to
 a role the caller holds. No consent, or a role the team hasn't consented to, means no team scopes at all.
+
+Acting on such a team throws `UnauthorizedAccessException` with **"Access denied for the selected team
+'&lt;key&gt;'."** — distinct from **"No team selected."**, which means no team is chosen at all. The two are
+separate claims: `TeamClaimTypes.TeamKey` is the *access anchor*, emitted only once access resolves, while
+`TeamClaimTypes.SelectedTeamKey` (`team_id`) records the selection regardless of access. A guard that reads
+only the anchor cannot tell the two states apart and will report a selected-but-inaccessible team as
+"No team selected."
 
 The distinction that matters is *chosen* versus *defaulted*. A team the caller picked is restored; a team
 they never picked is never selected for them. When there is no current or remembered selection, the
