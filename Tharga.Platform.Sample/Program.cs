@@ -10,7 +10,6 @@ using Tharga.Platform.Sample.Framework.Team;
 using Tharga.Team;
 using Tharga.Team.Blazor.Framework;
 using Tharga.Team.Entra;
-using Tharga.Team.Service;
 using Tharga.Team.Images;
 using Tharga.Team.MongoDB;
 using Tharga.Team.Service.Audit;
@@ -108,7 +107,7 @@ builder.AddThargaPlatform(o =>
         // apikey:system-manage gates the /system-api-keys page. It was missing here and the page still
         // worked, because IApiKeyManagementService was registered without an enforcing wrapper and its
         // [RequireScope] was decorative. Now that the registration installs one, the grant has to be real.
-        roles.Map("Developer", "system:metrics:read", "mcp:discover", ApiKeyScopes.Manage, ApiKeyScopes.SystemManage, "audit:read", SystemUserScopes.Manage);
+        roles.Map("Developer", "system:metrics:read", "mcp:discover", ApiKeyScopes.SystemManage, SystemUserScopes.Manage);
     };
 
     // Logger | MongoDB so the audit entries are both logged and queryable by AuditLogView — the default
