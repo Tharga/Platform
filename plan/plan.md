@@ -37,7 +37,33 @@ Branch: `feature/rename-platform-to-team` (from `master`)
   - **`platform://` → `team://`** in every `…Uri` const, in `README.md` for the package, and in the tests.
     Grep for the literal afterwards — a missed URI fails at runtime, not at compile time.
 
-- [ ] **5. Public API rename in `Tharga.Team.Blazor`** — additive, must keep compiling.
+- [x] **5. Public API rename in `Tharga.Team.Blazor`** — done. 993 tests green (up 4). Renamed
+      `ThargaPlatformRegistration`/`ThargaPlatformOptions`/`AddThargaPlatform`/`UseThargaPlatform` to their
+      Team names, and migrated every internal call site (sample + 5 test files) so the obsolete surface has
+      no in-repo users.
+
+  **Forwarding shape chosen: preserve every old name.** `ThargaPlatformCompatibility.cs` holds
+  `[Obsolete] class ThargaPlatformOptions : ThargaTeamOptions` and an `[Obsolete] ThargaPlatformRegistration`
+  carrying both old methods. To make the two entry points share one implementation rather than drift, the
+  registration body was extracted into `internal AddThargaTeamCore(builder, options)`; the obsolete method
+  builds the subclass and calls it. The simpler alternative (one options type, obsolete method taking
+  `Action<ThargaTeamOptions>`) was rejected because it would silently drop the old *type* name from an
+  additive release.
+  - `ThargaPlatformCompatibilityTests` proves the alias is trustworthy, not merely compiling — including
+    `AddThargaPlatform_RegistersTheSameServicesAsAddThargaTeam`, which compares the full registered service
+    list of both paths. A forwarding alias that quietly did less would be worse than no alias.
+
+  **Collision found: `Tharga.Team` already had a public `ThargaTeamRegistration`** whose
+  `AddThargaTeam(this IServiceCollection)` has an **empty body** and is called nowhere. Two extension methods
+  on different receivers do not clash at call sites, but the type names are ambiguous — which forced
+  `TeamIconDialog`/`UserIconDialog` to fully-qualify `IconHttpClientName`. The real hazard is silent: a
+  consumer calling `builder.Services.AddThargaTeam()` gets no error and no registrations.
+  **User's decision: mark it `[Obsolete]` now, delete in 4.0** — keeps 3.6 strictly additive here while
+  warning anyone who finds the wrong overload. The fully-qualified references must stay, since an obsolete
+  type still participates in name resolution.
+
+  Clean-build warning count is **20**, measured the way CI measures it (`grep -c " warning "`), against its
+  threshold of 35. Worth watching: obsoleting a widely-used member is exactly what would breach that gate.
   - `ThargaPlatformRegistration` → `ThargaTeamRegistration`, `AddThargaPlatform` → `AddThargaTeam`,
     `ThargaPlatformOptions` → `ThargaTeamOptions`.
   - **Decide the forwarding shape during implementation.** The obvious version does not work:
