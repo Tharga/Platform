@@ -1,4 +1,4 @@
-# Tharga Platform
+# Tharga Team
 
 A suite of NuGet packages for building multi-tenant Blazor applications with team management, authorization, and API infrastructure.
 
@@ -13,7 +13,7 @@ A suite of NuGet packages for building multi-tenant Blazor applications with tea
 | [Tharga.Team.Service](https://www.nuget.org/packages/Tharga.Team.Service) | Server-side API key auth, Swagger, audit logging | No |
 | [Tharga.Team.Entra](https://www.nuget.org/packages/Tharga.Team.Entra) | Microsoft Entra ID user directory (verify / list / delete users via Graph) | No |
 | [Tharga.Team.Images](https://www.nuget.org/packages/Tharga.Team.Images) | Automatic downscaling of uploaded team/user icons (ImageSharp) | No |
-| [Tharga.Platform.Mcp](https://www.nuget.org/packages/Tharga.Platform.Mcp) | MCP (Model Context Protocol) bridge — auth, scopes, audit for MCP tools | No |
+| [Tharga.Team.Mcp](https://www.nuget.org/packages/Tharga.Team.Mcp) | MCP (Model Context Protocol) bridge — auth, scopes, audit for MCP tools. Renamed from `Tharga.Platform.Mcp`, which is deprecated and frozen at 3.5.x | No |
 
 ## Dependency graph
 
@@ -46,7 +46,7 @@ Register everything in `Program.cs`:
 
 ```csharp
 // One call to set up auth, Blazor, controllers, API keys
-builder.AddThargaPlatform(o =>
+builder.AddThargaTeam(o =>
 {
     o.Blazor.Title = "My App";
     o.Blazor.RegisterTeamService<MyTeamService, MyUserService>();
@@ -62,7 +62,7 @@ builder.Services.AddThargaTeamRepository(o =>
 
 var app = builder.Build();
 
-app.UseThargaPlatform();
+app.UseThargaTeam();
 ```
 
 Add to `appsettings.json`:
@@ -78,10 +78,10 @@ Add to `appsettings.json`:
 }
 ```
 
-Optional features (pass via `ThargaPlatformOptions`):
+Optional features (pass via `ThargaTeamOptions`):
 
 ```csharp
-builder.AddThargaPlatform(o =>
+builder.AddThargaTeam(o =>
 {
     // Fine-grained scopes
     o.ConfigureScopes = scopes =>
@@ -119,7 +119,7 @@ The user store tracks per-user **last seen** (opt-in: declare `LastSeen`/`Direct
 // dotnet add package Tharga.Team.Entra
 builder.Services.AddThargaEntraUserDirectory(builder.Configuration);   // AzureAd section + ClientSecret
 
-builder.AddThargaPlatform(o =>
+builder.AddThargaTeam(o =>
 {
     o.ConfigureSystemRoles = roles => roles.Map("Developer", SystemUserScopes.Manage);
 });
@@ -139,10 +139,10 @@ See [Team & user icons](docs/articles/icons.md).
 
 ## Live claim revalidation
 
-Team claims (membership, access level, tenant-role scopes, consent access) are enriched at HTTP authentication, so in a long-lived Blazor Server circuit they would otherwise stay frozen until a reload — a removed member, a downgraded access level, or a revoked consent would keep their old access, in the service-layer checks as well as the UI. Platform revalidates them on an interval and refreshes the principal **in place** (no forced sign-out), so team access is stale for at most one interval. On by default (30 min); tune or disable it:
+Team claims (membership, access level, tenant-role scopes, consent access) are enriched at HTTP authentication, so in a long-lived Blazor Server circuit they would otherwise stay frozen until a reload — a removed member, a downgraded access level, or a revoked consent would keep their old access, in the service-layer checks as well as the UI. Tharga.Team revalidates them on an interval and refreshes the principal **in place** (no forced sign-out), so team access is stale for at most one interval. On by default (30 min); tune or disable it:
 
 ```csharp
-builder.AddThargaPlatform(o =>
+builder.AddThargaTeam(o =>
 {
     o.Blazor.ClaimRevalidation.Interval = TimeSpan.FromMinutes(5); // narrow the window
     // o.Blazor.ClaimRevalidation.Enabled = false;                 // or turn it off

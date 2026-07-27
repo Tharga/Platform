@@ -6,7 +6,7 @@ namespace Tharga.Team.Service.Tests;
 /// <summary>
 /// The database-boundary guard. It exists for what the registration APIs cannot reach: code that gets to
 /// the database without passing through the authorization layer at all — including a consumer's own
-/// repositories, which Platform never sees.
+/// repositories, which Tharga.Team never sees.
 /// </summary>
 public class TeamAccessInterceptorTests
 {

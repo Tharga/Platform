@@ -38,7 +38,7 @@ Resolution: **stored icon → custom sources → Gravatar → default image → 
 | `MaxDimension` | 256 | Max width/height (px) an image processor downscales to. 0 disables. |
 | `AllowedContentTypes` | png, jpeg, gif, webp, svg | Accepted image types. |
 
-Configure via `o.Icon` on `AddThargaPlatform`.
+Configure via `o.Icon` on `AddThargaTeam`.
 
 ### `IconSettings` (display/behavior — runtime-adjustable)
 Registered as a singleton, so a host can change these at runtime (the sample has a page that does):
@@ -88,7 +88,7 @@ resolves stored → Gravatar → initials.
 
 ## Serving endpoint
 
-Stored icons are served at `GET /_tharga/icon/{reference}` (mapped by `UseThargaPlatform`) to
+Stored icons are served at `GET /_tharga/icon/{reference}` (mapped by `UseThargaTeam`) to
 authenticated callers, with an immutable cache header (the reference changes when the icon changes).
 
 ## Automatic downscaling — `Tharga.Team.Images`
@@ -111,7 +111,7 @@ own by registering a custom `IIconProcessor`.
 // Built-in Mongo store + Gravatar are automatic. Add downscaling and map admin/user upload to a role:
 builder.Services.AddThargaImageProcessing();                 // optional: auto-downscale
 
-builder.AddThargaPlatform(o =>
+builder.AddThargaTeam(o =>
 {
     o.Icon.MaxDimension = 256;                               // resize target
     o.IconSettings.GravatarStyle = "identicon";              // or disable: o.IconSettings.GravatarEnabled = false

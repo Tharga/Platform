@@ -6,7 +6,7 @@ namespace Tharga.Team.Service;
 
 /// <summary>
 /// Internal registration for opt-in API key lifecycle hooks (<see cref="IApiKeyLifecycleHandler"/>).
-/// Consumers register handlers through <c>ThargaPlatformOptions.AddApiKeyLifecycleHandler&lt;T&gt;()</c>,
+/// Consumers register handlers through <c>ThargaTeamOptions.AddApiKeyLifecycleHandler&lt;T&gt;()</c>,
 /// not by calling these methods directly.
 /// </summary>
 internal static class ApiKeyLifecycleRegistration
@@ -46,7 +46,7 @@ internal static class ApiKeyLifecycleRegistration
         var existing = services.LastOrDefault(d => d.ServiceType == typeof(IApiKeyAdministrationService))
             ?? throw new InvalidOperationException(
                 "AddThargaApiKeyLifecycleHandler must be called after the API key services are registered " +
-                "(e.g. after AddThargaPlatform / AddThargaApiKeys).");
+                "(e.g. after AddThargaTeam / AddThargaApiKeys).");
 
         services.Remove(existing);
         services.AddScoped<IApiKeyAdministrationService>(sp =>

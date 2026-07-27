@@ -79,7 +79,7 @@ public class IconRegistrationTests
     }
 
     [Fact]
-    public void IconOptions_BoundFromPlatformOptions()
+    public void IconOptions_BoundFromTeamOptions()
     {
         var builder = CreateBuilder();
         builder.AddThargaTeam(o => o.Icon.MaxBytes = 12345);

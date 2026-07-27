@@ -38,7 +38,7 @@ builder.Services.AddRadzenCookieThemeService();
 
 builder.AddThargaTeam(o =>
 {
-    o.Blazor.Title = "Tharga Platform Sample";
+    o.Blazor.Title = "Tharga Team Sample";
     o.Blazor.RegisterTeamService<TeamService, UserService, TeamMember>();
     o.Blazor.AutoCreateFirstTeam = false;
     o.Blazor.AllowTeamCreation = true;

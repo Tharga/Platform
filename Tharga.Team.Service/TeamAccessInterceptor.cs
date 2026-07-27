@@ -8,7 +8,7 @@ namespace Tharga.Team.Service;
 /// <remarks>
 /// Defence in depth, not the primary control — <c>AddTeamService</c> / <c>AddSystemService</c> are what
 /// authorize a call. This catches the case those cannot: code that reaches the database without going
-/// through the authorization layer at all, including a consumer's own repositories, which Platform never
+/// through the authorization layer at all, including a consumer's own repositories, which Tharga.Team never
 /// sees. Register it with:
 /// <code>
 /// builder.AddMongoDB(o => o.AddCollectionInterceptor&lt;TeamAccessInterceptor&gt;());

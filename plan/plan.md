@@ -78,21 +78,40 @@ Branch: `feature/rename-platform-to-team` (from `master`)
     — update both.
   - Verify the obsolete path still *behaves* identically, not merely compiles.
 
-- [ ] **6. Solution and sample** — `Tharga.Platform.sln` → `Tharga.Team.sln`,
-      `Tharga.Platform.Sample` → `Tharga.Team.Sample` (assembly name, root namespace, project references).
-      Also `Tharga.Platform.sln.startup.json`. Point the sample at `AddThargaTeam` so the documented entry
-      point is the one the sample demonstrates.
+- [x] **6. Solution and sample** — done. `Tharga.Platform.sln` → `Tharga.Team.sln` (+ `.startup.json`),
+      `Tharga.Platform.Sample` → `Tharga.Team.Sample` including `RootNamespace` and all 16 namespace
+      references. Sample already moved to `AddThargaTeam` in step 5. In-repo `.claude/mission.md` title and
+      `.claude/project-name` updated too.
 
-- [ ] **7. CI workflow** — `.github/workflows/build.yml` packs each project by explicit path; the renamed
-      MCP project must be updated there or it silently stops shipping. Check for any other path reference.
+- [x] **7. CI workflow** — done in step 4's commit (the pack path). Verified the workflow now lists exactly
+      seven projects with `Tharga.Team.Mcp` present and `Tharga.Platform.Mcp` absent.
 
-- [ ] **8. Docs** — `docfx.json` `_appName`/`_appTitle`; `docs/CNAME` → `team.tharga.net`; sweep
-      `docs/articles/**` and `README.md`. Keep "Platform" where it means the *package family*, not the
-      product. Document the `team://` URIs and the `AddThargaTeam` entry point.
+- [x] **8. Docs** — `docfx.json` `_appName`/`_appTitle` → `Tharga.Team`; swept `docs/articles/**`,
+      `docs/index.md`, `README.md`, the template CSS, and all five package READMEs.
 
-- [ ] **9. Full verification** — `dotnet build -c Release` + `dotnet test -c Release`, 989+ green. Then grep
-      the whole tree for `Platform` and account for **every** remaining hit as either legitimate (package
-      family, historical changelog, external URL) or missed.
+  **`docs/CNAME` deliberately NOT changed** — see hand-off D. Flipping it before the DNS record exists would
+  take the docs site down on merge, since GitHub Pages serves a single custom domain.
+
+- [x] **9. Full verification** — build 0 errors; **993 tests green**; clean-build warning count **20**,
+      measured as CI measures it, against its threshold of 35.
+
+  Swept with `git grep -E` (not `\|`, per step 4's lesson). Every remaining `Platform` hit accounted for:
+  - **Deliberate**: the migration notes in `README.md` and `Tharga.Team.Mcp/README.md`; the
+    `AddThargaPlatform` name inside the compatibility shim, its tests, and the `AddThargaTeamCore` doc
+    comment that deliberately names the obsolete caller.
+  - **Legitimate history**: `Tharga/Platform#64/71/75/100/117/120/123/125/139` issue references in test
+    docs. These are real issue IDs; GitHub redirects them after the repo rename.
+  - **Pending the repo rename**: `github.com/Tharga/Platform` URLs in `README.md`, `docs/index.md`,
+    `docs/docfx.json` (`_gitContribute.repo`) and `Tharga.Team.Service/README.md`. **Left on purpose** —
+    a `Tharga/Team` URL 404s today, whereas the current one redirects once renamed. Update after hand-off C.
+  - **External, hand-off F**: the `$DOC_ROOT` paths in `.claude/mission.md`.
+  - **MSBuild noise**: `SolutionConfigurationPlatforms` / `ProjectConfigurationPlatforms`.
+  - **Left by choice**: the sample's dev Mongo database name `Tharga_Platform{environment}_Sample2{part}`
+    in `appsettings.Development.json`. Renaming it silently repoints local dev at an empty database.
+
+  Fixed late in the sweep, and worth noting because a compiler would never have caught them: a **user-facing
+  UI string** in `TenantRoleManager` still told people to set the flag "in `AddThargaPlatform`", plus the
+  sample's window title, its home page heading, and four prose comments.
 
 - [ ] **10. Push** for the user to test from origin. Do **not** open the PR yet; do **not** close the feature.
 
@@ -114,8 +133,11 @@ is a package *swap*, not a version upgrade.
 - [ ] **C. Rename the GitHub repo** `Tharga/Platform` → `Tharga/Team` — **after A**, so 3.6.0's release run
       completes on a stable name and any failure is one change to debug, not two. GitHub redirects the old
       URL; I update the local remote afterwards.
-- [ ] **D. Add the `team.tharga.net` DNS record**, verify it resolves, and only then retire
-      `platform.tharga.net`. The `docs/CNAME` change lands in step 8, so do this around the same merge.
+- [ ] **D. Add the `team.tharga.net` DNS record**, verify it resolves, **then** flip `docs/CNAME` in a
+      separate one-line PR. **`docs/CNAME` is deliberately NOT changed in this PR.** GitHub Pages serves one
+      custom domain: if the file said `team.tharga.net` before DNS existed, merging would take the docs site
+      down until the record propagated. Sequencing it separately costs one trivial PR and removes that
+      window entirely.
 - [ ] **E. Optionally rename the local working directory** `C:\dev\tharga\Toolkit\Platform`. **The spec's
       warning about `settings.local.json` is out of date** — that file contains no `Platform` path today
       (verified). What it does orphan is the Claude session-memory and scratchpad directories, both keyed on
