@@ -12,7 +12,7 @@ using Tharga.Team.Service.Audit;
 namespace Tharga.Team.Blazor.Tests;
 
 /// <summary>
-/// Wiring of <see cref="IUserManagementService"/> by AddThargaTeamBlazor / AddThargaPlatform:
+/// Wiring of <see cref="IUserManagementService"/> by AddThargaTeamBlazor / AddThargaTeam:
 /// authorization sits outermost over audit over the implementation, the <c>users:manage</c> system
 /// scope is registered merge-safe, a delete through the fully-resolved chain emits both the user-level
 /// and the team-level audit entries, and directory features degrade to <see cref="NotSupportedException"/>
@@ -118,7 +118,7 @@ public class UserManagementWiringTests
             """));
         builder.Configuration.AddJsonStream(stream);
 
-        builder.AddThargaPlatform(o => o.AddUserDirectoryService<FakeDirectoryService>());
+        builder.AddThargaTeam(o => o.AddUserDirectoryService<FakeDirectoryService>());
 
         Assert.Contains(builder.Services, d =>
             d.ServiceType == typeof(IUserDirectoryService) && d.ImplementationType == typeof(FakeDirectoryService));

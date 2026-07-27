@@ -9,10 +9,10 @@ namespace Tharga.Team.Blazor.Tests;
 public class EmailRegistrationTests
 {
     [Fact]
-    public void AddThargaPlatform_WithEmailOptions_RegistersSmtpSender()
+    public void AddThargaTeam_WithEmailOptions_RegistersSmtpSender()
     {
         var builder = WebApplication.CreateBuilder();
-        builder.AddThargaPlatform(o =>
+        builder.AddThargaTeam(o =>
         {
             o.Auth.ValidateConfiguration = false;
             o.Email = new EmailOptions { SmtpHost = "smtp.test.com", FromAddress = "test@test.com" };
@@ -26,10 +26,10 @@ public class EmailRegistrationTests
     }
 
     [Fact]
-    public void AddThargaPlatform_WithCustomEmailService_RegistersCustomSender()
+    public void AddThargaTeam_WithCustomEmailService_RegistersCustomSender()
     {
         var builder = WebApplication.CreateBuilder();
-        builder.AddThargaPlatform(o =>
+        builder.AddThargaTeam(o =>
         {
             o.Auth.ValidateConfiguration = false;
             o.Email = new EmailOptions { SmtpHost = "smtp.test.com" };
@@ -44,10 +44,10 @@ public class EmailRegistrationTests
     }
 
     [Fact]
-    public void AddThargaPlatform_WithoutEmail_DoesNotRegisterSender()
+    public void AddThargaTeam_WithoutEmail_DoesNotRegisterSender()
     {
         var builder = WebApplication.CreateBuilder();
-        builder.AddThargaPlatform(o =>
+        builder.AddThargaTeam(o =>
         {
             o.Auth.ValidateConfiguration = false;
         });

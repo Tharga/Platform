@@ -13,7 +13,7 @@ using Tharga.Team.Service.Audit;
 
 namespace Tharga.Team.Blazor.Tests;
 
-public class AddThargaPlatformTests
+public class AddThargaTeamTests
 {
     private const string ValidAzureAdConfig = """
         {
@@ -38,7 +38,7 @@ public class AddThargaPlatformTests
     public void RegistersAuthenticationServices()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform();
+        builder.AddThargaTeam();
         var provider = builder.Services.BuildServiceProvider();
 
         Assert.NotNull(provider.GetService<IAuthenticationService>());
@@ -48,7 +48,7 @@ public class AddThargaPlatformTests
     public void RegistersBreadCrumbService()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform();
+        builder.AddThargaTeam();
         var provider = builder.Services.BuildServiceProvider();
 
         Assert.Contains(builder.Services, d => d.ServiceType == typeof(BreadCrumbService));
@@ -58,7 +58,7 @@ public class AddThargaPlatformTests
     public void EnableDynamicRoles_True_RegistersTenantRoleService()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform(o => o.EnableDynamicRoles = true);
+        builder.AddThargaTeam(o => o.EnableDynamicRoles = true);
 
         Assert.Contains(builder.Services, d => d.ServiceType == typeof(ITenantRoleService));
     }
@@ -67,7 +67,7 @@ public class AddThargaPlatformTests
     public void EnableDynamicRoles_Default_DoesNotRegisterTenantRoleService()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform();
+        builder.AddThargaTeam();
 
         Assert.DoesNotContain(builder.Services, d => d.ServiceType == typeof(ITenantRoleService));
     }
@@ -76,7 +76,7 @@ public class AddThargaPlatformTests
     public void EnableDynamicRoles_DefaultManageScope_IsTeamManage()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform(o => o.EnableDynamicRoles = true);
+        builder.AddThargaTeam(o => o.EnableDynamicRoles = true);
         var provider = builder.Services.BuildServiceProvider();
 
         var options = provider.GetService<DynamicTenantRoleOptions>();
@@ -88,7 +88,7 @@ public class AddThargaPlatformTests
     public void DynamicRoleManageScope_FlowsThroughFacade()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform(o =>
+        builder.AddThargaTeam(o =>
         {
             o.EnableDynamicRoles = true;
             o.DynamicRoleManageScope = "access:manage";
@@ -123,7 +123,7 @@ public class AddThargaPlatformTests
     public void RegistersBlazorOptions()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform(o => o.Blazor.Title = "Test App");
+        builder.AddThargaTeam(o => o.Blazor.Title = "Test App");
         var provider = builder.Services.BuildServiceProvider();
 
         var options = provider.GetRequiredService<IOptions<BlazorOptions>>();
@@ -134,7 +134,7 @@ public class AddThargaPlatformTests
     public void RegistersApiKeyServices()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform();
+        builder.AddThargaTeam();
 
         Assert.Contains(builder.Services, d => d.ServiceType == typeof(IApiKeyRepository));
         Assert.Contains(builder.Services, d => d.ServiceType == typeof(IApiKeyRepositoryCollection));
@@ -144,7 +144,7 @@ public class AddThargaPlatformTests
     public void RegistersControllerServices()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform();
+        builder.AddThargaTeam();
 
         Assert.Contains(builder.Services, d => d.ServiceType == typeof(ThargaControllerOptions));
     }
@@ -153,7 +153,7 @@ public class AddThargaPlatformTests
     public void SkipsControllers_WhenNull()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform(o => o.Controllers = null);
+        builder.AddThargaTeam(o => o.Controllers = null);
 
         Assert.DoesNotContain(builder.Services, d => d.ServiceType == typeof(ThargaControllerOptions));
     }
@@ -162,7 +162,7 @@ public class AddThargaPlatformTests
     public void RegistersScopes_WhenConfigured()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform(o =>
+        builder.AddThargaTeam(o =>
         {
             o.ConfigureScopes = scopes => scopes.Register("test:read", AccessLevel.Viewer);
         });
@@ -177,7 +177,7 @@ public class AddThargaPlatformTests
     public void SkipsScopes_WhenNotConfigured()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform();
+        builder.AddThargaTeam();
 
         Assert.DoesNotContain(builder.Services, d => d.ServiceType == typeof(IScopeRegistry));
     }
@@ -186,7 +186,7 @@ public class AddThargaPlatformTests
     public void RegistersTenantRoles_WhenConfigured()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform(o =>
+        builder.AddThargaTeam(o =>
         {
             o.ConfigureScopes = scopes => scopes.Register("test:read", AccessLevel.Viewer);
             o.ConfigureTenantRoles = roles => roles.Register("Editor", new[] { "test:read" });
@@ -201,7 +201,7 @@ public class AddThargaPlatformTests
     public void SkipsTenantRoles_WhenNotConfigured()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform();
+        builder.AddThargaTeam();
 
         Assert.DoesNotContain(builder.Services, d => d.ServiceType == typeof(ITenantRoleRegistry));
     }
@@ -210,7 +210,7 @@ public class AddThargaPlatformTests
     public void RegistersAuditLogging_WhenConfigured()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform(o => o.Audit = new AuditOptions());
+        builder.AddThargaTeam(o => o.Audit = new AuditOptions());
 
         Assert.Contains(builder.Services, d => d.ServiceType == typeof(CompositeAuditLogger));
     }
@@ -219,7 +219,7 @@ public class AddThargaPlatformTests
     public void SkipsAuditLogging_WhenNotConfigured()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform();
+        builder.AddThargaTeam();
 
         Assert.DoesNotContain(builder.Services, d => d.ServiceType == typeof(CompositeAuditLogger));
     }
@@ -228,7 +228,7 @@ public class AddThargaPlatformTests
     public void ForwardsApiKeyOptions_To_ApiKeyOptions()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform(o =>
+        builder.AddThargaTeam(o =>
         {
             o.ApiKey.MinKeyLength = 40;
             o.ApiKey.MaxKeyLength = 48;
@@ -250,7 +250,7 @@ public class AddThargaPlatformTests
     public void AddApiKeyLifecycleHandler_RegistersHandler_And_Decorates()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform(o => o.AddApiKeyLifecycleHandler<TestLifecycleHandler>());
+        builder.AddThargaTeam(o => o.AddApiKeyLifecycleHandler<TestLifecycleHandler>());
 
         Assert.Contains(builder.Services, d =>
             d.ServiceType == typeof(IApiKeyLifecycleHandler) && d.ImplementationType == typeof(TestLifecycleHandler));
@@ -271,7 +271,7 @@ public class AddThargaPlatformTests
         // registration. The audited helper registers a single resolve-time factory (not a plain
         // ImplementationType map), so audit can never be silently dropped by call order.
         var builder = CreateBuilder();
-        builder.AddThargaPlatform(o => o.Audit = new AuditOptions());
+        builder.AddThargaTeam(o => o.Audit = new AuditOptions());
 
         var admin = Assert.Single(builder.Services.Where(d => d.ServiceType == typeof(IApiKeyAdministrationService)));
         Assert.NotNull(admin.ImplementationFactory);
@@ -282,7 +282,7 @@ public class AddThargaPlatformTests
     public void SkipsApiKeyAuth_WhenNull()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform(o => o.ApiKey = null);
+        builder.AddThargaTeam(o => o.ApiKey = null);
 
         Assert.DoesNotContain(builder.Services, d =>
             d.ServiceType == typeof(IApiKeyRepository));
@@ -292,17 +292,17 @@ public class AddThargaPlatformTests
     public void RegistersHttpContextAccessor()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform();
+        builder.AddThargaTeam();
         var provider = builder.Services.BuildServiceProvider();
 
         Assert.NotNull(provider.GetService<IHttpContextAccessor>());
     }
 
     [Fact]
-    public void UseThargaPlatform_MapsAuthEndpoints()
+    public void UseThargaTeam_MapsAuthEndpoints()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform();
+        builder.AddThargaTeam();
 
         // Stub services that are normally provided by the Blazor/MongoDB runtime
         // so that ValidateOnBuild (enabled by default in .NET 10) does not throw.
@@ -315,7 +315,7 @@ public class AddThargaPlatformTests
 
         var app = builder.Build();
 
-        app.UseThargaPlatform();
+        app.UseThargaTeam();
 
         var endpoints = ((Microsoft.AspNetCore.Routing.IEndpointRouteBuilder)app)
             .DataSources

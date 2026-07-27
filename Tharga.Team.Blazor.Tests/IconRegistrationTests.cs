@@ -8,7 +8,7 @@ using Tharga.Team.Blazor.Framework;
 namespace Tharga.Team.Blazor.Tests;
 
 /// <summary>
-/// Icon wiring by <c>AddThargaPlatform</c>: the resolver resolves, the built-in <c>StoredIconSource</c> is
+/// Icon wiring by <c>AddThargaTeam</c>: the resolver resolves, the built-in <c>StoredIconSource</c> is
 /// registered first (so a platform-stored icon wins), a custom store/source registered via the options
 /// takes effect, and <see cref="IconOptions"/> is bound from <c>o.Icon</c>.
 /// </summary>
@@ -42,7 +42,7 @@ public class IconRegistrationTests
     public void Resolver_And_StoredSource_AreRegistered()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform();
+        builder.AddThargaTeam();
         using var provider = builder.Services.BuildServiceProvider();
         using var scope = provider.CreateScope();
 
@@ -56,7 +56,7 @@ public class IconRegistrationTests
     public void CustomSource_RegisteredAfterStoredSource()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform(o => o.AddIconSource<FakeSource>());
+        builder.AddThargaTeam(o => o.AddIconSource<FakeSource>());
         using var provider = builder.Services.BuildServiceProvider();
         using var scope = provider.CreateScope();
 
@@ -71,7 +71,7 @@ public class IconRegistrationTests
     public void CustomStore_Wins()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform(o => o.AddIconStore<FakeStore>());
+        builder.AddThargaTeam(o => o.AddIconStore<FakeStore>());
         using var provider = builder.Services.BuildServiceProvider();
         using var scope = provider.CreateScope();
 
@@ -82,7 +82,7 @@ public class IconRegistrationTests
     public void IconOptions_BoundFromPlatformOptions()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform(o => o.Icon.MaxBytes = 12345);
+        builder.AddThargaTeam(o => o.Icon.MaxBytes = 12345);
         using var provider = builder.Services.BuildServiceProvider();
 
         Assert.Equal(12345, provider.GetRequiredService<IOptions<IconOptions>>().Value.MaxBytes);

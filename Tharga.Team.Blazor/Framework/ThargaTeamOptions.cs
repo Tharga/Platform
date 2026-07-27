@@ -7,10 +7,10 @@ using Tharga.Team.Service.Email;
 namespace Tharga.Team.Blazor.Framework;
 
 /// <summary>
-/// Top-level options for configuring the Tharga Platform via a single AddThargaPlatform call.
+/// Top-level options for configuring the Tharga Team via a single AddThargaTeam call.
 /// All sub-options have sensible defaults. Configure only what you need.
 /// </summary>
-public class ThargaPlatformOptions
+public class ThargaTeamOptions
 {
     internal Type _emailSenderType;
     internal Type _userDirectoryServiceType;

@@ -11,22 +11,30 @@ using Tharga.Team.Service.Email;
 namespace Tharga.Team.Blazor.Framework;
 
 /// <summary>
-/// Single entry point for registering all Tharga Platform services.
+/// Single entry point for registering all Tharga Team services.
 /// </summary>
-public static class ThargaPlatformRegistration
+public static class ThargaTeamRegistration
 {
     /// <summary>Named <see cref="System.Net.Http.HttpClient"/> used to download icons supplied by URL.</summary>
     internal const string IconHttpClientName = "tharga-icon-download";
 
     /// <summary>
-    /// Registers all Tharga Platform services with sensible defaults.
-    /// Call <see cref="UseThargaPlatform"/> on the built WebApplication to configure middleware.
+    /// Registers all Tharga Team services with sensible defaults.
+    /// Call <see cref="UseThargaTeam"/> on the built WebApplication to configure middleware.
     /// </summary>
-    public static void AddThargaPlatform(this WebApplicationBuilder builder, Action<ThargaPlatformOptions> configure = null)
+    public static void AddThargaTeam(this WebApplicationBuilder builder, Action<ThargaTeamOptions> configure = null)
     {
-        var options = new ThargaPlatformOptions();
+        var options = new ThargaTeamOptions();
         configure?.Invoke(options);
+        AddThargaTeamCore(builder, options);
+    }
 
+    /// <summary>
+    /// Registration against an already-configured options instance, so the obsolete
+    /// <c>AddThargaPlatform</c> entry point runs exactly this logic rather than a copy of it.
+    /// </summary>
+    internal static void AddThargaTeamCore(WebApplicationBuilder builder, ThargaTeamOptions options)
+    {
         // Auth (Azure AD + OIDC)
         builder.AddThargaAuth(o =>
         {
@@ -205,9 +213,9 @@ public static class ThargaPlatformRegistration
     }
 
     /// <summary>
-    /// Configures Tharga Platform middleware (auth endpoints, controllers, Swagger).
+    /// Configures Tharga Team middleware (auth endpoints, controllers, Swagger).
     /// </summary>
-    public static void UseThargaPlatform(this WebApplication app)
+    public static void UseThargaTeam(this WebApplication app)
     {
         app.UseThargaAuth();
 

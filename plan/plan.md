@@ -15,8 +15,16 @@ Branch: `feature/rename-platform-to-team` (from `master`)
       `chore/version-line-3-6` so 3.6.0 carries real content instead of being an empty marker release.
       **PR #154 must be closed as superseded** when this PR opens (its branch can then be deleted).
 
-- [ ] **4. Rename the MCP package** — the largest mechanical step, done first because everything else is
-      smaller and independent.
+- [x] **4. Rename the MCP package** — done. 989 tests still green; the test assembly is now
+      `Tharga.Team.Mcp.Tests.dll`. All moves used `git mv`, so git recorded them as renames (84-92% similarity)
+      and history follows. CI `build.yml` pack path updated in the same commit — a miss there would have
+      silently stopped shipping the package with no build or test failure.
+
+  **`git grep` gave a false negative and nearly hid four references.** `git grep "a\|b"` does **not** treat
+  `\|` as alternation — it matched nothing and read as "all clear". Re-running with `git grep -E` found
+  `README.md`, the sample's `using`, its `AddPlatform()` call and its `ProjectReference`. **Use `git grep -E`
+  for every sweep in step 9**, and never trust a clean alternation grep without first proving the pattern
+  matches something known to exist.
   - Directory + csproj: `Tharga.Platform.Mcp` → `Tharga.Team.Mcp`, and `Tharga.Platform.Mcp.Tests` →
     `Tharga.Team.Mcp.Tests`. Use `git mv` so history follows.
   - `PackageId` → `Tharga.Team.Mcp`; check `Description`/`PackageTags` for the old product name.

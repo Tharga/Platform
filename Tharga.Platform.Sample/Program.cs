@@ -36,7 +36,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddRadzenComponents();
 builder.Services.AddRadzenCookieThemeService();
 
-builder.AddThargaPlatform(o =>
+builder.AddThargaTeam(o =>
 {
     o.Blazor.Title = "Tharga Platform Sample";
     o.Blazor.RegisterTeamService<TeamService, UserService, TeamMember>();
@@ -169,7 +169,7 @@ app.UseSerilogRequestLogging();
 app.UseHttpsRedirection();
 app.UseAntiforgery();
 
-app.UseThargaPlatform();
+app.UseThargaTeam();
 app.UseThargaMcp();
 
 app.MapStaticAssets();
