@@ -3,7 +3,7 @@ using Tharga.Team;
 namespace Tharga.Team.Service.Tests;
 
 /// <summary>
-/// Team-aware role resolution (Tharga/Platform#117): <see cref="TenantRoleService"/> merges code roles
+/// Team-aware role resolution (Tharga/Team#117): <see cref="TenantRoleService"/> merges code roles
 /// with a team's custom roles and unions access-level ∪ code-role ∪ custom-role ∪ override scopes.
 /// </summary>
 public class TenantRoleServiceTests

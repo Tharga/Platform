@@ -8,7 +8,7 @@ namespace Tharga.Team.Blazor.Features.Team;
 /// The <c>team:manage</c> scope is emitted by <c>TeamServerClaimsTransformation</c> for the
 /// currently-selected team only, so holding it authorizes actions on that team and no other.
 /// Gating every team card on the bare scope flag offers buttons the server then rejects with
-/// <see cref="UnauthorizedAccessException"/> (Tharga/Platform#125).
+/// <see cref="UnauthorizedAccessException"/> (Tharga/Team#125).
 /// </remarks>
 internal static class TeamActionGate
 {
@@ -38,7 +38,7 @@ internal static class TeamActionGate
     /// Whether member-management actions (e.g. Invite User) should be visible: the member-manage scope is
     /// held and that team is the selected one it was issued for. Like the manage scope, member:manage is
     /// emitted only for the selected team, so a global flag would offer the action on every card
-    /// (Tharga/Platform#134).
+    /// (Tharga/Team#134).
     /// </summary>
     public static bool CanManageMembers(bool hasMemberManageScope, string selectedTeamKey, string teamKey)
         => CanManage(hasMemberManageScope, selectedTeamKey, teamKey);
@@ -71,7 +71,7 @@ internal static class TeamActionGate
     /// level on it. It stays visible either way so the consented level can be read without being
     /// changeable. Access level alone is not sufficient — <c>SetTeamConsentAsync</c> is enforced on
     /// <c>team:manage</c>, which is issued for the selected team only, so gating on level alone offered
-    /// an edit the service then rejected on every other team (Tharga/Platform#140).
+    /// an edit the service then rejected on every other team (Tharga/Team#140).
     /// </summary>
     public static bool CanEditConsent(bool hasManageScope, string selectedTeamKey, string teamKey, bool isAdministrator)
         => CanManage(hasManageScope, selectedTeamKey, teamKey) && isAdministrator;

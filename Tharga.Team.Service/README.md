@@ -102,7 +102,7 @@ builder.Services.AddScopedWithAccessLevel<IMyService, MyService>();
 
 ## API key options
 
-API key behaviour is configured via `ApiKeyOptions` (passed to `AddThargaApiKeyAuthentication`, or `o.ApiKey` under `AddThargaPlatform`):
+API key behaviour is configured via `ApiKeyOptions` (passed to `AddThargaApiKeyAuthentication`, or `o.ApiKey` under `AddThargaTeam`):
 
 | Option | Default | Purpose |
 |---|---|---|
@@ -180,7 +180,7 @@ public class MyHandler(ISecretProtector protector, IMyStore store) : IApiKeyLife
     };
 }
 
-builder.AddThargaPlatform(o => o.AddApiKeyLifecycleHandler<MyHandler>());
+builder.AddThargaTeam(o => o.AddApiKeyLifecycleHandler<MyHandler>());
 ```
 
 A throwing handler propagates out of the originating operation (capture failures are not swallowed). You own whatever you capture — encrypt it at rest.
@@ -203,5 +203,5 @@ A throwing handler propagates out of the originating operation (capture failures
 
 ## Links
 
-- [GitHub repository](https://github.com/Tharga/Platform)
-- [Report an issue](https://github.com/Tharga/Platform/issues)
+- [GitHub repository](https://github.com/Tharga/Team)
+- [Report an issue](https://github.com/Tharga/Team/issues)

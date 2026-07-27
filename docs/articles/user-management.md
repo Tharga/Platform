@@ -205,7 +205,7 @@ different directory, implement the interface (verify a user, delete by directory
 and register it:
 
 ```csharp
-builder.AddThargaPlatform(o =>
+builder.AddThargaTeam(o =>
 {
     o.AddUserDirectoryService<MyLdapDirectoryService>();
 });

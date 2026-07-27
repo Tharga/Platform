@@ -123,7 +123,7 @@ public class ResilientMemberLookupTests
     [Fact]
     public void ReplaceByReference_ReplacesOnlyTheTargetInstance_PreservesDuplicateKeyedSiblings()
     {
-        // Reproduces the Tharga/Platform#64 strip-siblings scenario: a list contains two members
+        // Reproduces the Tharga/Team#64 strip-siblings scenario: a list contains two members
         // with the same Key but as distinct instances. The picked one must be replaced; the other
         // must remain untouched.
         var sibling = new FakeMember("dup");

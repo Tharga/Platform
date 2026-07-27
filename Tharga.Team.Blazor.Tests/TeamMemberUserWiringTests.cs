@@ -15,7 +15,7 @@ namespace Tharga.Team.Blazor.Tests;
 /// nobody else. Exercised end-to-end because the co-member projection resolves <see cref="ITeamService"/>
 /// through a factory — <c>TeamServiceBase</c> depends on <see cref="IUserService"/>, so an eagerly
 /// injected team service would close a dependency cycle that only a real provider would expose
-/// (Tharga/Platform#139).
+/// (Tharga/Team#139).
 /// </summary>
 public class TeamMemberUserWiringTests
 {

@@ -285,7 +285,7 @@ else
     /// <summary>
     /// Optional callback invoked after a successful inline edit of <see cref="ITeamMember.Name"/>.
     /// Use to refresh derived caches, log additional context, etc.
-    /// Platform handles the persistence itself; this is purely observational.
+    /// Tharga.Team handles the persistence itself; this is purely observational.
     /// </summary>
     [Parameter] public EventCallback<MemberNameChangedArgs> OnMemberNameChanged { get; set; }
 

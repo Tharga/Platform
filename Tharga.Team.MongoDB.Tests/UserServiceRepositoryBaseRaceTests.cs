@@ -13,7 +13,7 @@ namespace Tharga.Team.MongoDB.Tests;
 /// When two first-time logins for the same Identity race, the unique <c>Identity</c> index on
 /// <see cref="UserRepositoryCollection{TUserEntity}"/> guarantees one wins. The losing thread catches
 /// the <see cref="MongoWriteException"/> with <see cref="ServerErrorCategory.DuplicateKey"/> and re-reads
-/// the winning row instead of throwing (issue Tharga/Platform#65).
+/// the winning row instead of throwing (issue Tharga/Team#65).
 /// </summary>
 public class UserServiceRepositoryBaseRaceTests
 {

@@ -2,7 +2,7 @@ namespace Tharga.Team.Service.Tests;
 
 /// <summary>
 /// Tests for the resilient-member-lookup pattern applied across <see cref="TeamServiceBase"/> call sites
-/// (issue Tharga/Platform#64). Each fixture seeds a team containing two rows with the same key —
+/// (issue Tharga/Team#64). Each fixture seeds a team containing two rows with the same key —
 /// previously these threw <c>ThrowMoreThanOneMatchException</c>; the resilient pick must complete
 /// successfully without throwing.
 /// </summary>

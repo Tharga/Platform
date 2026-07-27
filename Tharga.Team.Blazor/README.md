@@ -19,17 +19,17 @@ Team management Blazor components for multi-tenant applications. Works with both
 
 ## Quick Start (recommended)
 
-Use `AddThargaPlatform` to register all Platform services in one call:
+Use `AddThargaTeam` to register all Tharga.Team services in one call:
 
 ```csharp
-builder.AddThargaPlatform(o =>
+builder.AddThargaTeam(o =>
 {
     o.Blazor.Title = "My App";
     o.Blazor.RegisterTeamService<MyTeamService, MyUserService>();
 });
 
 var app = builder.Build();
-app.UseThargaPlatform();
+app.UseThargaTeam();
 ```
 
 This registers auth (Azure AD + OIDC), API key authentication, Blazor components, and controllers with sensible defaults. See the main [README](../README.md) for the full setup including MongoDB.
@@ -95,7 +95,7 @@ Code-registered roles (`o.ConfigureTenantRoles`) are the same for every team and
 Enable the feature, then drop the management component on a `team:manage`-gated page:
 
 ```csharp
-builder.AddThargaPlatform(o =>
+builder.AddThargaTeam(o =>
 {
     o.ConfigureScopes = s => { s.Register("case:read", AccessLevel.Custom); s.Register("case:write", AccessLevel.Custom); /* … */ };
     o.EnableDynamicRoles = true;   // registers the team-aware resolver + enables TenantRoleManager
@@ -122,7 +122,7 @@ Two override points, evaluated in this order (**callback → path → built-in**
 **1. `CreateTeamPath` (global, declarative).** Point the built-in entry points at your own page:
 
 ```csharp
-builder.AddThargaPlatform(o =>
+builder.AddThargaTeam(o =>
 {
     o.Blazor.CreateTeamPath = "/get-started";   // TeamSelector link + TeamComponent button navigate here
 });
@@ -154,7 +154,7 @@ Support and administration roles usually need to see every team, not just the on
 consent.
 
 ```csharp
-builder.AddThargaPlatform(o =>
+builder.AddThargaTeam(o =>
 {
     // Explicit:
     o.ConfigureSystemRoles = roles => roles.Map("Developer", SystemTeamScopes.Read);

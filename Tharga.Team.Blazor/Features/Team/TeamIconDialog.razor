@@ -79,7 +79,7 @@
         _busy = true;
         try
         {
-            var client = HttpClientFactory.CreateClient(ThargaPlatformRegistration.IconHttpClientName);
+            var client = HttpClientFactory.CreateClient(Tharga.Team.Blazor.Framework.ThargaTeamRegistration.IconHttpClientName);
             using var response = await client.GetAsync(_url);
             response.EnsureSuccessStatusCode();
             var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";

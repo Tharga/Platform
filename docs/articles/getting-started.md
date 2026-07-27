@@ -17,17 +17,17 @@ dotnet add package Tharga.Team.MongoDB
 ## Register
 
 ```csharp
-builder.AddThargaPlatform(o =>
+builder.AddThargaTeam(o =>
 {
     o.Blazor.Title = "My App";
     o.Blazor.RegisterTeamService<MyTeamService, MyUserService>();
 });
 
 var app = builder.Build();
-app.UseThargaPlatform();
+app.UseThargaTeam();
 ```
 
-`AddThargaPlatform` registers, with sensible defaults:
+`AddThargaTeam` registers, with sensible defaults:
 
 | Concern | What you get |
 |---|---|
@@ -38,7 +38,7 @@ app.UseThargaPlatform();
 
 ## Configure authentication
 
-`AddThargaPlatform` expects an `AzureAd` section in `appsettings.json`:
+`AddThargaTeam` expects an `AzureAd` section in `appsettings.json`:
 
 ```json
 {

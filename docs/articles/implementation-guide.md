@@ -1,15 +1,15 @@
-# Tharga Platform — Implementation Guide
+# Tharga Team — Implementation Guide
 
-Step-by-step instructions for adding Tharga Platform features to a Blazor application.
+Step-by-step instructions for adding Tharga Team features to a Blazor application.
 
 ## Recommended: Single-call setup
 
-For most applications, use `AddThargaPlatform` to register everything in one call:
+For most applications, use `AddThargaTeam` to register everything in one call:
 
 ```csharp
 using Tharga.Team.Blazor.Framework;
 
-builder.AddThargaPlatform(o =>
+builder.AddThargaTeam(o =>
 {
     o.Blazor.Title = "My App";
     o.Blazor.RegisterTeamService<MyTeamService, MyUserService>();
@@ -29,7 +29,7 @@ builder.Services.AddThargaTeamRepository(o =>
 });
 
 var app = builder.Build();
-app.UseThargaPlatform();
+app.UseThargaTeam();
 ```
 
 This replaces Steps 1–8 below. Set sub-options to `null` to skip features you don't need (e.g. `o.Controllers = null`, `o.ApiKey = null`).
@@ -276,7 +276,7 @@ public sealed class MyMenuText(IContentService content) : IThargaTextProvider
 }
 
 // Register it through the platform options (same pattern as AddClaimsEnricher):
-builder.AddThargaPlatform(o => o.Blazor.AddTextProvider<MyMenuText>());
+builder.AddThargaTeam(o => o.Blazor.AddTextProvider<MyMenuText>());
 ```
 
 Without a provider the English defaults are used, so this is non-breaking for existing apps.
@@ -538,7 +538,7 @@ The `TeamClaimsAuthenticationStateProvider` automatically augments the authentic
 
 ### Claims Enrichment
 
-Team, role, access level, and scope claims are automatically enriched on the `ClaimsPrincipal` when a team is selected. Platform provides two enrichment paths:
+Team, role, access level, and scope claims are automatically enriched on the `ClaimsPrincipal` when a team is selected. Tharga.Team provides two enrichment paths:
 
 | Path | How it works | Hosting models |
 |------|-------------|----------------|
@@ -608,10 +608,10 @@ builder.Services.AddThargaTeamBlazor(o =>
 });
 ```
 
-Or via `AddThargaPlatform`:
+Or via `AddThargaTeam`:
 
 ```csharp
-builder.AddThargaPlatform(o =>
+builder.AddThargaTeam(o =>
 {
     o.Blazor.AddClaimsEnricher<MyClaimsEnricher>();
 });
@@ -619,7 +619,7 @@ builder.AddThargaPlatform(o =>
 
 The enricher runs **once per request** inside `TeamServerClaimsTransformation`, before member lookup and consent evaluation. It supports full dependency injection (constructor injection). Duplicate claims are automatically prevented.
 
-> **When team claims refresh.** `TeamServerClaimsTransformation` is an `IClaimsTransformation`, so it runs during **HTTP authentication** — a page load or the establishment of a Blazor Server circuit — not on every interaction within a live circuit. Team claims are therefore re-evaluated on page load and on team switch (switching teams forces a full reload). To keep a live circuit from acting on frozen claims — a removed member, a lowered access level, or a revoked consent — Platform also revalidates team claims periodically (see [Team-claim revalidation](#team-claim-revalidation) below), refreshing them in place without signing the user out.
+> **When team claims refresh.** `TeamServerClaimsTransformation` is an `IClaimsTransformation`, so it runs during **HTTP authentication** — a page load or the establishment of a Blazor Server circuit — not on every interaction within a live circuit. Team claims are therefore re-evaluated on page load and on team switch (switching teams forces a full reload). To keep a live circuit from acting on frozen claims — a removed member, a lowered access level, or a revoked consent — Tharga.Team also revalidates team claims periodically (see [Team-claim revalidation](#team-claim-revalidation) below), refreshing them in place without signing the user out.
 
 **Use cases:**
 - Assign global roles (e.g. `Developer`, `SystemAdministrator`) based on user identity
@@ -630,10 +630,10 @@ The enricher runs **once per request** inside `TeamServerClaimsTransformation`, 
 
 Because the claims transformation runs only at HTTP authentication, team membership, access level, tenant-role scopes, and consent-derived access would otherwise stay frozen for the life of a Blazor Server circuit — so a removed member, a downgraded access level, or a revoked consent would keep their old access until a full reload. This affects **service-layer authorization** too, not just the UI: `BlazorTeamPrincipalAccessor` falls back to the circuit's authentication state when there is no `HttpContext`, so `[RequireScope]`, `[RequireAccessLevel]`, and the `ITeamService` authorization decorator all read the frozen claims in-circuit.
 
-To close this window, Platform revalidates team claims on an interval for the life of each Blazor Server circuit. On each tick the caller's team claims are recomputed for their selected team; if they changed, the principal is refreshed **in place** — the caller is **not** signed out, their team access is simply brought up to date (including downgrades and removal). The net guarantee: team access is stale for at most one interval instead of "until reload". Team-independent system scopes (granted by app roles) and app roles themselves are preserved; a transient recompute error fails open (current claims kept, retried next interval).
+To close this window, Tharga.Team revalidates team claims on an interval for the life of each Blazor Server circuit. On each tick the caller's team claims are recomputed for their selected team; if they changed, the principal is refreshed **in place** — the caller is **not** signed out, their team access is simply brought up to date (including downgrades and removal). The net guarantee: team access is stale for at most one interval instead of "until reload". Team-independent system scopes (granted by app roles) and app roles themselves are preserved; a transient recompute error fails open (current claims kept, retried next interval).
 
 ```csharp
-builder.AddThargaPlatform(o =>
+builder.AddThargaTeam(o =>
 {
     // Default: enabled, 30-minute interval.
     o.Blazor.ClaimRevalidation.Interval = TimeSpan.FromMinutes(5); // narrow the window
@@ -743,8 +743,8 @@ public class MyApiKeyHandler(ISecretProtector protector, IMyKeyStore store) : IA
     }
 }
 
-// register it inside AddThargaPlatform:
-builder.AddThargaPlatform(o =>
+// register it inside AddThargaTeam:
+builder.AddThargaTeam(o =>
 {
     // ...
     o.AddApiKeyLifecycleHandler<MyApiKeyHandler>();   // may be called multiple times
@@ -844,7 +844,7 @@ not authorize writing to another.
 > A service registered with a plain `AddScoped` carries its `[RequireScope]` attributes as documentation
 > and is not checked at all.
 
-> **Works in interactive Blazor Server too.** The proxy resolves the caller via `ITeamPrincipalAccessor`. The default implementation reads `IHttpContextAccessor` (controllers/API). `AddThargaPlatform` / `AddThargaTeamBlazor` automatically swap in a circuit-aware accessor that uses `HttpContext` when present and falls back to `AuthenticationStateProvider` otherwise — so a single `[RequireScope]` / `[RequireAccessLevel]` enforces both your API and interactive Blazor callers (no `HttpContext` is needed in a circuit). To plug in a different principal source, register your own `ITeamPrincipalAccessor`.
+> **Works in interactive Blazor Server too.** The proxy resolves the caller via `ITeamPrincipalAccessor`. The default implementation reads `IHttpContextAccessor` (controllers/API). `AddThargaTeam` / `AddThargaTeamBlazor` automatically swap in a circuit-aware accessor that uses `HttpContext` when present and falls back to `AuthenticationStateProvider` otherwise — so a single `[RequireScope]` / `[RequireAccessLevel]` enforces both your API and interactive Blazor callers (no `HttpContext` is needed in a circuit). To plug in a different principal source, register your own `ITeamPrincipalAccessor`.
 
 ### How scopes are resolved
 
@@ -852,7 +852,7 @@ not authorize writing to another.
 2. **Tenant roles** — Additional scopes granted by assigned roles (see Step 7).
 3. **Scope overrides** — Per-member overrides set in the team management UI (when `ShowScopeOverrides = true`).
 
-> **`AccessLevel.Custom` — least-privilege keys/members.** Use `Custom` when a principal should carry *only* its explicitly assigned roles and scope overrides, with nothing inherited from the access-level tier — e.g. a machine API key minted with a single scope. Its effective scopes are exactly `roles ∪ scopeOverrides`. Set it **explicitly**: a key created without an access level still defaults to a non-`Custom` level. `Custom` is surfaced in the `ApiKeyView` create card; it is intentionally hidden from the team-member pickers until member scope/role editing lands ([#76](https://github.com/Tharga/Platform/issues/76)).
+> **`AccessLevel.Custom` — least-privilege keys/members.** Use `Custom` when a principal should carry *only* its explicitly assigned roles and scope overrides, with nothing inherited from the access-level tier — e.g. a machine API key minted with a single scope. Its effective scopes are exactly `roles ∪ scopeOverrides`. Set it **explicitly**: a key created without an access level still defaults to a non-`Custom` level. `Custom` is surfaced in the `ApiKeyView` create card; it is intentionally hidden from the team-member pickers until member scope/role editing lands ([#76](https://github.com/Tharga/Team/issues/76)).
 
 ### Built-in scopes
 
@@ -950,7 +950,7 @@ builder.Services.AddSingleton<ITenantRoleVisibilityProvider, FeatureGatedRoleVis
 The roles registered above via `AddThargaTenantRoles` are **code roles** — global and fixed at deploy time. To let a team administrator define their **own** roles per team at runtime (e.g. org-specific Registrar / Case officer / Reader / Archivist), enable dynamic tenant roles and add the management component:
 
 ```csharp
-builder.AddThargaPlatform(o =>
+builder.AddThargaTeam(o =>
 {
     o.ConfigureScopes = s => { s.Register("case:read", AccessLevel.Custom); s.Register("case:write", AccessLevel.Custom); };
     o.EnableDynamicRoles = true;

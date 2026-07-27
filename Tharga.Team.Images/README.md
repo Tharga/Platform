@@ -18,5 +18,5 @@ formats ImageSharp can't decode (e.g. SVG), pass through unchanged.
 Configure the maximum via the platform options:
 
 ```csharp
-builder.AddThargaPlatform(o => o.Icon.MaxDimension = 256);
+builder.AddThargaTeam(o => o.Icon.MaxDimension = 256);
 ```

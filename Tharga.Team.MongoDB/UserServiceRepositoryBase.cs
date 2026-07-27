@@ -37,7 +37,7 @@ public abstract class UserServiceRepositoryBase<TUserEntity> : UserServiceBase
         {
             // Lost the race against a concurrent first-time login for the same identity.
             // The unique Identity index on UserRepositoryCollection guarantees only one wins;
-            // re-read and return the winner. Issue Tharga/Platform#65.
+            // re-read and return the winner. Issue Tharga/Team#65.
             return await _userRepository.GetAsync(identity);
         }
     }

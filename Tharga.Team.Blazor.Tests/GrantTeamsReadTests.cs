@@ -43,7 +43,7 @@ public class GrantTeamsReadTests
     public void Default_DoesNotGrantTeamsRead()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform();
+        builder.AddThargaTeam();
 
         Assert.DoesNotContain(SystemTeamScopes.Read, ScopesFor(builder, "Developer"));
     }
@@ -52,7 +52,7 @@ public class GrantTeamsReadTests
     public void Enabled_GrantsTeamsReadToTheConsentRoles()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform(o =>
+        builder.AddThargaTeam(o =>
         {
             o.Blazor.Consent.Roles = ["Developer", "Administrator"];
             o.Blazor.Consent.GrantTeamsRead = true;
@@ -66,7 +66,7 @@ public class GrantTeamsReadTests
     public void Enabled_DoesNotGrantToUnlistedRoles()
     {
         var builder = CreateBuilder();
-        builder.AddThargaPlatform(o =>
+        builder.AddThargaTeam(o =>
         {
             o.Blazor.Consent.Roles = ["Developer"];
             o.Blazor.Consent.GrantTeamsRead = true;
@@ -84,7 +84,7 @@ public class GrantTeamsReadTests
     public void Enabled_ComposesWithAnExistingConfigureSystemRolesMapping()
     {
         var builder = CreateBuilder();
-        var exception = Record.Exception(() => builder.AddThargaPlatform(o =>
+        var exception = Record.Exception(() => builder.AddThargaTeam(o =>
         {
             o.ConfigureSystemRoles = roles => roles.Map("Developer", "audit:read");
             o.Blazor.Consent.Roles = ["Developer"];
@@ -102,7 +102,7 @@ public class GrantTeamsReadTests
     public void Enabled_WithNoConsentRoles_IsSafe()
     {
         var builder = CreateBuilder();
-        var exception = Record.Exception(() => builder.AddThargaPlatform(o =>
+        var exception = Record.Exception(() => builder.AddThargaTeam(o =>
         {
             o.Blazor.Consent.Roles = [];
             o.Blazor.Consent.GrantTeamsRead = true;

@@ -7,7 +7,7 @@ namespace Tharga.Team.MongoDB.Tests;
 
 /// <summary>
 /// Verifies that <see cref="UserRepositoryCollection{TUserEntity}.Indices"/> declares the
-/// unique <c>Identity</c> index added under Tharga/Platform#65.
+/// unique <c>Identity</c> index added under Tharga/Team#65.
 ///
 /// The base <c>DiskRepositoryCollectionBase</c> ctor casts the injected factory to a concrete
 /// <c>MongoDbService</c>, which an NSubstitute proxy can't satisfy. Since the override is purely

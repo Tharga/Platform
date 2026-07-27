@@ -2,7 +2,7 @@
 _layout: landing
 ---
 
-# Tharga.Platform
+# Tharga.Team
 
 Multi-tenant **team, user, and API-key management** for Blazor applications. Built for **.NET 8 / 9 / 10**. Provides teams with members and invitations, an access-level + scope + tenant-role authorization model, system API keys, audit logging, and a set of ready-made Blazor UI components — all backed by pluggable persistence (MongoDB out of the box).
 
@@ -24,17 +24,17 @@ dotnet add package Tharga.Team.MongoDB
 ```
 
 ```csharp
-builder.AddThargaPlatform(o =>
+builder.AddThargaTeam(o =>
 {
     o.Blazor.Title = "My App";
     o.Blazor.RegisterTeamService<MyTeamService, MyUserService>();
 });
 
 var app = builder.Build();
-app.UseThargaPlatform();
+app.UseThargaTeam();
 ```
 
-`AddThargaPlatform` wires up authentication (Azure AD + OIDC), API-key authentication, the Blazor components, and the controllers with sensible defaults. See the [Implementation guide](articles/implementation-guide.md) for the full setup, including MongoDB and the step-by-step alternative.
+`AddThargaTeam` wires up authentication (Azure AD + OIDC), API-key authentication, the Blazor components, and the controllers with sensible defaults. See the [Implementation guide](articles/implementation-guide.md) for the full setup, including MongoDB and the step-by-step alternative.
 
 ## Authorization model at a glance
 
@@ -50,4 +50,4 @@ See [Roles & scopes](articles/implementation-guide.md#step-7b-managing-roles--sc
 
 - **[Articles](articles/index.md)** — getting started and the full implementation guide
 - **[API reference](xref:Tharga.Team)** — every public type, method, and option, generated from XML doc comments
-- **[GitHub](https://github.com/Tharga/Platform)** — source, issues, releases
+- **[GitHub](https://github.com/Tharga/Team)** — source, issues, releases

@@ -5,7 +5,7 @@ using Tharga.Team.Blazor.Framework;
 namespace Tharga.Team.Blazor.Tests;
 
 /// <summary>
-/// Role-source selection for the API-key role picker (Tharga/Platform#120): the per-team merged set
+/// Role-source selection for the API-key role picker (Tharga/Team#120): the per-team merged set
 /// (code roles ∪ the team's custom roles) via <see cref="ITenantRoleService"/> when dynamic roles are
 /// enabled, otherwise the code-registered roles from <see cref="ITenantRoleRegistry"/>.
 /// </summary>

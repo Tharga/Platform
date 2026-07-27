@@ -5,7 +5,7 @@ namespace Tharga.Team.Service.Tests;
 
 /// <summary>
 /// Authorization + validation for <see cref="AuthorizationTeamServiceDecorator.SetTeamCustomRolesAsync"/>
-/// (Tharga/Platform#117): requires <c>team:manage</c> on the target team, and guards against privilege
+/// (Tharga/Team#117): requires <c>team:manage</c> on the target team, and guards against privilege
 /// escalation — every role scope must be app-registered, names non-empty/unique, no code-role collision.
 /// </summary>
 public class AuthorizationTeamServiceDecoratorCustomRolesTests
