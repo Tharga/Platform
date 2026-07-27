@@ -46,5 +46,5 @@ for WebAssembly or a desktop client. Until then, incremental wins.
 - **Target architecture**: `$DOC_ROOT/Tharga/plans/Toolkit/Platform/architecture-v4.md` — read before designing new surface; see Design Direction above
 - **Plan directory**: `$DOC_ROOT/Tharga/plans/Toolkit/Platform`
 - **Backlog**: `$DOC_ROOT/Tharga/Toolkit/Platform.md`
-- **Incoming requests**: `$DOC_ROOT/Tharga/Requests.md` — check sections "Tharga.Platform" and "Tharga.Platform — MCP" on startup. Those headings still carry the **old** name: the file lives outside this repo, so it is renamed separately. Match on what is actually in the file, not on this project's name.
+- **Incoming requests**: `$DOC_ROOT/Tharga/Requests.md` — check sections "Tharga.Team" and "Tharga.Team — MCP" on startup (renamed from "Tharga.Platform" 2026-07-28; individual entries below those headings still say Platform in their prose, which is historical and correct for when they were written).
 - **Eplicta requests**: `$DOC_ROOT/Eplicta/requests.md` — check for requests from Eplicta on startup
