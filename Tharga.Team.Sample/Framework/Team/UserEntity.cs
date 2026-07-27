@@ -1,7 +1,7 @@
 using Tharga.MongoDB;
 using Tharga.Team;
 
-namespace Tharga.Platform.Sample.Framework.Team;
+namespace Tharga.Team.Sample.Framework.Team;
 
 public record UserEntity : EntityBase, IUser
 {

@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Tharga.Team;
 using Tharga.Team.Blazor.Framework;
 
-namespace Tharga.Platform.Sample.Framework;
+namespace Tharga.Team.Sample.Framework;
 
 /// <summary>
 /// Demo enricher that grants the <c>Developer</c> role to a hardcoded allow-list

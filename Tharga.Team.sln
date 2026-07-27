@@ -22,7 +22,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tharga.Team.Service", "Thar
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tharga.Team.Service.Tests", "Tharga.Team.Service.Tests\Tharga.Team.Service.Tests.csproj", "{12014D9B-584F-8F4C-1655-C5D5E06A33C1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tharga.Platform.Sample", "Tharga.Platform.Sample\Tharga.Platform.Sample.csproj", "{D0714983-5179-43B2-97E1-124A352822D0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tharga.Team.Sample", "Tharga.Team.Sample\Tharga.Team.Sample.csproj", "{D0714983-5179-43B2-97E1-124A352822D0}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sample", "Sample", "{9A5C496D-952A-4BD1-83A0-64950EC8AE3C}"
 EndProject

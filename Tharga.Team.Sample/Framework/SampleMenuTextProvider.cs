@@ -1,6 +1,6 @@
 using Tharga.Team.Blazor.Framework;
 
-namespace Tharga.Platform.Sample.Framework;
+namespace Tharga.Team.Sample.Framework;
 
 /// <summary>
 /// Demonstrates localizing the Tharga.Team menu strings via <see cref="IThargaTextProvider"/> — here a

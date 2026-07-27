@@ -2,7 +2,7 @@ using Tharga.MongoDB;
 using Tharga.Team;
 using Tharga.Team.MongoDB;
 
-namespace Tharga.Platform.Sample.Framework.Team;
+namespace Tharga.Team.Sample.Framework.Team;
 
 public class TeamService : TeamServiceRepositoryBase<TeamEntity, TeamMember>
 {

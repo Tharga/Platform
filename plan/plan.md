@@ -101,15 +101,30 @@ Branch: `feature/rename-platform-to-team` (from `master`)
 These are part of the feature and must not be quietly dropped. Sequence matters: the package must be
 published before it can be deprecated against, and DNS must resolve before the old CNAME is removed.
 
-- [ ] **A. Merge + publish 3.6.0**, so `Tharga.Team.Mcp` exists on nuget.org.
-- [ ] **B. Deprecate `Tharga.Platform.Mcp`** on nuget.org with `Tharga.Team.Mcp` as its alternate. Deprecate,
-      do **not** unlist — unlisting would break consumers who have not migrated.
-- [ ] **C. Rename the GitHub repo** `Tharga/Platform` → `Tharga/Team`. GitHub redirects the old URL; I will
-      update the local remote afterwards.
+**`Tharga.Platform.Mcp` is not republished by this PR** — `build.yml` now packs seven projects and that is
+not one of them. It freezes at its last published version (3.5.4 if that release is approved, else 3.5.3)
+and stays installable. `Tharga.Team.Mcp` starts at **3.6.0** with no earlier history, so for a consumer this
+is a package *swap*, not a version upgrade.
+
+- [ ] **A. Merge + publish 3.6.0**, so `Tharga.Team.Mcp` exists on nuget.org. All seven packages take 3.6.0.
+- [ ] **B. Deprecate `Tharga.Platform.Mcp`** on nuget.org — **only after A**, since the alternate package must
+      already exist. Select *all* versions, reason "Other", alternate `Tharga.Team.Mcp`, and a message naming
+      the two breaking changes (`AddPlatform` → `AddTeam`, `platform://` → `team://`). Deprecate, do **not**
+      unlist — unlisting breaks restore for consumers who have not migrated.
+- [ ] **C. Rename the GitHub repo** `Tharga/Platform` → `Tharga/Team` — **after A**, so 3.6.0's release run
+      completes on a stable name and any failure is one change to debug, not two. GitHub redirects the old
+      URL; I update the local remote afterwards.
 - [ ] **D. Add the `team.tharga.net` DNS record**, verify it resolves, and only then retire
-      `platform.tharga.net`.
-- [ ] **E. Optionally rename the local working directory** `C:\dev\tharga\Toolkit\Platform` — breaks absolute
-      paths in `settings.local.json`, so it is deliberately not automated.
+      `platform.tharga.net`. The `docs/CNAME` change lands in step 8, so do this around the same merge.
+- [ ] **E. Optionally rename the local working directory** `C:\dev\tharga\Toolkit\Platform`. **The spec's
+      warning about `settings.local.json` is out of date** — that file contains no `Platform` path today
+      (verified). What it does orphan is the Claude session-memory and scratchpad directories, both keyed on
+      the path. Cosmetic, do it whenever.
+- [ ] **F. Rename references outside this repo** — cross-project, so they need explicit approval:
+      the meta-repo `Toolkit/.claude/mission.md` (3 places: the sub-project table, the producing-project map,
+      and the request-routing list), the two `Requests.md` headings `## Tharga.Platform` and
+      `## Tharga.Platform — MCP`, and the `$DOC_ROOT` paths `Tharga/plans/Toolkit/Platform/` and
+      `Tharga/Toolkit/Platform.md` (which this project's own `mission.md` points at).
 
 ## Close-out (only when the user says it is done)
 

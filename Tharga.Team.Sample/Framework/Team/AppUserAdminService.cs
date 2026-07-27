@@ -1,6 +1,6 @@
 using Tharga.Team.MongoDB;
 
-namespace Tharga.Platform.Sample.Framework.Team;
+namespace Tharga.Team.Sample.Framework.Team;
 
 /// <summary>
 /// Sample-only admin service for editing a user's name and email — data the toolkit does not manage.

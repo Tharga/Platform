@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
     <IsPackable>false</IsPackable>
-    <RootNamespace>Tharga.Platform.Sample</RootNamespace>
+    <RootNamespace>Tharga.Team.Sample</RootNamespace>
     <UserSecretsId>1a7983d6-af1a-451e-8272-0986f7ae5272</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>

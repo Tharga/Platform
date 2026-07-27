@@ -1,6 +1,6 @@
 using Tharga.Team.Service.Audit;
 
-namespace Tharga.Platform.Sample.Framework;
+namespace Tharga.Team.Sample.Framework;
 
 /// <summary>
 /// Demo <see cref="IAuditEnricher"/> that stamps host-defined metadata onto every audit entry the

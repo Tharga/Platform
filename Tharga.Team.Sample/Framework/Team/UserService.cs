@@ -4,7 +4,7 @@ using Tharga.Team;
 using Tharga.Team.MongoDB;
 using Tharga.Toolkit;
 
-namespace Tharga.Platform.Sample.Framework.Team;
+namespace Tharga.Team.Sample.Framework.Team;
 
 public class UserService : UserServiceRepositoryBase<UserEntity>
 {
