@@ -5,6 +5,8 @@
 @inject ITeamService TeamService
 @inject IUserService UserService
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject DialogService DialogService
+@inject NotificationService NotificationService
 @inject Microsoft.Extensions.Options.IOptions<Tharga.Team.Blazor.Framework.ThargaBlazorOptions> BlazorOptions
 
 @if (!_canAdminister)
@@ -30,11 +32,16 @@ else if (_loaded)
                     </Template>
                 </RadzenDataGridColumn>
             }
-            <RadzenDataGridColumn Title="" Width="120px" Sortable="false" Filterable="false">
+            <RadzenDataGridColumn Title="" Width="200px" Sortable="false" Filterable="false">
                 <Template>
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
                         <RadzenButton Text="View" Icon="visibility" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
                                       Click="@(() => ToggleDetails(context))" />
+                        @if (_canDeleteTeams)
+                        {
+                            <RadzenButton Text="Delete" Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                          Click="@(() => DeleteTeamAsync(context))" />
+                        }
                         @if (TeamActionsTemplate != null)
                         {
                             @TeamActionsTemplate(context)
@@ -98,6 +105,7 @@ else
 
     private bool _loaded;
     private bool _canAdminister = true;
+    private bool _canDeleteTeams;
     private IUser[] _users;
     private ITeam<TMember>[] _teams;
     private bool _canSeeAllTeams;
@@ -111,19 +119,26 @@ else
         _canSeeAllTeams = TeamVisibility.CanSeeAllTeams(authState.User);
         _canAdminister = UserAdminGate.CanAdministerUsers(
             TeamScopeGate.HasSystemScope(authState.User, SystemUserScopes.Manage));
+        _canDeleteTeams = UserAdminGate.CanDeleteTeams(
+            TeamScopeGate.HasSystemScope(authState.User, SystemTeamScopes.Delete));
 
         if (_canAdminister)
         {
-            _users = await UserService.GetAsync().ToArrayAsync();
-            _teams = _canSeeAllTeams
-                ? await TeamService.GetAllTeamsAsync<TMember>().ToArrayAsync()
-                : await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
-
-            BuildViewModels();
+            await LoadDataAsync();
             _loaded = true;
         }
 
         await base.OnInitializedAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _users = await UserService.GetAsync().ToArrayAsync();
+        _teams = _canSeeAllTeams
+            ? await TeamService.GetAllTeamsAsync<TMember>().ToArrayAsync()
+            : await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
+
+        BuildViewModels();
     }
 
     private void BuildViewModels()
@@ -154,5 +169,34 @@ else
     private void ToggleDetails(TeamViewModel team)
     {
         _selectedTeam = _selectedTeam?.Key == team.Key ? null : team;
+    }
+
+    /// <summary>
+    /// Cross-team delete, authorized by the <see cref="SystemTeamScopes.Delete"/> system scope rather than
+    /// by membership or consent. The service layer enforces the same rule, so this only avoids offering an
+    /// action the server would refuse.
+    /// </summary>
+    private async Task DeleteTeamAsync(TeamViewModel team)
+    {
+        var members = team.MemberCount == 1 ? "1 member" : $"{team.MemberCount} members";
+        var confirmed = await DialogService.Confirm(
+            $"Team '{team.Name}' and its {members} will be permanently deleted. This cannot be undone.",
+            "Delete team",
+            new ConfirmOptions { OkButtonText = "Delete", CancelButtonText = "Cancel" });
+
+        if (confirmed is not true) return;
+
+        try
+        {
+            await TeamService.DeleteTeamAsync<TMember>(team.Key);
+
+            if (_selectedTeam?.Key == team.Key) _selectedTeam = null;
+            await LoadDataAsync();
+            NotificationService.Notify(NotificationSeverity.Success, "Team deleted", team.Name);
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Delete failed", ex.Message);
+        }
     }
 }
