@@ -35,21 +35,30 @@ Feature scope in `feature.md`. Steps run in order; tests run before each commit.
       `dotnet build -c Release` then `dotnet test -c Release`. Commit steps 2-4 together.
       *Done — build clean (0 errors), full suite 1000 passed / 0 failed.*
 
-- [~] **5. Sample host grant**
+- [x] **5. Sample host grant**
       In `Tharga.Team.Sample/Program.cs`, grant `Developer` and `Administrator` the `SystemTeamScopes.Read`
       and `SystemTeamScopes.Delete` system scopes through the existing `ConfigureSystemRoles`, and register
       a description for `SystemTeamScopes.Delete` (`teams:delete`) alongside the existing `Read`
       registration. This is the worked example of the non-consent grant.
+      *Done — `teams:delete` added to the existing `roles.Map("Developer", …)`. No separate scope
+      registration needed: `ThargaBlazorRegistration` already registers `teams:delete` by default,
+      merge-safe. The sample has no `Administrator` app role (only `DeveloperRoleEnricher`), so mapping
+      one would have been dead config — the Administrator case is shown in the docs instead.*
 
-- [ ] **6. Documentation**
+- [x] **6. Documentation**
       Both surfaces, per the feature workflow:
       - `docs/articles/user-management.md` — the Teams tab gains a delete action; which scope grants it;
         that it is deliberately independent of consent.
       - `docs/articles/implementation-guide.md` — update the `<UsersView />` row in the component table.
       - `Tharga.Team.Blazor/README.md` — the `teams:read` / `UsersView` paragraph.
       Land as a separate `docs:` commit.
+      *Done — added a "Deleting teams" section to `user-management.md` (new content, following the
+      one-section-per-topic pattern beside "Deleting users"), updated the `<UsersView />` row in the
+      implementation guide's component table, and extended the consent/`teams:read` paragraph in the
+      Blazor README. Root `README.md` needed no change — its only `UsersView` mention is about directory
+      features.*
 
-- [ ] **7. Push and hand over for testing**
+- [~] **7. Push and hand over for testing**
       Push the branch. Do **not** open the PR yet — the close-out commit (archive `feature.md`, remove
       `plan/`) must be the last commit before the PR opens.
 

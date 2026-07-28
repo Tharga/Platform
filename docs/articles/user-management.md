@@ -191,6 +191,38 @@ var result = await userManagementService.DeleteUserAsync(userKey, deleteFromDire
 // result.RemovedTeamCount, result.DirectoryDeleted, result.DirectoryError
 ```
 
+## Deleting teams
+
+The **Teams** tab of `<UsersView />` offers a Delete action on each row, gated by the `teams:delete`
+system scope. It deletes any team irrespective of the caller's membership or access level, and
+irrespective of the `AllowTeamCreation` option that governs self-service deletion on `<TeamComponent />`.
+
+**This is deliberately not a consent decision.** Consent governs what a team exposes *inbound* — which
+global roles may reach into it and at what access level. Whether an operator may destroy the team is a
+different question, so no consent option grants `teams:delete`, and a team that has consented to nothing
+is still deletable by a holder of the scope. Contrast `teams:read`, which `Consent.GrantTeamsRead` does
+grant, because enumerating teams genuinely is discovery of what has opted in.
+
+Nothing grants `teams:delete` out of the box — map it to the roles that should have it:
+
+```csharp
+o.ConfigureSystemRoles = roles =>
+{
+    roles.Map("Developer", SystemTeamScopes.Delete);
+    roles.Map("Administrator", SystemTeamScopes.Delete);
+};
+```
+
+The scope must be held as a **system** grant. Registering `teams:delete` at an access level would produce
+a `TeamClaimTypes.Scope` claim, which never satisfies the system-wide check — the same claim-type split
+described under [The `users:manage` scope](#the-usersmanage-scope).
+
+Two capabilities are separate on this surface: viewing the Teams tab requires `users:manage`, deleting a
+team requires `teams:delete`. A caller granted only the latter sees no tab; a caller granted only the
+former sees the list with no Delete action.
+
+Deleting is confirmed with the team name and its member count, and cannot be undone.
+
 ## Audit
 
 User administration is audited under feature `user`: `verify` (with the outcome), `verify-all` (one

@@ -177,6 +177,18 @@ the team has consented to a role they hold. A team you never chose is never sele
 is no current or remembered choice, the fallback comes from your own memberships. Enumeration is not
 audited; mutations still are.
 
+Deleting a team from `UsersView` → Teams is a separate, stronger privilege: the `teams:delete` system
+scope, which **no consent option grants**. Consent decides what a team exposes inbound; it does not
+decide who may destroy it. Map it explicitly to the roles that should have it:
+
+```csharp
+o.ConfigureSystemRoles = roles =>
+{
+    roles.Map("Developer", SystemTeamScopes.Delete);
+    roles.Map("Administrator", SystemTeamScopes.Delete);
+};
+```
+
 ## Dependencies
 
 - [Tharga.Blazor](https://www.nuget.org/packages/Tharga.Blazor) - Generic UI components.
