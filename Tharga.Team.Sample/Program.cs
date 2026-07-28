@@ -114,7 +114,12 @@ builder.AddThargaTeam(o =>
         //
         // apikey:manage is deliberately absent. It belongs to a team administrator, earned through access
         // level; a Developer should not manage a team's keys merely for being a Developer.
-        roles.Map("Developer", "system:metrics:read", "mcp:discover", ApiKeyScopes.SystemManage, AuditScopes.Read, SystemUserScopes.Manage);
+        //
+        // teams:delete opens the Delete action on the UsersView Teams tab. Unlike teams:read above, no
+        // consent option grants it — deleting a team is an operator capability, and a team consenting to
+        // inbound access says nothing about who may destroy it. A host with an Administrator app role
+        // grants it the same way: roles.Map("Administrator", SystemTeamScopes.Delete).
+        roles.Map("Developer", "system:metrics:read", "mcp:discover", ApiKeyScopes.SystemManage, AuditScopes.Read, SystemUserScopes.Manage, SystemTeamScopes.Delete);
     };
 
     // Logger | MongoDB so the audit entries are both logged and queryable by AuditLogView — the default
