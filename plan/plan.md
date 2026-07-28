@@ -58,9 +58,16 @@ Feature scope in `feature.md`. Steps run in order; tests run before each commit.
       Blazor README. Root `README.md` needed no change — its only `UsersView` mention is about directory
       features.*
 
-- [~] **7. Push and hand over for testing**
+- [x] **7. Push and hand over for testing**
       Push the branch. Do **not** open the PR yet — the close-out commit (archive `feature.md`, remove
       `plan/`) must be the last commit before the PR opens.
+      *Done — pushed to `origin/feature/delete-team-from-teams-tab`. PR deliberately not opened; awaiting
+      the user's confirmation that the feature is done.*
+
+## Remaining (close-out, only on the user's confirmation)
+
+Re-run `dotnet outdated`, archive `feature.md` to `$DOC_ROOT/Tharga/plans/Toolkit/Platform/done/`,
+`git rm -r plan`, commit `feat: delete-team-from-teams-tab complete`, push, then open the PR.
 
 ## Notes
 
@@ -73,7 +80,24 @@ Feature scope in `feature.md`. Steps run in order; tests run before each commit.
 
 ## Last session
 
-Branch created off `master`. Feature scope agreed with two decisions taken up front: no new
-configuration option (hosts use the existing `ConfigureSystemRoles`), and the grant is opt-in /
-default-off so no existing host gains team-delete power on upgrade. Awaiting plan confirmation before
-code changes.
+All implementation steps done and pushed; three commits on the branch (feature, sample grant, docs).
+Build clean, full suite 1000 passed / 0 failed.
+
+Two decisions taken up front and honoured throughout: no new configuration option (hosts use the
+existing `ConfigureSystemRoles`), and the grant is opt-in / default-off so no existing host gains
+team-delete power on upgrade.
+
+Discovered while grounding the work: **the server side already supported this entirely** —
+`SystemTeamScopes.Delete` (`teams:delete`) was already defined, registered by default, and honoured by
+`AuthorizationTeamServiceDecorator.RequireDeleteAsync`. The gap was purely that `TeamsListView` never
+rendered the action and nothing granted the scope to a role. So no domain, authorization or claims
+change was needed.
+
+Next: user tests from the pushed branch. On their confirmation, run the close-out sequence above.
+
+### Unrelated finding, worth recording
+
+Plan 01 `team-bound-service-authorization` in the Plan directory is stale. Only §3b (the startup
+registration sweep) is unimplemented — §3, §5, §6 and even phase 4's §6b `TeamAccessInterceptor` are all
+in the code with tests, and §6c was resolved by plan 02's `Scope`/`SystemScope` claim split.
+`planned/README.md` still presents phases 2-4 as outstanding.
