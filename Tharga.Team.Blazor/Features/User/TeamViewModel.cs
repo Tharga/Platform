@@ -9,15 +9,40 @@ public record TeamViewModel
 {
     public string Key { get; init; }
     public string Name { get; init; }
-    public int MemberCount { get; init; }
-    public TeamMemberInfo[] Members { get; init; }
 
     /// <summary>
-    /// What this team has consented to grant an oversight caller. Only meaningful to a caller holding
-    /// the <c>teams:read</c> system scope; otherwise every listed team is one the caller belongs to.
+    /// Every member row, accepted or not. Kept as the total for compatibility — use
+    /// <see cref="ActiveMemberCount"/> and <see cref="InvitedCount"/> to tell the two apart.
     /// </summary>
+    public int MemberCount { get; init; }
+
+    public TeamMemberInfo[] Members { get; init; }
+
+    /// <summary>Reference to the team's uploaded icon, or null. Resolved through <c>TeamAvatar</c>.</summary>
+    public string Icon { get; init; }
+
     /// <summary>
-    /// The access level this team has consented to grant, or null when it has consented to nothing.
+    /// Display name of the member holding <see cref="AccessLevel.Owner"/>, or null when the team has no
+    /// owner — a data defect worth surfacing rather than hiding.
+    /// </summary>
+    public string OwnerName { get; init; }
+
+    /// <summary>
+    /// When anyone last used this team, or null if nobody ever has. Derived from the members'
+    /// <see cref="ITeamMember.LastSeen"/>, which tracks team selection.
+    /// </summary>
+    public DateTime? LastUsed { get; init; }
+
+    /// <summary>Members who have accepted their membership.</summary>
+    public int ActiveMemberCount { get; init; }
+
+    /// <summary>Invitations still outstanding — neither accepted nor rejected.</summary>
+    public int InvitedCount { get; init; }
+
+    /// <summary>
+    /// What this team has consented to grant an oversight caller — the access level, or null when it has
+    /// consented to nothing. Only meaningful to a caller holding the <c>teams:read</c> system scope;
+    /// otherwise every listed team is one the caller belongs to.
     /// </summary>
     public AccessLevel? Consent { get; init; }
 }
