@@ -38,7 +38,9 @@ public class UserService : UserServiceRepositoryBase<UserEntity>
 ```
 
 The users admin list (`<UsersView />` → Users tab) shows a **Last seen** column. This is distinct from
-the per-team-member `LastSeen`, which tracks when a member last selected that team.
+the per-team-member `LastSeen`, which tracks when a member last selected that team. A user who has never
+made an authenticated request reads as **Never** rather than blank — "we have no value" and "this has
+never happened" are different answers on a list whose purpose is finding dormant accounts.
 
 The same list shows a **Teams** count per user, with the memberships behind it. How much it counts depends
 on the caller's own visibility: without the `teams:read` system scope it counts only teams the caller
@@ -190,6 +192,45 @@ A directory failure never rolls back the local delete; it is reported on the res
 var result = await userManagementService.DeleteUserAsync(userKey, deleteFromDirectory: true);
 // result.RemovedTeamCount, result.DirectoryDeleted, result.DirectoryError
 ```
+
+## Reading the admin grids
+
+Both tabs of `<UsersView />` answer operator questions the lists could not previously answer.
+
+**Users tab.** The signed-in user's own row is tinted with a left accent bar, so "which one is me" needs
+no scanning. Expanding a row shows the **user key** with a copy button — the value you need to correlate
+a row with an audit entry, a support ticket, or a database document.
+
+**Teams tab.**
+
+| Column | What it tells you |
+|---|---|
+| Avatar | The team's uploaded icon, or its initials |
+| Name | Plus an **Empty** badge when the team has no members at all |
+| Owner | The member at `AccessLevel.Owner`, or a **No owner** badge — an ownerless team is a data defect, not a blank |
+| Members | Accepted members, with a `+n invited` badge when invitations are still outstanding |
+| Last used | The most recent `LastSeen` across the team's members, or **Never** |
+
+**Last used is team selection, not sign-in.** `ITeamMember.LastSeen` records when a member last selected
+that team, so the maximum across members reads as "when anyone last used this team". A team whose members
+sign in daily but never switch to it still reads as stale — which is the intended signal.
+
+The member count deliberately separates accepted members from outstanding invitations: a team showing a
+flat "5" may be one member and four abandoned invitations, and that distinction is usually what a decision
+to delete the team turns on. `TeamViewModel.MemberCount` keeps its original meaning (every row, accepted
+or not) for existing consumers; `ActiveMemberCount` and `InvitedCount` are the split.
+
+Expanding a team row shows the **team key** with a copy button, and each member name links across to that
+user on the Users tab. The reverse works too — a team in a user's membership list opens that team.
+
+### Audit history per row
+
+Opt in with `<UsersView ShowAuditLogButton="true" />` to add a per-row action on both tabs that opens the
+audit log already scoped to that team or user, in a resizable dialog. It is off by default because the
+audit log is only queryable once audit storage is configured — see [Audit](#audit).
+
+A team row pins `TeamKey`. A user row pins `CallerIdentity`, because audit entries record the caller's
+identity rather than the user record's key.
 
 ## Deleting teams
 
