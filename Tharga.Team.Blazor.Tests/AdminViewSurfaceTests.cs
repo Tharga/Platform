@@ -59,6 +59,18 @@ public class AdminViewSurfaceTests
     }
 
     /// <summary>
+    /// The identifiers an operator needs to correlate a row with an audit entry, a support ticket or a
+    /// directory account. `Identity` is the authentication subject; `DirectoryId` is the Entra object id.
+    /// </summary>
+    [Fact]
+    public void UserViewModel_CarriesTheCorrelationIdentifiers()
+    {
+        Assert.NotNull(typeof(UserViewModel).GetProperty("Key"));
+        Assert.NotNull(typeof(UserViewModel).GetProperty("Identity"));
+        Assert.NotNull(typeof(UserViewModel).GetProperty("DirectoryId"));
+    }
+
+    /// <summary>
     /// `MemberCount` keeps meaning "every member row, accepted or not". It is public API and existing
     /// consumers bind to it, so the invited split had to be added alongside rather than folded into it.
     /// </summary>

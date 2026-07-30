@@ -116,6 +116,32 @@ else if (_loaded)
                 <RadzenButton Icon="content_copy" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
                               title="Copy user key" Click="@(() => CopyAsync(_selectedUser.Key))" />
             </RadzenStack>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" class="rz-mb-2">
+                <RadzenText TextStyle="TextStyle.Caption">Identity</RadzenText>
+                <code>@_selectedUser.Identity</code>
+                <RadzenButton Icon="content_copy" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                              title="Copy identity" Click="@(() => CopyAsync(_selectedUser.Identity))" />
+            </RadzenStack>
+            @*
+                Directory id is opt-in twice over — the host's entity must declare it, and the user must
+                have been resolved since. Rendering an empty row would read as "no directory account",
+                which is a different and alarming claim, so say which of the two applies.
+            *@
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" class="rz-mb-2">
+                <RadzenText TextStyle="TextStyle.Caption">Directory id</RadzenText>
+                @if (string.IsNullOrEmpty(_selectedUser.DirectoryId))
+                {
+                    <RadzenText TextStyle="TextStyle.Caption" title="@DirectoryLink.AbsenceHint(_directoryIdStored)">
+                        <em>@DirectoryLink.AbsenceText(_directoryIdStored)</em>
+                    </RadzenText>
+                }
+                else
+                {
+                    <code>@_selectedUser.DirectoryId</code>
+                    <RadzenButton Icon="content_copy" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                                  title="Copy directory id" Click="@(() => CopyAsync(_selectedUser.DirectoryId))" />
+                }
+            </RadzenStack>
             <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-mb-1">Team memberships</RadzenText>
             <RadzenDataGrid Data="@_selectedUser.Teams" TItem="UserTeamInfo" AllowSorting="true">
                 <Columns>
@@ -184,6 +210,7 @@ else
     private const string AuditAction = "audit";
 
     private string _currentUserKey;
+    private bool _directoryIdStored;
     private bool _loaded;
     private bool _canAdminister = true;
     private bool _showDirectory;
@@ -258,12 +285,16 @@ else
             .Select(g => g.First())
             .ToLookup(x => x.Member.Key);
 
+        _directoryIdStored = _users.Length > 0 && DirectoryLink.IsStored(_users[0].GetType());
+
         _allUsers = _users.Select(u => new UserViewModel
         {
             Key = u.Key,
             Name = u.Name ?? TeamServiceBase.ResolveDisplayName(u),
             StoredName = u.Name,
             EMail = u.EMail,
+            Identity = u.Identity,
+            DirectoryId = u.DirectoryId,
             Icon = u.Icon,
             LastSeen = u.LastSeen,
             TeamCount = teamLookup[u.Key].Count(),

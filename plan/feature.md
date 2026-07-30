@@ -43,6 +43,22 @@ README. Prefer documenting over changing the registry — the auto-registration 
 surfaces need those scopes to be grantable), and narrowing it now would be a silent behaviour break for
 anyone already relying on it.
 
+### 3. Folded in from testing feedback (2026-07-30)
+
+- **Identity and directory id in the user detail panel.** `UserViewModel` carried neither, though `IUser`
+  exposes both and the sample entity already declares `DirectoryId`. Added alongside the key, each with a
+  copy control. A missing directory id distinguishes **Not stored** (entity does not declare it) from
+  **Not resolved yet** via the new pure `DirectoryLink` helper — an empty value would read as "no
+  directory account", a third and wrong meaning.
+- **Teams tab row actions are now a split button**, matching the Users tab, and gained
+  `TeamActionItems` / `TeamActionInvoked` (+ `TeamRowAction`). A split button needs item-injection, not
+  just a trailing template — without it a host could not put an action *inside* the menu, which is where
+  the Users tab puts them. Action column narrows 200px → 140px.
+- **The sample's "Edit" is now "Edit email".** It overlapped the built-in Rename on the name field,
+  teaching a duplicate from a file that doubles as documentation. It now edits only the field the toolkit
+  has no built-in editor for, and passes `StoredName` through untouched so a resolved display fallback is
+  never promoted into a stored name.
+
 ## Out of scope
 
 - **The request's ask #2** — a built-in Delete action on the Teams tab — **shipped in 3.7.0** (PR #162),

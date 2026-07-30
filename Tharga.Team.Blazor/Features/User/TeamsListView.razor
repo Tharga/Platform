@@ -84,21 +84,23 @@ else if (_loaded)
                     </Template>
                 </RadzenDataGridColumn>
             }
-            <RadzenDataGridColumn Title="" Width="200px" Sortable="false" Filterable="false">
+            <RadzenDataGridColumn Title="" Width="140px" Sortable="false" Filterable="false">
                 <Template>
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
-                        <RadzenButton Text="View" Icon="visibility" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
-                                      Click="@(() => ToggleDetails(context))" />
-                        @if (ShowAuditLogButton)
-                        {
-                            <RadzenButton Icon="manage_search" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
-                                          title="Audit log" Click="@(() => OpenAuditLogAsync(context))" />
-                        }
-                        @if (_canDeleteTeams)
-                        {
-                            <RadzenButton Text="Delete" Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
-                                          Click="@(() => DeleteTeamAsync(context))" />
-                        }
+                        <RadzenSplitButton Text="View" Icon="visibility" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                                           Click="@(item => OnTeamActionAsync(item, context))">
+                            <ChildContent>
+                                @if (ShowAuditLogButton)
+                                {
+                                    <RadzenSplitButtonItem Text="Audit log" Value="@AuditAction" Icon="manage_search" />
+                                }
+                                @TeamActionItems
+                                @if (_canDeleteTeams)
+                                {
+                                    <RadzenSplitButtonItem Text="Delete" Value="@DeleteAction" Icon="delete" />
+                                }
+                            </ChildContent>
+                        </RadzenSplitButton>
                         @if (TeamActionsTemplate != null)
                         {
                             @TeamActionsTemplate(context)
@@ -185,6 +187,17 @@ else
     /// Optional template rendered as an extra column at the right of each member row in the drill-down grid.
     /// </summary>
     [Parameter] public RenderFragment<TeamMemberInfo> MemberActionsTemplate { get; set; }
+
+    /// <summary>
+    /// Optional extra items for each team row's split-button dropdown (supply
+    /// <c>RadzenSplitButtonItem</c> components). Clicks arrive via <see cref="TeamActionInvoked"/>.
+    /// The Teams-tab counterpart of <c>UsersListView.ActionItems</c>: use this to put an action
+    /// <i>inside</i> the menu, and <see cref="TeamActionsTemplate"/> to place a control beside it.
+    /// </summary>
+    [Parameter] public RenderFragment TeamActionItems { get; set; }
+
+    /// <summary>Raised when a consumer-supplied split-button item (<see cref="TeamActionItems"/>) is clicked.</summary>
+    [Parameter] public EventCallback<TeamRowAction> TeamActionInvoked { get; set; }
 
     /// <summary>
     /// Show a per-row button opening the audit log scoped to that team. Off by default — the audit log is
@@ -287,6 +300,32 @@ else
                 Members = members
             };
         }).OrderBy(t => t.Name).ToList();
+    }
+
+    private const string AuditAction = "audit";
+    private const string DeleteAction = "delete";
+
+    /// <summary>
+    /// Dispatches the team row's split button. A null item is the primary button — expand the row —
+    /// matching the Users tab, where the same gesture means "view".
+    /// </summary>
+    private async Task OnTeamActionAsync(RadzenSplitButtonItem item, TeamViewModel team)
+    {
+        switch (item?.Value)
+        {
+            case null:
+                ToggleDetails(team);
+                break;
+            case AuditAction:
+                await OpenAuditLogAsync(team);
+                break;
+            case DeleteAction:
+                await DeleteTeamAsync(team);
+                break;
+            default:
+                await TeamActionInvoked.InvokeAsync(new TeamRowAction(item.Value, team));
+                break;
+        }
     }
 
     private void ToggleDetails(TeamViewModel team)

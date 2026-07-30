@@ -19,6 +19,7 @@
         </RadzenTabsItem>
         <RadzenTabsItem Text="Teams">
             <TeamsListView TMember="TMember" TeamActionsTemplate="TeamActionsTemplate" MemberActionsTemplate="MemberActionsTemplate"
+                           TeamActionItems="TeamActionItems" TeamActionInvoked="TeamActionInvoked"
                            ShowAuditLogButton="ShowAuditLogButton" FocusTeamKey="@_focusTeamKey" MemberSelected="ShowUserAsync" />
         </RadzenTabsItem>
         @if (_showDirectoryTab)
@@ -61,6 +62,17 @@
     /// drill-down grid, passed through to <see cref="TeamsListView{TMember}"/>.
     /// </summary>
     [Parameter] public RenderFragment<TeamMemberInfo> MemberActionsTemplate { get; set; }
+
+    /// <summary>
+    /// Optional extra items for each team row's split-button dropdown (supply
+    /// <c>RadzenSplitButtonItem</c> components), passed through to <see cref="TeamsListView{TMember}"/>.
+    /// Clicks arrive via <see cref="TeamActionInvoked"/>. The Teams-tab counterpart of
+    /// <see cref="ActionItems"/>.
+    /// </summary>
+    [Parameter] public RenderFragment TeamActionItems { get; set; }
+
+    /// <summary>Raised when a consumer-supplied team split-button item (<see cref="TeamActionItems"/>) is clicked.</summary>
+    [Parameter] public EventCallback<TeamRowAction> TeamActionInvoked { get; set; }
 
     /// <summary>
     /// Show a per-row action on both tabs opening the audit log scoped to that user or team. Off by

@@ -61,9 +61,20 @@ Feature scope in `feature.md`. Tests run before each commit; `plan.md` is update
       list; (c) `ConfigureSystemScopes` does **not** withhold `teams:delete` / `users:manage` from system
       API keys — the framework auto-registers both; (d) the `users:manage`-alone asymmetry for user delete.
 
-- [~] **6. Push and hand over for testing**
-      *Pushed 2026-07-30 as `feature/teams-tab-action-templates` (3 commits). PR deliberately not opened —
-      the close-out commit must be last. Awaiting the user's test.*
+- [x] **6. Push and hand over for testing**
+      *Pushed 2026-07-30. PR deliberately not opened — the close-out commit must be last.*
+
+- [x] **7. Fold in testing feedback** (scope added 2026-07-30 after the user tested `/users`)
+      *Done — see `feature.md` §3. Identity + directory id in the user detail panel (new pure
+      `DirectoryLink` helper, 6 tests); Teams row actions converted to a split button with
+      `TeamActionItems` / `TeamActionInvoked` / `TeamRowAction` for parity with the Users tab; the
+      sample's overlapping "Edit" narrowed to "Edit email". 1034 tests green.*
+      **Filed to the backlog rather than built:** per-user audit tracking — a stable `CallerUserKey` on
+      `AuditEntry`, a caller filter in `AuditLogView`, a team-admin per-member audit link, and a target
+      subject for "what was done *to* a user". Recorded under `Toolkit/Team.md` → Audit with what already
+      works, since most of it turned out to be UI rather than missing recording.
+
+- [~] **8. Re-push and hand over for re-testing**
 
 ## Remaining (close-out, only on the user's confirmation)
 

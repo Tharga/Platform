@@ -260,8 +260,22 @@ var result = await userManagementService.DeleteUserAsync(userKey, deleteFromDire
 Both tabs of `<UsersView />` answer operator questions the lists could not previously answer.
 
 **Users tab.** The signed-in user's own row is tinted with a left accent bar, so "which one is me" needs
-no scanning. Expanding a row shows the **user key** with a copy button — the value you need to correlate
-a row with an audit entry, a support ticket, or a database document.
+no scanning. Expanding a row shows three identifiers, each with a copy button, because they answer
+different correlation questions:
+
+| Identifier | What it is | Use it for |
+|---|---|---|
+| **User key** | This application's own id for the user | Database documents, support tickets |
+| **Identity** | The authentication subject from the identity provider | Matching a sign-in; stable across name and email changes |
+| **Directory id** | The Entra `oid` / Graph object id | Looking the account up in Entra, or a Graph query |
+
+The directory id distinguishes two kinds of absence rather than showing a blank, which would read as
+"this user has no directory account":
+
+- **Not stored** — the host's user entity does not declare `DirectoryId`, so none is ever persisted. See
+  [Directory linking (`DirectoryId`)](#directory-linking-directoryid) to opt in.
+- **Not resolved yet** — the entity does declare it, and this user has not been resolved since. It is
+  captured automatically on their next resolve.
 
 **Teams tab.**
 

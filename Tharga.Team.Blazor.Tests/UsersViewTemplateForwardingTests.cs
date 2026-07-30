@@ -63,6 +63,36 @@ public class UsersViewTemplateForwardingTests
     }
 
     /// <summary>
+    /// The Teams tab renders a split button, so a host needs to inject menu *items* as well as trailing
+    /// controls — the same pair the Users tab has always had.
+    /// </summary>
+    [Fact]
+    public void UsersView_ForwardsTheTeamSplitButtonHooks()
+    {
+        var type = Component("UsersView`1");
+        AssertParameter(type, "TeamActionItems", typeof(RenderFragment));
+        AssertParameter(type, "TeamActionInvoked", typeof(EventCallback<TeamRowAction>));
+    }
+
+    /// <summary>
+    /// Parity with the Users tab, stated as a test so the two sides cannot drift: whatever shape of
+    /// row-action hook one tab offers, the other offers too.
+    /// </summary>
+    [Fact]
+    public void BothTabs_OfferTheSameHookShapes()
+    {
+        var users = Component("UsersListView`1");
+        var teams = Component("TeamsListView`1");
+
+        Assert.NotNull(users.GetProperty("ActionItems"));
+        Assert.NotNull(teams.GetProperty("TeamActionItems"));
+        Assert.NotNull(users.GetProperty("ActionsTemplate"));
+        Assert.NotNull(teams.GetProperty("TeamActionsTemplate"));
+        Assert.NotNull(users.GetProperty("ActionInvoked"));
+        Assert.NotNull(teams.GetProperty("TeamActionInvoked"));
+    }
+
+    /// <summary>
     /// Guards the asymmetry this feature removes: every row-action hook a child exposes should be reachable
     /// from the wrapper. Fails if a future child gains a template the wrapper does not forward.
     /// </summary>

@@ -209,10 +209,23 @@ Note also that `o.ConfigureSystemScopes` does **not** withhold `users:manage` or
 system API keys: both are auto-registered because the admin surfaces need them grantable. Omitting them
 from `ConfigureSystemScopes` has no effect on what a key may be granted.
 
-Both tabs accept row-action templates. The Users tab takes `ActionsTemplate`, `ActionItems` and
-`ActionInvoked`; the Teams tab takes `TeamActionsTemplate` (rendered after the built-in View button) and
-`MemberActionsTemplate` (in the member drill-down). All five are forwarded by the `UsersView` wrapper, so
-a host can add its own actions without composing `UsersListView` and `TeamsListView` by hand.
+Both tabs render row actions as a **split button** and accept the same shape of extension hooks, all
+forwarded by the `UsersView` wrapper so a host can extend either tab without composing `UsersListView`
+and `TeamsListView` by hand:
+
+| | Users tab | Teams tab |
+|---|---|---|
+| Item inside the menu | `ActionItems` | `TeamActionItems` |
+| Click callback | `ActionInvoked` (`UserRowAction`) | `TeamActionInvoked` (`TeamRowAction`) |
+| Control beside the button | `ActionsTemplate` | `TeamActionsTemplate` |
+| Drill-down grid | — | `MemberActionsTemplate` |
+
+Clicking the primary button expands the row on both tabs; supplied items dispatch through the callback.
+
+The Users tab's expanded row shows the **user key**, the **identity** (the authentication subject) and
+the **directory id** (Entra `oid`), each with a copy button. The directory id distinguishes *not stored*
+(the host's user entity does not declare `DirectoryId`) from *not resolved yet* — an empty value would
+otherwise read as "no directory account", which is a different claim.
 
 Full scope matrix: [User management & directory](https://team.tharga.net/articles/user-management.html).
 
