@@ -110,16 +110,33 @@ public partial class AuditLogView : ComponentBase
             }
         }
 
-        // Load distinct values for filter options
-        var recentResult = await _auditLogger.QueryAsync(new AuditQuery
+        // Filter options describe what the reader can actually reach, so they are drawn from inside the
+        // pinned scope. Built from the unpinned log they described the whole system: a system API key
+        // offering a Team filter it can never match, a team key offering the one team it is already
+        // bound to, a user offering features they have never touched.
+        var optionQuery = ApplyPinnedFilter(new AuditQuery
         {
             TeamKey = TeamKey,
             From = DateTime.UtcNow.AddDays(-30),
             Take = ChartQueryLimit
         });
+
+        var recentResult = await _auditLogger.QueryAsync(optionQuery);
         _features = recentResult.Items.Where(e => e.Feature != null).Select(e => e.Feature).Distinct().OrderBy(f => f).ToList();
         _actions = recentResult.Items.Where(e => e.Action != null).Select(e => e.Action).Distinct().OrderBy(a => a).ToList();
         _sources = recentResult.Items.Select(e => e.CallerSource.ToString()).Distinct().OrderBy(s => s).ToList();
+
+        // Narrow the team list the same way, but only for a pinned dialog. The unpinned page is a
+        // browsing surface where picking a team with no recent activity is a legitimate thing to do.
+        if (PinnedFilter != null)
+        {
+            var observed = recentResult.Items
+                .Where(e => e.TeamKey != null)
+                .Select(e => e.TeamKey)
+                .ToHashSet(StringComparer.Ordinal);
+
+            _teams = _teams.Where(t => observed.Contains(t.Key)).ToList();
+        }
 
         await BuildCallerNameCacheAsync();
     }
@@ -272,25 +289,33 @@ public partial class AuditLogView : ComponentBase
             SortDescending = sortDesc
         };
 
-        // Pinned filters always win — they override any local _filterX state.
-        if (PinnedFilter != null)
-        {
-            query = query with
-            {
-                CallerKeyId = PinnedFilter.CallerKeyId ?? query.CallerKeyId,
-                CallerType = PinnedFilter.CallerType ?? query.CallerType,
-                TeamKey = PinnedFilter.TeamKey ?? query.TeamKey,
-                CallerIdentity = PinnedFilter.CallerIdentity ?? query.CallerIdentity,
-                Feature = PinnedFilter.Feature ?? query.Feature,
-                Action = PinnedFilter.Action ?? query.Action,
-            };
+        return ApplyPinnedFilter(query);
+    }
 
-            // When the pinned single-value Feature/Action is set, suppress the multi-value collections
-            // so the In() filter doesn't widen results past the pinned value.
-            if (PinnedFilter.Feature != null) query = query with { Features = null };
-            if (PinnedFilter.Action != null) query = query with { Actions = null };
-            if (PinnedFilter.TeamKey != null) query = query with { TeamKeys = null };
-        }
+    /// <summary>
+    /// Forces the pinned dimensions onto a query. Pinned filters always win — they override any local
+    /// <c>_filterX</c> state — so both the grid query and the filter-option query go through here and
+    /// cannot disagree about what the dialog is scoped to.
+    /// </summary>
+    private AuditQuery ApplyPinnedFilter(AuditQuery query)
+    {
+        if (PinnedFilter == null) return query;
+
+        query = query with
+        {
+            CallerKeyId = PinnedFilter.CallerKeyId ?? query.CallerKeyId,
+            CallerType = PinnedFilter.CallerType ?? query.CallerType,
+            TeamKey = PinnedFilter.TeamKey ?? query.TeamKey,
+            CallerIdentity = PinnedFilter.CallerIdentity ?? query.CallerIdentity,
+            Feature = PinnedFilter.Feature ?? query.Feature,
+            Action = PinnedFilter.Action ?? query.Action,
+        };
+
+        // When the pinned single-value Feature/Action is set, suppress the multi-value collections
+        // so the In() filter doesn't widen results past the pinned value.
+        if (PinnedFilter.Feature != null) query = query with { Features = null };
+        if (PinnedFilter.Action != null) query = query with { Actions = null };
+        if (PinnedFilter.TeamKey != null) query = query with { TeamKeys = null };
 
         return query;
     }

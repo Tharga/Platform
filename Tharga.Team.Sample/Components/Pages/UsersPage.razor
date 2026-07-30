@@ -12,14 +12,19 @@
 
 @* ShowAuditLogButton is on because the sample configures MongoDB audit storage; without it the log
    would be empty and the button misleading. *@
+@*
+    "Edit email" rather than "Edit": the built-in Rename item already edits the root name, and offering
+    both made two menu entries that half-overlapped. This keeps the ActionItems hook demonstrated while
+    covering the one field the toolkit has no built-in editor for.
+*@
 <UsersView TMember="TeamMember" ActionInvoked="OnUserActionAsync" ShowAuditLogButton="true">
     <ActionItems>
-        <RadzenSplitButtonItem Text="Edit" Value="@EditAction" Icon="edit" />
+        <RadzenSplitButtonItem Text="Edit email" Value="@EditAction" Icon="alternate_email" />
     </ActionItems>
 </UsersView>
 
 @code {
-    private const string EditAction = "edit";
+    private const string EditAction = "edit-email";
 
     private async Task OnUserActionAsync(UserRowAction action)
     {
@@ -28,15 +33,11 @@
 
     private async Task EditUser(UserViewModel u)
     {
-        var name = u.Name ?? "";
+        var name = u.StoredName;
         var email = u.EMail ?? "";
 
-        var result = await DialogService.OpenAsync("Edit user", ds =>
+        var result = await DialogService.OpenAsync("Edit email", ds =>
             @<RadzenStack Gap="0.75rem">
-                <RadzenStack Gap="0.25rem">
-                    <RadzenLabel Text="Name" />
-                    <RadzenTextBox Value="@name" ValueChanged="@(v => name = v)" Style="width: 100%;" />
-                </RadzenStack>
                 <RadzenStack Gap="0.25rem">
                     <RadzenLabel Text="Email" />
                     <RadzenTextBox Value="@email" ValueChanged="@(v => email = v)" Style="width: 100%;" />
@@ -50,8 +51,10 @@
 
         if (result is not true) return;
 
+        // StoredName, not Name — passing the resolved display fallback would silently promote it into a
+        // real stored name, which is exactly what UserViewModel.StoredName exists to prevent.
         await UserAdmin.UpdateAsync(u.Key, name, email);
-        NotificationService.Notify(NotificationSeverity.Success, "User updated");
+        NotificationService.Notify(NotificationSeverity.Success, "Email updated");
         Navigation.Refresh();
     }
 }

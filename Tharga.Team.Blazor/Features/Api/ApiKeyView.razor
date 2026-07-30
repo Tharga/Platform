@@ -521,10 +521,13 @@ else
 
     private async Task OpenAuditLogAsync(ApiKeyModel context)
     {
+        // The team is pinned as well as the key: a team key acts only inside its own team, so leaving the
+        // team open let the dialog offer a filter the key can never match beyond one value.
         var pinned = new Audit.AuditPinnedFilter
         {
             CallerKeyId = context.Key,
             CallerType = Service.Audit.AuditCallerType.ApiKey,
+            TeamKey = _selectedTeam?.Key,
         };
 
         await DialogService.OpenAsync($"Audit log — {context.Name}", _ =>

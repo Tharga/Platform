@@ -195,6 +195,46 @@ o.ConfigureSystemRoles = roles =>
 };
 ```
 
+**Deleting a team takes three scopes, not one.** `users:manage` to reach the surface at all,
+`teams:read` to list teams the caller is not a member of, and `teams:delete` for the action itself.
+`teams:read` is not required by the delete, but without it the cross-team rows the action exists for are
+not on the grid. All three must be **system** grants — a scope of the same name registered at an access
+level produces a different claim type and never satisfies these checks.
+
+Deleting a **user** requires `users:manage` alone; there is no `users:delete`. That is the wider
+privilege of the two — it removes the user from every team and can optionally delete the directory
+account organization-wide — so map `users:manage` only to a role you would trust with that.
+
+Note also that `o.ConfigureSystemScopes` does **not** withhold `users:manage` or `teams:delete` from
+system API keys: both are auto-registered because the admin surfaces need them grantable. Omitting them
+from `ConfigureSystemScopes` has no effect on what a key may be granted.
+
+Both tabs render row actions as a **split button** and accept the same shape of extension hooks, all
+forwarded by the `UsersView` wrapper so a host can extend either tab without composing `UsersListView`
+and `TeamsListView` by hand:
+
+| | Users tab | Teams tab |
+|---|---|---|
+| Item inside the menu | `ActionItems` | `TeamActionItems` |
+| Click callback | `ActionInvoked` (`UserRowAction`) | `TeamActionInvoked` (`TeamRowAction`) |
+| Control beside the button | `ActionsTemplate` | `TeamActionsTemplate` |
+| Drill-down grid | — | `MemberActionsTemplate` |
+
+Clicking the primary button expands the row on both tabs; supplied items dispatch through the callback.
+
+The Users tab's expanded row shows the **user key**, the **identity** (the authentication subject) and
+the **directory id** (Entra `oid`), each with a copy button. The directory id distinguishes *not stored*
+(the host's user entity does not declare `DirectoryId`) from *not resolved yet* — an empty value would
+otherwise read as "no directory account", which is a different claim.
+
+`<TeamComponent ShowAuditLogButton="true" />` adds a per-member audit action on the team page, pinned to
+that member **and** that team, so a team owner/administrator can see what one of their members did inside
+their own team. Hidden unless the caller holds `audit:read` — a system grant shows it on every team, a
+team grant only on the selected one. The same exists per API key via `<ApiKeyView ShowAuditLogButton="true" />`
+and `<SystemApiKeyView ShowAuditLogButton="true" />`, pinned to the key id.
+
+Full scope matrix: [User management & directory](https://team.tharga.net/articles/user-management.html).
+
 ## Dependencies
 
 - [Tharga.Blazor](https://www.nuget.org/packages/Tharga.Blazor) - Generic UI components.

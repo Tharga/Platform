@@ -1020,6 +1020,12 @@ o.ConfigureSystemRoles = r =>
 - **Users** with a mapped app role (e.g. `Developer`) receive the mapped scopes as claims via `TeamServerClaimsTransformation` — even with no team selected. Map `apikey:manage` / `audit:read` to a role to grant that role cross-team key/audit management.
 - Map external IdP role claims to internal role names with an `ITeamClaimsEnricher` (runs first), e.g. `Dev → Developer`.
 
+> **`ConfigureSystemScopes` is not an isolation boundary for every scope.** `users:manage` and
+> `teams:delete` are **auto-registered** by the framework — the admin surfaces need them grantable — so
+> leaving them out of `ConfigureSystemScopes` does **not** prevent a system API key from being granted
+> them. Withhold them by not granting them to the key, not by omitting them from the registry. Any
+> comment or test asserting the opposite is relying on behaviour that does not hold.
+
 ### Consent (cross-team access)
 
 A team can **consent** to grant a global role access to its data, at a chosen access level:

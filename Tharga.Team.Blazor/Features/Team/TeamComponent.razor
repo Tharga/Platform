@@ -238,20 +238,31 @@ else
                                     </RadzenDataGridColumn>
                                     <RadzenDataGridColumn>
                                         <Template>
-                                            <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem">
-                                                @if (CanManageMembers(team) && context.Invitation != null)
-                                                {
-                                                    <span title="Copy invitation link">
-                                                        <StandardButton Icon="link" Click="@(() => CopyInvitationLink(team, context.Key))"/>
-                                                    </span>
-                                                }
-                                                @if (CanManageMembers(team) && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
-                                                {
-                                                    <span title="Remove member">
-                                                        <StandardButton Icon="remove" Click="@(() => RemoveUserFromTeam(team, context.Key))"/>
-                                                    </span>
-                                                }
-                                            </RadzenStack>
+                                            @{
+                                                var memberActions = MemberActions(team, context);
+                                            }
+                                            @* Same Text/Icon/style as the split button's primary half, so a
+                                               member with one available action does not look like a
+                                               different kind of control from the member beside them. *@
+                                            @if (memberActions.Count == 1)
+                                            {
+                                                <RadzenButton Text="@memberActions[0].Text" Icon="@memberActions[0].Icon"
+                                                              ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                                                              Click="@(() => InvokeMemberActionAsync(memberActions[0].Value, team, context.Key))"/>
+                                            }
+                                            else if (memberActions.Count > 1)
+                                            {
+                                                <RadzenSplitButton Text="@memberActions[0].Text" Icon="@memberActions[0].Icon"
+                                                                   ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                                                                   Click="@(item => OnMemberActionAsync(item, team, context.Key, memberActions[0].Value))">
+                                                    <ChildContent>
+                                                        @foreach (var action in memberActions.Skip(1))
+                                                        {
+                                                            <RadzenSplitButtonItem Text="@action.Text" Value="@action.Value" Icon="@action.Icon"/>
+                                                        }
+                                                    </ChildContent>
+                                                </RadzenSplitButton>
+                                            }
                                         </Template>
                                     </RadzenDataGridColumn>
                                 </Columns>
@@ -311,6 +322,13 @@ else
     private string _editingMemberName;
 
     private ITeam<TMember>[] _teams;
+    /// <summary>
+    /// Show a per-member action opening the audit log for that member, scoped to this team. Off by
+    /// default — the log is only queryable when audit storage is configured, and the action is hidden
+    /// regardless for callers without <c>audit:read</c>.
+    /// </summary>
+    [Parameter] public bool ShowAuditLogButton { get; set; }
+
     private IUser[] _users;
     private ITeam _selectedTeam;
     private IUser _user;
@@ -318,6 +336,8 @@ else
     private ITenantRoleService _tenantRoleService;
     private bool _canManage;
     private bool _canManageMembers;
+    private bool _hasSystemAuditRead;
+    private bool _hasTeamAuditRead;
     private bool _canSeeAllTeams;
     private bool _allowTeamCreation;
     private string _createTeamPath;
@@ -337,6 +357,8 @@ else
         var claims = authState.User;
         _canManage = claims.HasClaim(TeamClaimTypes.Scope, TeamScopes.Manage);
         _canManageMembers = claims.HasClaim(TeamClaimTypes.Scope, TeamScopes.MemberManage);
+        _hasSystemAuditRead = TeamScopeGate.HasSystemScope(claims, AuditScopes.Read);
+        _hasTeamAuditRead = claims.HasClaim(TeamClaimTypes.Scope, AuditScopes.Read);
         _canSeeAllTeams = TeamVisibility.CanSeeAllTeams(claims);
 
         _scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
@@ -706,6 +728,37 @@ else
     /// The actions available on a team, in priority order — the first is the split button's default
     /// (primary) action, with "Invite user" preferred when available.
     /// </summary>
+    private const string CopyInviteAction = "copy-invite";
+    private const string RemoveMemberAction = "remove-member";
+    private const string MemberAuditAction = "member-audit";
+
+    /// <summary>
+    /// Row actions for one member, in the order they collapse: the first is the primary button, the rest
+    /// go in the dropdown. Built as a list rather than three conditional buttons so a member with several
+    /// available actions gets one split button instead of a row of icons.
+    /// </summary>
+    private List<(string Value, string Text, string Icon)> MemberActions(ITeam<TMember> team, TMember member)
+    {
+        var actions = new List<(string, string, string)>();
+        if (CanManageMembers(team) && member.Invitation != null) actions.Add((CopyInviteAction, "Copy invitation link", "link"));
+        if (ShowAuditLogButton && CanReadMemberAudit(team)) actions.Add((MemberAuditAction, "Audit log", "manage_search"));
+        if (CanManageMembers(team) && _user.Key != member.Key && member.AccessLevel != AccessLevel.Owner) actions.Add((RemoveMemberAction, "Remove member", "remove"));
+        return actions;
+    }
+
+    private Task OnMemberActionAsync(RadzenSplitButtonItem item, ITeam<TMember> team, string memberKey, string defaultValue)
+        => InvokeMemberActionAsync(item?.Value ?? defaultValue, team, memberKey);
+
+    private async Task InvokeMemberActionAsync(string value, ITeam<TMember> team, string memberKey)
+    {
+        switch (value)
+        {
+            case CopyInviteAction: await CopyInvitationLink(team, memberKey); break;
+            case MemberAuditAction: await OpenMemberAuditLogAsync(team, memberKey); break;
+            case RemoveMemberAction: await RemoveUserFromTeam(team, memberKey); break;
+        }
+    }
+
     private List<(string Value, string Text, string Icon)> TeamActions(ITeam<TMember> team)
     {
         var actions = new List<(string, string, string)>();
@@ -745,6 +798,35 @@ else
     private bool CanManageMembers(ITeam<TMember> team)
     {
         return TeamActionGate.CanManageMembers(_canManageMembers, _selectedTeam?.Key, team.Key);
+    }
+
+    private bool CanReadMemberAudit(ITeam<TMember> team)
+    {
+        return TeamActionGate.CanReadMemberAudit(_hasSystemAuditRead, _hasTeamAuditRead, _selectedTeam?.Key, team.Key);
+    }
+
+    /// <summary>
+    /// Opens the audit log for one member, scoped to what they did <i>in this team</i>. Pinning both the
+    /// caller and the team is what keeps a team administrator's view inside their own tenant — the same
+    /// boundary the <c>audit:read</c> team grant already enforces server-side.
+    /// </summary>
+    private async Task OpenMemberAuditLogAsync(ITeam<TMember> team, string memberKey)
+    {
+        var user = _users.FirstOrDefault(x => x.Key == memberKey);
+        var identity = user?.EMail ?? user?.Name ?? memberKey;
+
+        var pinned = new Tharga.Team.Blazor.Features.Audit.AuditPinnedFilter
+        {
+            CallerIdentity = identity,
+            TeamKey = team.Key
+        };
+
+        // Fully qualified deliberately. Razor resolves a component tag by @using or by full name only —
+        // it does not walk enclosing namespaces the way C# does, so a partially-qualified tag compiles
+        // clean and renders as an unknown HTML element: an empty dialog, no exception, no log.
+        await DialogService.OpenAsync($"Audit log — {identity}", _ =>
+            @<Tharga.Team.Blazor.Features.Audit.AuditLogView PinnedFilter="@pinned" />,
+            new DialogOptions { Width = "90vw", Height = "85vh", Resizable = true, Draggable = true });
     }
 
     private bool CanDeleteTeam(ITeam<TMember> team)

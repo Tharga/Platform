@@ -18,6 +18,22 @@ public record UserViewModel
     public string StoredName { get; init; }
 
     public string EMail { get; init; }
+
+    /// <summary>
+    /// The identity the user authenticates by (<see cref="IUser.Identity"/>) — the subject claim from the
+    /// identity provider. Stable across name and email changes, which is what makes it the value worth
+    /// quoting in a support ticket.
+    /// </summary>
+    public string Identity { get; init; }
+
+    /// <summary>
+    /// The user's id in the external directory (for Microsoft Entra ID: the <c>oid</c> claim / Graph
+    /// object id), or null. Null has two distinct meanings the UI must not conflate: the host's user
+    /// entity does not declare <see cref="IUser.DirectoryId"/> (nothing is ever stored), or it does and
+    /// this user has not been resolved against the directory yet.
+    /// </summary>
+    public string DirectoryId { get; init; }
+
     public string Icon { get; init; }
     public int TeamCount { get; init; }
     public UserTeamInfo[] Teams { get; init; }

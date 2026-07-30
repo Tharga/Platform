@@ -35,6 +35,19 @@ internal static class TeamActionGate
         => CanManage(hasManageScope, selectedTeamKey, teamKey);
 
     /// <summary>
+    /// Whether the per-member audit-history action should be visible on <paramref name="teamKey"/>.
+    /// </summary>
+    /// <remarks>
+    /// Unlike the manage scopes, <c>audit:read</c> is meaningful at both levels and they mean different
+    /// things: a <b>system</b> grant reads every team's log, so it is not confined to the selection,
+    /// while a <b>team</b> grant is issued for the selected team only and must be. Collapsing the two
+    /// would either hide the action from an oversight role or offer it where the server refuses —
+    /// the same two failure modes <see cref="CanManage"/> exists to avoid.
+    /// </remarks>
+    public static bool CanReadMemberAudit(bool hasSystemAuditRead, bool hasTeamAuditRead, string selectedTeamKey, string teamKey)
+        => hasSystemAuditRead || (hasTeamAuditRead && IsSelected(selectedTeamKey, teamKey));
+
+    /// <summary>
     /// Whether member-management actions (e.g. Invite User) should be visible: the member-manage scope is
     /// held and that team is the selected one it was issued for. Like the manage scope, member:manage is
     /// emitted only for the selected team, so a global flag would offer the action on every card

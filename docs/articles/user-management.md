@@ -139,6 +139,65 @@ caller lacks it. Still protect the *page* that embeds the component with `[Autho
 Blazor only enforces page-level `[Authorize]` when your router uses `AuthorizeRouteView` (an attribute
 on a non-page component does nothing).
 
+## Which scope gates what
+
+Every action on `<UsersView />` is gated by a **system** scope, and deleting a team needs three of them
+doing three different jobs. The complete picture:
+
+| Action | Scope(s) | Also needs |
+|---|---|---|
+| See either tab at all | `users:manage` | — |
+| See teams you are not a member of | `users:manage` + `teams:read` | — |
+| Delete a team | `users:manage` + `teams:delete` | `teams:read` in practice — see below |
+| Delete a user | `users:manage` | — |
+| Verify a user against the directory | `users:manage` | a registered `IUserDirectoryService` |
+| The directory-only tab | `users:manage` | a registered `IUserDirectoryService` |
+| Per-row audit history | `audit:read` | `ShowAuditLogButton="true"` |
+
+**`teams:read` is not required to delete a team, but without it there is usually nothing to delete.**
+The Delete action itself is gated on `teams:delete` alone. `teams:read` decides *which teams the grid
+lists* — without it the caller sees only teams they belong to, and the point of a cross-team delete is
+acting on teams you are not a member of. Grant all three for an operator role.
+
+**All of these must be system grants.** They arrive as `TeamClaimTypes.SystemScope`, while an access
+level grants `TeamClaimTypes.Scope`. Registering a scope of the same name at an access level does not
+satisfy these checks — see [The `users:manage` scope](#the-usersmanage-scope).
+
+**`teams:read` can arrive two ways**, which is why it is absent from the sample's role mapping:
+
+```csharp
+o.Blazor.Consent.GrantTeamsRead = true;                   // adds teams:read on top of the mapping
+o.ConfigureSystemRoles = roles =>
+{
+    roles.Map("Developer", SystemUserScopes.Manage, SystemTeamScopes.Delete);
+};
+```
+
+Mapping `SystemTeamScopes.Read` directly in `ConfigureSystemRoles` is equivalent; `GrantTeamsRead` is
+the consent-flavoured shortcut.
+
+### `ConfigureSystemScopes` does not withhold these from API keys
+
+`ConfigureSystemScopes` is what makes a scope grantable to a **system API key**, and it is easy to read
+that as *the* gate. It is not, for these two: `users:manage` and `teams:delete` are **auto-registered**
+by the framework, because the admin surfaces need them grantable. Omitting them from
+`ConfigureSystemScopes` does **not** withhold them from keys.
+
+If you have written a comment or a test asserting that a system key cannot receive `users:manage` or
+`teams:delete` because you left them out of `ConfigureSystemScopes`, that assertion does not hold. Gate
+those keys by not granting the scope to the key, rather than by relying on registry contents.
+
+### A known asymmetry: deleting users
+
+Deleting a **team** requires a dedicated `teams:delete` scope on top of `users:manage`. Deleting a
+**user** requires `users:manage` alone — there is no `users:delete`.
+
+The asymmetry runs opposite to the blast radius. A user delete removes the user from *every* team,
+deletes the record, and can optionally delete the account organization-wide from the directory. So a
+role granted `users:manage` purely to *view* the admin lists can also delete every user in the system.
+If that is wider than you intend, do not map `users:manage` to a broad support role — map it only to the
+role you would trust with user deletion.
+
 ## Where names are edited
 
 A user has one **root name** (`IUser.Name`), shared everywhere, and optionally a **per-team override**
@@ -176,6 +235,9 @@ directory can be large); results stream in page by page.
 
 ## Deleting users
 
+Requires the **`users:manage`** system scope and nothing further — there is no separate delete scope.
+See [A known asymmetry: deleting users](#a-known-asymmetry-deleting-users) before granting it broadly.
+
 The Delete action (or `IUserManagementService.DeleteUserAsync`) always performs the **local** delete:
 
 1. Removes the user from **every** team (any membership state).
@@ -198,8 +260,22 @@ var result = await userManagementService.DeleteUserAsync(userKey, deleteFromDire
 Both tabs of `<UsersView />` answer operator questions the lists could not previously answer.
 
 **Users tab.** The signed-in user's own row is tinted with a left accent bar, so "which one is me" needs
-no scanning. Expanding a row shows the **user key** with a copy button — the value you need to correlate
-a row with an audit entry, a support ticket, or a database document.
+no scanning. Expanding a row shows three identifiers, each with a copy button, because they answer
+different correlation questions:
+
+| Identifier | What it is | Use it for |
+|---|---|---|
+| **User key** | This application's own id for the user | Database documents, support tickets |
+| **Identity** | The authentication subject from the identity provider | Matching a sign-in; stable across name and email changes |
+| **Directory id** | The Entra `oid` / Graph object id | Looking the account up in Entra, or a Graph query |
+
+The directory id distinguishes two kinds of absence rather than showing a blank, which would read as
+"this user has no directory account":
+
+- **Not stored** — the host's user entity does not declare `DirectoryId`, so none is ever persisted. See
+  [Directory linking (`DirectoryId`)](#directory-linking-directoryid) to opt in.
+- **Not resolved yet** — the entity does declare it, and this user has not been resolved since. It is
+  captured automatically on their next resolve.
 
 **Teams tab.**
 
@@ -222,6 +298,28 @@ or not) for existing consumers; `ActiveMemberCount` and `InvitedCount` are the s
 
 Expanding a team row shows the **team key** with a copy button, and each member name links across to that
 user on the Users tab. The reverse works too — a team in a user's membership list opens that team.
+
+### Audit history from the team page
+
+`<TeamComponent ShowAuditLogButton="true" />` adds a per-member action opening that member's audit log
+**scoped to that team** — both the caller and the team are pinned, so a team administrator sees what one
+of their members did inside their own tenant and nothing else.
+
+The action is hidden unless the caller holds `audit:read`, and the two ways of holding it differ:
+
+- **System grant** (`o.ConfigureSystemRoles`) — reads any team's log, so the action appears on every team.
+- **Team grant** (an access level) — issued for the *selected* team, so the action appears only there.
+
+No extra configuration is needed for the boundary: the same `audit:read` rule already enforces it
+server-side, and this only stops the UI offering what would be refused.
+
+> The pin matches on `CallerIdentity`, which is a display string rather than a stable id (see
+> [Reading the admin grids](#reading-the-admin-grids)). If your identity provider puts a display name in
+> the name claim rather than the email, the dialog may come up empty even though entries exist.
+
+The same capability exists per API key — `<ApiKeyView ShowAuditLogButton="true" />` and
+`<SystemApiKeyView ShowAuditLogButton="true" />` — pinned to `CallerKeyId`, which *is* a stable id, so
+that one is exact.
 
 ### Audit history per row
 
@@ -262,7 +360,13 @@ Two capabilities are separate on this surface: viewing the Teams tab requires `u
 team requires `teams:delete`. A caller granted only the latter sees no tab; a caller granted only the
 former sees the list with no Delete action.
 
-Deleting is confirmed with the team name and its member count, and cannot be undone.
+**A third scope decides what is on the list.** Without `teams:read` the grid shows only teams the caller
+belongs to, so a `teams:delete` holder sees the Delete action but not the cross-team rows it exists for.
+Grant all three — `users:manage`, `teams:read`, `teams:delete` — for an operator who should be able to
+delete any team. See [Which scope gates what](#which-scope-gates-what) for the full matrix.
+
+Deleting is confirmed with the team name and its member count, and **cannot be undone** — there is no
+soft delete or restore today.
 
 ## Audit
 
