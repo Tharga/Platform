@@ -58,13 +58,21 @@ Feature scope in `feature.md`. Tests run before each commit; `plan.md` is update
 - [x] **6. Verify build + full suite** — *Done: 1058 passed / 0 failed across 6 projects; build clean,
       0 warnings.*
 
-- [~] **7. Documentation**
+- [x] **7. Documentation**
+      *Done — new "Granting `mcp:discover`" section in `Tharga.Team.Mcp/README.md`: the three routes as a
+      table, that a team grant needs a `TeamKey` claim alongside it, a `Require` usage example, the note
+      that `IMcpScopeChecker` is opt-in and nothing calls it for you, and a behaviour-change callout for
+      consumers who asserted the old rejection. The "registers built-in scopes" bullet now says both
+      registries. Left the version number out — 3.7.1 is not published yet, so the PR description carries
+      it instead.*
+      **No consumer-facing doc for the guard-order fix**: it changes no API or configuration, only which
+      branch renders on the first frame. Reviewed and deliberately skipped; the PR description covers it.
 
       The MCP docs and `Tharga.Team.Mcp/README.md`: how `mcp:discover` is granted (access level, system
       role, or system API key) and that a team grant authorizes only the selected team. Separate `docs:`
       commit.
 
-- [ ] **8. Push and hand over for testing**
+- [~] **8. Push and hand over for testing**
       Do **not** open the PR — the close-out commit must be last.
 
 ## Remaining (close-out, only on the user's confirmation)
