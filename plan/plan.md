@@ -28,7 +28,16 @@ Feature scope in `feature.md`. Tests run before each commit; `plan.md` is update
 
 - [x] **4. Verify build + full suite** — *Done: 1025 passed / 0 failed across 6 projects; build clean.*
 
-- [ ] **5. Document the admin-surface scopes end to end**
+- [x] **5. Document the admin-surface scopes end to end**
+      *Done — new `## Which scope gates what` section in `user-management.md` carrying the matrix, the
+      system-grant rule, the two routes to `teams:read`, a `### ConfigureSystemScopes does not withhold
+      these from API keys` subsection, and a `### A known asymmetry: deleting users` subsection.
+      `## Deleting users` now states its scope up front; `## Deleting teams` gained the `teams:read`
+      visibility point and now says plainly that deletion cannot be undone (no soft delete today).
+      `implementation-guide.md` got the `ConfigureSystemScopes` correction as a blockquote where that
+      option is described. Blazor README got the three-scope summary, the user-delete asymmetry, the
+      registry note, and — since it was the one place listing component parameters — the row-action
+      template set including the two this feature adds.*
       Widened on request: not just the `ConfigureSystemScopes` correction, but a clear statement of which
       system scope gates which action on `<UsersView />`. Both surfaces —
       `docs/articles/user-management.md` (the reader-facing home) and `Tharga.Team.Blazor/README.md`, with

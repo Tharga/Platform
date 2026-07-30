@@ -139,6 +139,65 @@ caller lacks it. Still protect the *page* that embeds the component with `[Autho
 Blazor only enforces page-level `[Authorize]` when your router uses `AuthorizeRouteView` (an attribute
 on a non-page component does nothing).
 
+## Which scope gates what
+
+Every action on `<UsersView />` is gated by a **system** scope, and deleting a team needs three of them
+doing three different jobs. The complete picture:
+
+| Action | Scope(s) | Also needs |
+|---|---|---|
+| See either tab at all | `users:manage` | — |
+| See teams you are not a member of | `users:manage` + `teams:read` | — |
+| Delete a team | `users:manage` + `teams:delete` | `teams:read` in practice — see below |
+| Delete a user | `users:manage` | — |
+| Verify a user against the directory | `users:manage` | a registered `IUserDirectoryService` |
+| The directory-only tab | `users:manage` | a registered `IUserDirectoryService` |
+| Per-row audit history | `audit:read` | `ShowAuditLogButton="true"` |
+
+**`teams:read` is not required to delete a team, but without it there is usually nothing to delete.**
+The Delete action itself is gated on `teams:delete` alone. `teams:read` decides *which teams the grid
+lists* — without it the caller sees only teams they belong to, and the point of a cross-team delete is
+acting on teams you are not a member of. Grant all three for an operator role.
+
+**All of these must be system grants.** They arrive as `TeamClaimTypes.SystemScope`, while an access
+level grants `TeamClaimTypes.Scope`. Registering a scope of the same name at an access level does not
+satisfy these checks — see [The `users:manage` scope](#the-usersmanage-scope).
+
+**`teams:read` can arrive two ways**, which is why it is absent from the sample's role mapping:
+
+```csharp
+o.Blazor.Consent.GrantTeamsRead = true;                   // adds teams:read on top of the mapping
+o.ConfigureSystemRoles = roles =>
+{
+    roles.Map("Developer", SystemUserScopes.Manage, SystemTeamScopes.Delete);
+};
+```
+
+Mapping `SystemTeamScopes.Read` directly in `ConfigureSystemRoles` is equivalent; `GrantTeamsRead` is
+the consent-flavoured shortcut.
+
+### `ConfigureSystemScopes` does not withhold these from API keys
+
+`ConfigureSystemScopes` is what makes a scope grantable to a **system API key**, and it is easy to read
+that as *the* gate. It is not, for these two: `users:manage` and `teams:delete` are **auto-registered**
+by the framework, because the admin surfaces need them grantable. Omitting them from
+`ConfigureSystemScopes` does **not** withhold them from keys.
+
+If you have written a comment or a test asserting that a system key cannot receive `users:manage` or
+`teams:delete` because you left them out of `ConfigureSystemScopes`, that assertion does not hold. Gate
+those keys by not granting the scope to the key, rather than by relying on registry contents.
+
+### A known asymmetry: deleting users
+
+Deleting a **team** requires a dedicated `teams:delete` scope on top of `users:manage`. Deleting a
+**user** requires `users:manage` alone — there is no `users:delete`.
+
+The asymmetry runs opposite to the blast radius. A user delete removes the user from *every* team,
+deletes the record, and can optionally delete the account organization-wide from the directory. So a
+role granted `users:manage` purely to *view* the admin lists can also delete every user in the system.
+If that is wider than you intend, do not map `users:manage` to a broad support role — map it only to the
+role you would trust with user deletion.
+
 ## Where names are edited
 
 A user has one **root name** (`IUser.Name`), shared everywhere, and optionally a **per-team override**
@@ -175,6 +234,9 @@ stored `oid` are not falsely reported. Nothing is fetched until you press **Load
 directory can be large); results stream in page by page.
 
 ## Deleting users
+
+Requires the **`users:manage`** system scope and nothing further — there is no separate delete scope.
+See [A known asymmetry: deleting users](#a-known-asymmetry-deleting-users) before granting it broadly.
 
 The Delete action (or `IUserManagementService.DeleteUserAsync`) always performs the **local** delete:
 
@@ -262,7 +324,13 @@ Two capabilities are separate on this surface: viewing the Teams tab requires `u
 team requires `teams:delete`. A caller granted only the latter sees no tab; a caller granted only the
 former sees the list with no Delete action.
 
-Deleting is confirmed with the team name and its member count, and cannot be undone.
+**A third scope decides what is on the list.** Without `teams:read` the grid shows only teams the caller
+belongs to, so a `teams:delete` holder sees the Delete action but not the cross-team rows it exists for.
+Grant all three — `users:manage`, `teams:read`, `teams:delete` — for an operator who should be able to
+delete any team. See [Which scope gates what](#which-scope-gates-what) for the full matrix.
+
+Deleting is confirmed with the team name and its member count, and **cannot be undone** — there is no
+soft delete or restore today.
 
 ## Audit
 

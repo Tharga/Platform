@@ -195,6 +195,27 @@ o.ConfigureSystemRoles = roles =>
 };
 ```
 
+**Deleting a team takes three scopes, not one.** `users:manage` to reach the surface at all,
+`teams:read` to list teams the caller is not a member of, and `teams:delete` for the action itself.
+`teams:read` is not required by the delete, but without it the cross-team rows the action exists for are
+not on the grid. All three must be **system** grants — a scope of the same name registered at an access
+level produces a different claim type and never satisfies these checks.
+
+Deleting a **user** requires `users:manage` alone; there is no `users:delete`. That is the wider
+privilege of the two — it removes the user from every team and can optionally delete the directory
+account organization-wide — so map `users:manage` only to a role you would trust with that.
+
+Note also that `o.ConfigureSystemScopes` does **not** withhold `users:manage` or `teams:delete` from
+system API keys: both are auto-registered because the admin surfaces need them grantable. Omitting them
+from `ConfigureSystemScopes` has no effect on what a key may be granted.
+
+Both tabs accept row-action templates. The Users tab takes `ActionsTemplate`, `ActionItems` and
+`ActionInvoked`; the Teams tab takes `TeamActionsTemplate` (rendered after the built-in View button) and
+`MemberActionsTemplate` (in the member drill-down). All five are forwarded by the `UsersView` wrapper, so
+a host can add its own actions without composing `UsersListView` and `TeamsListView` by hand.
+
+Full scope matrix: [User management & directory](https://team.tharga.net/articles/user-management.html).
+
 ## Dependencies
 
 - [Tharga.Blazor](https://www.nuget.org/packages/Tharga.Blazor) - Generic UI components.
