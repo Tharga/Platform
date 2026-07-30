@@ -241,12 +241,14 @@ else
                                             @{
                                                 var memberActions = MemberActions(team, context);
                                             }
+                                            @* Same Text/Icon/style as the split button's primary half, so a
+                                               member with one available action does not look like a
+                                               different kind of control from the member beside them. *@
                                             @if (memberActions.Count == 1)
                                             {
-                                                <span title="@memberActions[0].Text">
-                                                    <StandardButton Icon="@memberActions[0].Icon"
-                                                                    Click="@(() => InvokeMemberActionAsync(memberActions[0].Value, team, context.Key))"/>
-                                                </span>
+                                                <RadzenButton Text="@memberActions[0].Text" Icon="@memberActions[0].Icon"
+                                                              ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                                                              Click="@(() => InvokeMemberActionAsync(memberActions[0].Value, team, context.Key))"/>
                                             }
                                             else if (memberActions.Count > 1)
                                             {
