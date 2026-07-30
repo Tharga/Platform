@@ -227,6 +227,12 @@ the **directory id** (Entra `oid`), each with a copy button. The directory id di
 (the host's user entity does not declare `DirectoryId`) from *not resolved yet* — an empty value would
 otherwise read as "no directory account", which is a different claim.
 
+`<TeamComponent ShowAuditLogButton="true" />` adds a per-member audit action on the team page, pinned to
+that member **and** that team, so a team owner/administrator can see what one of their members did inside
+their own team. Hidden unless the caller holds `audit:read` — a system grant shows it on every team, a
+team grant only on the selected one. The same exists per API key via `<ApiKeyView ShowAuditLogButton="true" />`
+and `<SystemApiKeyView ShowAuditLogButton="true" />`, pinned to the key id.
+
 Full scope matrix: [User management & directory](https://team.tharga.net/articles/user-management.html).
 
 ## Dependencies

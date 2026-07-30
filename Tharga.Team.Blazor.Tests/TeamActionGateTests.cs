@@ -114,4 +114,31 @@ public class TeamActionGateTests
     {
         Assert.Equal(expected, TeamActionGate.CanEditConsent(hasManageScope, selectedTeamKey, teamKey, isAdministrator));
     }
+
+    // A system grant reads every team's log, so the selection is irrelevant to it.
+    [InlineData(true, false, "t-1", "t-2", true)]
+    [InlineData(true, false, null, "t-1", true)]
+    // A team grant is issued for the selected team and is confined to it.
+    [InlineData(false, true, "t-1", "t-1", true)]
+    [InlineData(false, true, "t-1", "t-2", false)]
+    [InlineData(false, true, null, "t-1", false)]
+    // No audit grant at all.
+    [InlineData(false, false, "t-1", "t-1", false)]
+    [Theory]
+    public void CanReadMemberAudit_ConfinesATeamGrantButNotASystemGrant(
+        bool hasSystemAuditRead, bool hasTeamAuditRead, string selectedTeamKey, string teamKey, bool expected)
+    {
+        Assert.Equal(expected, TeamActionGate.CanReadMemberAudit(hasSystemAuditRead, hasTeamAuditRead, selectedTeamKey, teamKey));
+    }
+
+    /// <summary>
+    /// The distinction that matters for an oversight role: `audit:read` held system-wide must not be
+    /// narrowed by which team happens to be selected, or a Developer investigating an incident sees the
+    /// action on one team card and not the rest.
+    /// </summary>
+    [Fact]
+    public void CanReadMemberAudit_SystemGrant_IsNotNarrowedByTheSelection()
+    {
+        Assert.True(TeamActionGate.CanReadMemberAudit(true, false, "other-team", "this-team"));
+    }
 }

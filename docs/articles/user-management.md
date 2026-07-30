@@ -299,6 +299,28 @@ or not) for existing consumers; `ActiveMemberCount` and `InvitedCount` are the s
 Expanding a team row shows the **team key** with a copy button, and each member name links across to that
 user on the Users tab. The reverse works too — a team in a user's membership list opens that team.
 
+### Audit history from the team page
+
+`<TeamComponent ShowAuditLogButton="true" />` adds a per-member action opening that member's audit log
+**scoped to that team** — both the caller and the team are pinned, so a team administrator sees what one
+of their members did inside their own tenant and nothing else.
+
+The action is hidden unless the caller holds `audit:read`, and the two ways of holding it differ:
+
+- **System grant** (`o.ConfigureSystemRoles`) — reads any team's log, so the action appears on every team.
+- **Team grant** (an access level) — issued for the *selected* team, so the action appears only there.
+
+No extra configuration is needed for the boundary: the same `audit:read` rule already enforces it
+server-side, and this only stops the UI offering what would be refused.
+
+> The pin matches on `CallerIdentity`, which is a display string rather than a stable id (see
+> [Reading the admin grids](#reading-the-admin-grids)). If your identity provider puts a display name in
+> the name claim rather than the email, the dialog may come up empty even though entries exist.
+
+The same capability exists per API key — `<ApiKeyView ShowAuditLogButton="true" />` and
+`<SystemApiKeyView ShowAuditLogButton="true" />` — pinned to `CallerKeyId`, which *is* a stable id, so
+that one is exact.
+
 ### Audit history per row
 
 Opt in with `<UsersView ShowAuditLogButton="true" />` to add a per-row action on both tabs that opens the

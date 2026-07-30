@@ -251,6 +251,12 @@ else
                                                         <StandardButton Icon="remove" Click="@(() => RemoveUserFromTeam(team, context.Key))"/>
                                                     </span>
                                                 }
+                                                @if (ShowAuditLogButton && CanReadMemberAudit(team))
+                                                {
+                                                    <span title="Audit log for this member">
+                                                        <StandardButton Icon="manage_search" Click="@(() => OpenMemberAuditLogAsync(team, context.Key))"/>
+                                                    </span>
+                                                }
                                             </RadzenStack>
                                         </Template>
                                     </RadzenDataGridColumn>
@@ -311,6 +317,13 @@ else
     private string _editingMemberName;
 
     private ITeam<TMember>[] _teams;
+    /// <summary>
+    /// Show a per-member action opening the audit log for that member, scoped to this team. Off by
+    /// default — the log is only queryable when audit storage is configured, and the action is hidden
+    /// regardless for callers without <c>audit:read</c>.
+    /// </summary>
+    [Parameter] public bool ShowAuditLogButton { get; set; }
+
     private IUser[] _users;
     private ITeam _selectedTeam;
     private IUser _user;
@@ -318,6 +331,8 @@ else
     private ITenantRoleService _tenantRoleService;
     private bool _canManage;
     private bool _canManageMembers;
+    private bool _hasSystemAuditRead;
+    private bool _hasTeamAuditRead;
     private bool _canSeeAllTeams;
     private bool _allowTeamCreation;
     private string _createTeamPath;
@@ -337,6 +352,8 @@ else
         var claims = authState.User;
         _canManage = claims.HasClaim(TeamClaimTypes.Scope, TeamScopes.Manage);
         _canManageMembers = claims.HasClaim(TeamClaimTypes.Scope, TeamScopes.MemberManage);
+        _hasSystemAuditRead = TeamScopeGate.HasSystemScope(claims, AuditScopes.Read);
+        _hasTeamAuditRead = claims.HasClaim(TeamClaimTypes.Scope, AuditScopes.Read);
         _canSeeAllTeams = TeamVisibility.CanSeeAllTeams(claims);
 
         _scopeRegistry = ServiceProvider.GetService<IScopeRegistry>();
@@ -745,6 +762,32 @@ else
     private bool CanManageMembers(ITeam<TMember> team)
     {
         return TeamActionGate.CanManageMembers(_canManageMembers, _selectedTeam?.Key, team.Key);
+    }
+
+    private bool CanReadMemberAudit(ITeam<TMember> team)
+    {
+        return TeamActionGate.CanReadMemberAudit(_hasSystemAuditRead, _hasTeamAuditRead, _selectedTeam?.Key, team.Key);
+    }
+
+    /// <summary>
+    /// Opens the audit log for one member, scoped to what they did <i>in this team</i>. Pinning both the
+    /// caller and the team is what keeps a team administrator's view inside their own tenant — the same
+    /// boundary the <c>audit:read</c> team grant already enforces server-side.
+    /// </summary>
+    private async Task OpenMemberAuditLogAsync(ITeam<TMember> team, string memberKey)
+    {
+        var user = _users.FirstOrDefault(x => x.Key == memberKey);
+        var identity = user?.EMail ?? user?.Name ?? memberKey;
+
+        var pinned = new Features.Audit.AuditPinnedFilter
+        {
+            CallerIdentity = identity,
+            TeamKey = team.Key
+        };
+
+        await DialogService.OpenAsync($"Audit log — {identity}", _ =>
+            @<Features.Audit.AuditLogView PinnedFilter="@pinned" />,
+            new DialogOptions { Width = "90vw", Height = "85vh", Resizable = true, Draggable = true });
     }
 
     private bool CanDeleteTeam(ITeam<TMember> team)

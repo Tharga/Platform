@@ -74,7 +74,19 @@ Feature scope in `feature.md`. Tests run before each commit; `plan.md` is update
       subject for "what was done *to* a user". Recorded under `Toolkit/Team.md` → Audit with what already
       works, since most of it turned out to be UI rather than missing recording.
 
-- [~] **8. Re-push and hand over for re-testing**
+- [x] **9. Per-member audit log on the team page** (scope added 2026-07-30)
+      *Done — `[Parameter] ShowAuditLogButton` on `TeamComponent` adds a per-member action pinning
+      `CallerIdentity` **and** `TeamKey`, so a team owner/administrator sees one member's activity inside
+      their own team only. Gated by the new pure `TeamActionGate.CanReadMemberAudit`: a **system**
+      `audit:read` grant is not narrowed by the selection (an oversight role would otherwise see the
+      action on one card and not the rest), a **team** grant is confined to the selected team. 7 tests.
+      Enabled in the sample. **The API-key half already shipped** — `ApiKeyView`/`SystemApiKeyView`
+      `ShowAuditLogButton` pins `CallerKeyId` (PR #57), and that one is exact because the key id is a
+      stable id.*
+      **Caveat documented, not fixed:** the member pin matches `CallerIdentity`, a display string — so it
+      inherits the reliability problem filed under `Toolkit/Team.md` → Audit item 1. Noted in the docs.
+
+- [~] **10. Re-push, then close out**
 
 ## Remaining (close-out, only on the user's confirmation)
 
