@@ -18,8 +18,8 @@
                            ShowAuditLogButton="ShowAuditLogButton" FocusUserKey="@_focusUserKey" TeamSelected="ShowTeamAsync" />
         </RadzenTabsItem>
         <RadzenTabsItem Text="Teams">
-            <TeamsListView TMember="TMember" ShowAuditLogButton="ShowAuditLogButton"
-                           FocusTeamKey="@_focusTeamKey" MemberSelected="ShowUserAsync" />
+            <TeamsListView TMember="TMember" TeamActionsTemplate="TeamActionsTemplate" MemberActionsTemplate="MemberActionsTemplate"
+                           ShowAuditLogButton="ShowAuditLogButton" FocusTeamKey="@_focusTeamKey" MemberSelected="ShowUserAsync" />
         </RadzenTabsItem>
         @if (_showDirectoryTab)
         {
@@ -47,6 +47,20 @@
 
     /// <summary>Raised when a consumer-supplied split-button item (<see cref="ActionItems"/>) is clicked.</summary>
     [Parameter] public EventCallback<UserRowAction> ActionInvoked { get; set; }
+
+    /// <summary>
+    /// Optional template rendered after the built-in View button in each team row's action column, passed
+    /// through to <see cref="TeamsListView{TMember}"/>. The Teams-tab counterpart of
+    /// <see cref="ActionsTemplate"/>: without it a host wanting a team row action had to abandon this
+    /// wrapper and compose the two list views itself, re-implementing the tab shell.
+    /// </summary>
+    [Parameter] public RenderFragment<TeamViewModel> TeamActionsTemplate { get; set; }
+
+    /// <summary>
+    /// Optional template rendered as an extra column at the right of each member row in a team's
+    /// drill-down grid, passed through to <see cref="TeamsListView{TMember}"/>.
+    /// </summary>
+    [Parameter] public RenderFragment<TeamMemberInfo> MemberActionsTemplate { get; set; }
 
     /// <summary>
     /// Show a per-row action on both tabs opening the audit log scoped to that user or team. Off by
