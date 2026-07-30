@@ -10,7 +10,9 @@
 
 <PageTitle>Users</PageTitle>
 
-<UsersView TMember="TeamMember" ActionInvoked="OnUserActionAsync">
+@* ShowAuditLogButton is on because the sample configures MongoDB audit storage; without it the log
+   would be empty and the button misleading. *@
+<UsersView TMember="TeamMember" ActionInvoked="OnUserActionAsync" ShowAuditLogButton="true">
     <ActionItems>
         <RadzenSplitButtonItem Text="Edit" Value="@EditAction" Icon="edit" />
     </ActionItems>

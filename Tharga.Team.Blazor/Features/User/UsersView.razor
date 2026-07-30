@@ -11,13 +11,15 @@
     [Authorize] the page that embeds this component.
 *@
 
-<RadzenTabs>
+<RadzenTabs @bind-SelectedIndex="_selectedTab">
     <Tabs>
         <RadzenTabsItem Text="Users">
-            <UsersListView TMember="TMember" ActionsTemplate="ActionsTemplate" ActionItems="ActionItems" ActionInvoked="ActionInvoked" />
+            <UsersListView TMember="TMember" ActionsTemplate="ActionsTemplate" ActionItems="ActionItems" ActionInvoked="ActionInvoked"
+                           ShowAuditLogButton="ShowAuditLogButton" FocusUserKey="@_focusUserKey" TeamSelected="ShowTeamAsync" />
         </RadzenTabsItem>
         <RadzenTabsItem Text="Teams">
-            <TeamsListView TMember="TMember" />
+            <TeamsListView TMember="TMember" ShowAuditLogButton="ShowAuditLogButton"
+                           FocusTeamKey="@_focusTeamKey" MemberSelected="ShowUserAsync" />
         </RadzenTabsItem>
         @if (_showDirectoryTab)
         {
@@ -46,7 +48,38 @@
     /// <summary>Raised when a consumer-supplied split-button item (<see cref="ActionItems"/>) is clicked.</summary>
     [Parameter] public EventCallback<UserRowAction> ActionInvoked { get; set; }
 
+    /// <summary>
+    /// Show a per-row action on both tabs opening the audit log scoped to that user or team. Off by
+    /// default — the audit log is only queryable when audit storage is configured.
+    /// </summary>
+    [Parameter] public bool ShowAuditLogButton { get; set; }
+
+    private const int UsersTab = 0;
+    private const int TeamsTab = 1;
+
     private bool _showDirectoryTab;
+    private int _selectedTab;
+    private string _focusUserKey;
+    private string _focusTeamKey;
+
+    /// <summary>
+    /// Follows a team link from a user's membership list. The tab switch and the row to expand are owned
+    /// here because neither child can see the other.
+    /// </summary>
+    private Task ShowTeamAsync(string teamKey)
+    {
+        _focusTeamKey = teamKey;
+        _selectedTab = TeamsTab;
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Follows a member link from a team's member list, in the opposite direction.</summary>
+    private Task ShowUserAsync(string userKey)
+    {
+        _focusUserKey = userKey;
+        _selectedTab = UsersTab;
+        return Task.CompletedTask;
+    }
 
     protected override async Task OnInitializedAsync()
     {

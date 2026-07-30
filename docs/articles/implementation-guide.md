@@ -526,7 +526,7 @@ public class MyTeamService : TeamServiceRepositoryBase<TeamEntity, TeamMember>
 | `<TeamSelector />` | Dropdown to switch between teams |
 | `<TeamComponent />` | Full team management (create, rename, delete, members) |
 | `<TeamInviteView />` | Pending invitation view |
-| `<UsersView />` | Admin user list: last seen, directory verification, user deletion, and a directory-only tab when a directory service is registered. Viewing and acting require the `users:manage` system scope — enforced in the service layer (see [User management & directory](user-management.md)) |
+| `<UsersView />` | Admin user list: last seen, directory verification, user deletion, and a directory-only tab when a directory service is registered. Highlights your own row, shows record keys with copy, and cross-links users to teams. Its **Teams** tab shows owner, last used, invited-count split and an empty-team badge, and offers deleting any team to a holder of the `teams:delete` system scope, which no consent option grants. Opt-in `ShowAuditLogButton` adds a per-row audit log. Viewing and acting require the `users:manage` system scope — enforced in the service layer (see [User management & directory](user-management.md)) |
 | `<ApiKeyView />` | API key management (requires Step 5). Shows **Created** and **Last used** columns per key, and a **Tags** column (chips for keys in `ChipTagKeys`, plus an `(i)` tooltip of all tags). Opt-in `[Parameter]` flags: `ShowAuditLogButton`, `ShowScopeOverrides` (Scopes column + create-card multi-select + Edit-Scopes dialog per row), `ChipTagKeys` |
 | `<AuditLogView />` | Audit log viewer (requires Step 8) |
 | `Roles.TeamMember` | Role claim added to authenticated team members |

@@ -125,7 +125,7 @@ builder.AddThargaTeam(o =>
 });
 ```
 
-The `<UsersView />` admin component picks it all up automatically. See [User management & directory](docs/articles/user-management.md).
+The `<UsersView />` admin component picks it all up automatically. Its two tabs show each record's key with a copy control, the signed-in user's own row highlighted, and — on the Teams tab — owner, last used, a pending-invitation split, avatars and an empty-team badge. Two host opt-ins: grant the `teams:delete` **system** scope through `o.ConfigureSystemRoles` to offer team deletion, and set `<UsersView ShowAuditLogButton="true" />` for a per-row audit-history dialog. See [User management & directory](docs/articles/user-management.md).
 
 ## Team & user icons
 

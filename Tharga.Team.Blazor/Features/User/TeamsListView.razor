@@ -1,10 +1,14 @@
 ﻿@using Tharga.Team
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.JSInterop
 @using Tharga.Team.Blazor.Features.Team
 @typeparam TMember where TMember : class, Tharga.Team.ITeamMember
 @inject ITeamService TeamService
 @inject IUserService UserService
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject IJSRuntime Js
 @inject Microsoft.Extensions.Options.IOptions<Tharga.Team.Blazor.Framework.ThargaBlazorOptions> BlazorOptions
 
 @if (!_canAdminister)
@@ -18,8 +22,58 @@ else if (_loaded)
     <RadzenDataGrid Data="@_teamViewModels" TItem="TeamViewModel" AllowSorting="true" AllowPaging="true" PageSize="10"
                     AllowFiltering="true" FilterMode="FilterMode.Simple" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
         <Columns>
-            <RadzenDataGridColumn Title="Name" Property="Name" />
-            <RadzenDataGridColumn Title="Members" Property="MemberCount" Width="100px" Filterable="false" />
+            <RadzenDataGridColumn Title="" Width="66px" Sortable="false" Filterable="false">
+                <Template>
+                    <TeamAvatar IconReference="@context.Icon" Name="@context.Name" TeamKey="@context.Key" Size="32px" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Name" Property="Name">
+                <Template>
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                        <span>@context.Name</span>
+                        @if (context.MemberCount == 0)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Warning" Variant="Variant.Flat" Text="Empty" />
+                        }
+                    </RadzenStack>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Owner" Property="OwnerName">
+                <Template>
+                    @if (string.IsNullOrEmpty(context.OwnerName))
+                    {
+                        <RadzenBadge BadgeStyle="BadgeStyle.Danger" Variant="Variant.Flat" Text="No owner" />
+                    }
+                    else
+                    {
+                        @context.OwnerName
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Members" Property="ActiveMemberCount" Width="130px" Filterable="false">
+                <Template>
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                        <span>@context.ActiveMemberCount</span>
+                        @if (context.InvitedCount > 0)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Light" Variant="Variant.Flat"
+                                         Text="@($"+{context.InvitedCount} invited")" />
+                        }
+                    </RadzenStack>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Last used" Property="@nameof(TeamViewModel.LastUsed)" Width="150px" Filterable="false">
+                <Template>
+                    @if (LastSeenText.IsNever(context.LastUsed))
+                    {
+                        <RadzenText TextStyle="TextStyle.Caption">@LastSeenText.Never</RadzenText>
+                    }
+                    else
+                    {
+                        <DateTimeView Date="@context.LastUsed" />
+                    }
+                </Template>
+            </RadzenDataGridColumn>
             @if (_canSeeAllTeams)
             {
                 <RadzenDataGridColumn Title="Consent" Property="Consent" Width="140px" Filterable="false">
@@ -30,11 +84,21 @@ else if (_loaded)
                     </Template>
                 </RadzenDataGridColumn>
             }
-            <RadzenDataGridColumn Title="" Width="120px" Sortable="false" Filterable="false">
+            <RadzenDataGridColumn Title="" Width="200px" Sortable="false" Filterable="false">
                 <Template>
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
                         <RadzenButton Text="View" Icon="visibility" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
                                       Click="@(() => ToggleDetails(context))" />
+                        @if (ShowAuditLogButton)
+                        {
+                            <RadzenButton Icon="manage_search" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                                          title="Audit log" Click="@(() => OpenAuditLogAsync(context))" />
+                        }
+                        @if (_canDeleteTeams)
+                        {
+                            <RadzenButton Text="Delete" Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                          Click="@(() => DeleteTeamAsync(context))" />
+                        }
                         @if (TeamActionsTemplate != null)
                         {
                             @TeamActionsTemplate(context)
@@ -49,6 +113,12 @@ else if (_loaded)
     {
         <RadzenCard class="rz-mt-3">
             <RadzenText TextStyle="TextStyle.Subtitle1"><strong>@_selectedTeam.Name</strong></RadzenText>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" class="rz-mb-2">
+                <RadzenText TextStyle="TextStyle.Caption">Team key</RadzenText>
+                <code>@_selectedTeam.Key</code>
+                <RadzenButton Icon="content_copy" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                              title="Copy team key" Click="@(() => CopyAsync(_selectedTeam.Key))" />
+            </RadzenStack>
             <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-mb-1">Members</RadzenText>
             <RadzenDataGrid Data="@_selectedTeam.Members" TItem="TeamMemberInfo" AllowSorting="true"
                             AllowFiltering="true" FilterMode="FilterMode.Simple" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
@@ -58,13 +128,33 @@ else if (_loaded)
                             <UserAvatar EMail="@context.EMail" IconReference="@context.Icon" Name="@context.Name" UserKey="@context.Key" Size="32px" />
                         </Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn Title="Name" Property="Name" />
+                    <RadzenDataGridColumn Title="Name" Property="Name">
+                        <Template>
+                            @if (MemberSelected.HasDelegate && !string.IsNullOrEmpty(context.Key))
+                            {
+                                <RadzenButton Text="@context.Name" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Text"
+                                              Size="ButtonSize.Small" title="Show this user"
+                                              Click="@(() => MemberSelected.InvokeAsync(context.Key))" />
+                            }
+                            else
+                            {
+                                @context.Name
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
                     <RadzenDataGridColumn Title="Email" Property="EMail" />
                     <RadzenDataGridColumn Title="Role" Property="AccessLevel" Width="120px" Filterable="false" />
                     <RadzenDataGridColumn Title="State" Property="State" Width="100px" Filterable="false" />
                     <RadzenDataGridColumn Title="Last seen" Property="@nameof(TeamMemberInfo.LastSeen)" Width="150px" Filterable="false">
                         <Template>
-                            <DateTimeView Date="@context.LastSeen" />
+                            @if (LastSeenText.IsNever(context.LastSeen))
+                            {
+                                <RadzenText TextStyle="TextStyle.Caption">@LastSeenText.Never</RadzenText>
+                            }
+                            else
+                            {
+                                <DateTimeView Date="@context.LastSeen" />
+                            }
                         </Template>
                     </RadzenDataGridColumn>
                     @if (MemberActionsTemplate != null)
@@ -96,8 +186,24 @@ else
     /// </summary>
     [Parameter] public RenderFragment<TeamMemberInfo> MemberActionsTemplate { get; set; }
 
+    /// <summary>
+    /// Show a per-row button opening the audit log scoped to that team. Off by default — the audit log is
+    /// only queryable when audit storage is configured, so a host opts in once it is.
+    /// </summary>
+    [Parameter] public bool ShowAuditLogButton { get; set; }
+
+    /// <summary>
+    /// Key of the team to expand when the view first renders. Lets a host (or the sibling users tab)
+    /// arrive with one team already open.
+    /// </summary>
+    [Parameter] public string FocusTeamKey { get; set; }
+
+    /// <summary>Raised when a member row is clicked, carrying that member's user key.</summary>
+    [Parameter] public EventCallback<string> MemberSelected { get; set; }
+
     private bool _loaded;
     private bool _canAdminister = true;
+    private bool _canDeleteTeams;
     private IUser[] _users;
     private ITeam<TMember>[] _teams;
     private bool _canSeeAllTeams;
@@ -111,30 +217,46 @@ else
         _canSeeAllTeams = TeamVisibility.CanSeeAllTeams(authState.User);
         _canAdminister = UserAdminGate.CanAdministerUsers(
             TeamScopeGate.HasSystemScope(authState.User, SystemUserScopes.Manage));
+        _canDeleteTeams = UserAdminGate.CanDeleteTeams(
+            TeamScopeGate.HasSystemScope(authState.User, SystemTeamScopes.Delete));
 
         if (_canAdminister)
         {
-            _users = await UserService.GetAsync().ToArrayAsync();
-            _teams = _canSeeAllTeams
-                ? await TeamService.GetAllTeamsAsync<TMember>().ToArrayAsync()
-                : await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
-
-            BuildViewModels();
+            await LoadDataAsync();
+            _selectedTeam = _teamViewModels.FirstOrDefault(t => t.Key == FocusTeamKey);
             _loaded = true;
         }
 
         await base.OnInitializedAsync();
     }
 
+    /// <summary>
+    /// Opens the team that a sibling surface asked to focus. Runs on parameter changes rather than only at
+    /// initialization, because the tab is already rendered when the users tab hands a team key across.
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrEmpty(FocusTeamKey) || _selectedTeam?.Key == FocusTeamKey) return;
+
+        var focused = _teamViewModels.FirstOrDefault(t => t.Key == FocusTeamKey);
+        if (focused != null) _selectedTeam = focused;
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _users = await UserService.GetAsync().ToArrayAsync();
+        _teams = _canSeeAllTeams
+            ? await TeamService.GetAllTeamsAsync<TMember>().ToArrayAsync()
+            : await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
+
+        BuildViewModels();
+    }
+
     private void BuildViewModels()
     {
-        _teamViewModels = _teams.Select(t => new TeamViewModel
+        _teamViewModels = _teams.Select(t =>
         {
-            Key = t.Key,
-            Name = t.Name,
-            MemberCount = t.Members?.Length ?? 0,
-            Consent = TeamVisibility.Resolve(t.ConsentedRoles, t.ConsentAccessLevel, BlazorOptions.Value.Consent.AccessLevel),
-            Members = (t.Members ?? []).Select(m =>
+            var members = (t.Members ?? []).Select(m =>
             {
                 var user = _users.FirstOrDefault(u => u.Key == m.Key);
                 return new TeamMemberInfo
@@ -147,12 +269,71 @@ else
                     State = m.State,
                     LastSeen = m.LastSeen
                 };
-            }).ToArray()
+            }).ToArray();
+
+            var (active, invited) = TeamActivity.CountByState(members);
+
+            return new TeamViewModel
+            {
+                Key = t.Key,
+                Name = t.Name,
+                Icon = t.Icon,
+                MemberCount = members.Length,
+                ActiveMemberCount = active,
+                InvitedCount = invited,
+                OwnerName = TeamActivity.Owner(members)?.Name,
+                LastUsed = TeamActivity.LastUsed(members),
+                Consent = TeamVisibility.Resolve(t.ConsentedRoles, t.ConsentAccessLevel, BlazorOptions.Value.Consent.AccessLevel),
+                Members = members
+            };
         }).OrderBy(t => t.Name).ToList();
     }
 
     private void ToggleDetails(TeamViewModel team)
     {
         _selectedTeam = _selectedTeam?.Key == team.Key ? null : team;
+    }
+
+    private async Task CopyAsync(string value)
+    {
+        await Js.InvokeVoidAsync("clipboard.copyText", value);
+    }
+
+    private async Task OpenAuditLogAsync(TeamViewModel team)
+    {
+        var pinned = new Audit.AuditPinnedFilter { TeamKey = team.Key };
+
+        await DialogService.OpenAsync($"Audit log — {team.Name}", _ =>
+            @<Tharga.Team.Blazor.Features.Audit.AuditLogView PinnedFilter="@pinned" />,
+            new DialogOptions { Width = "90vw", Height = "85vh", Resizable = true, Draggable = true });
+    }
+
+    /// <summary>
+    /// Cross-team delete, authorized by the <see cref="SystemTeamScopes.Delete"/> system scope rather than
+    /// by membership or consent. The service layer enforces the same rule, so this only avoids offering an
+    /// action the server would refuse.
+    /// </summary>
+    private async Task DeleteTeamAsync(TeamViewModel team)
+    {
+        var members = team.MemberCount == 1 ? "1 member" : $"{team.MemberCount} members";
+        var confirmed = await DialogService.Confirm(
+            $"Team '{team.Name}' and its {members} will be permanently deleted. This cannot be undone.",
+            "Delete team",
+            new ConfirmOptions { OkButtonText = "Delete", CancelButtonText = "Cancel" });
+
+        if (confirmed is not true) return;
+
+        try
+        {
+            await TeamService.DeleteTeamAsync<TMember>(team.Key);
+
+            if (_selectedTeam?.Key == team.Key) _selectedTeam = null;
+            await LoadDataAsync();
+            NotificationService.Notify(NotificationSeverity.Success, "Team deleted", team.Name);
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Delete failed", ex.Message);
+        }
     }
 }

@@ -45,6 +45,6 @@ for WebAssembly or a desktop client. Until then, incremental wins.
 - **Shared instructions**: `$DOC_ROOT/Tharga/shared-instructions.md`
 - **Target architecture**: `$DOC_ROOT/Tharga/plans/Toolkit/Platform/architecture-v4.md` — read before designing new surface; see Design Direction above
 - **Plan directory**: `$DOC_ROOT/Tharga/plans/Toolkit/Platform`
-- **Backlog**: `$DOC_ROOT/Tharga/Toolkit/Platform.md`
+- **Backlog**: `$DOC_ROOT/Tharga/Toolkit/Team.md` (renamed from `Platform.md` 2026-07-28)
 - **Incoming requests**: `$DOC_ROOT/Tharga/Requests.md` — check sections "Tharga.Team" and "Tharga.Team — MCP" on startup (renamed from "Tharga.Platform" 2026-07-28; individual entries below those headings still say Platform in their prose, which is historical and correct for when they were written).
 - **Eplicta requests**: `$DOC_ROOT/Eplicta/requests.md` — check for requests from Eplicta on startup

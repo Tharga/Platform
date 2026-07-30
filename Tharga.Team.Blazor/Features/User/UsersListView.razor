@@ -1,4 +1,5 @@
 ﻿@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.JSInterop
 @using Tharga.Team.Blazor.Features.Team
 @typeparam TMember where TMember : class, Tharga.Team.ITeamMember
 @inject ITeamService TeamService
@@ -9,6 +10,19 @@
 @inject IconSettings IconSettings
 @inject DialogService DialogService
 @inject NotificationService NotificationService
+@inject IJSRuntime Js
+
+@* Current-user row highlight. Applied to the cells (not the <tr>) so Radzen's own cell backgrounds
+   don't paint over it — the same mechanism TeamComponent uses for its member grid. *@
+<style>
+    tr[data-tharga-current-user] > td {
+        background-color: rgba(37, 99, 235, 0.16) !important;
+    }
+
+    tr[data-tharga-current-user] > td:first-child {
+        box-shadow: inset 3px 0 0 0 var(--rz-primary, #2563eb);
+    }
+</style>
 
 @if (!_canAdminister)
 {
@@ -25,7 +39,8 @@ else if (_loaded)
         </RadzenStack>
     }
     <RadzenDataGrid Data="@_allUsers" TItem="UserViewModel" AllowSorting="true" AllowPaging="true" PageSize="10"
-                    AllowFiltering="true" FilterMode="FilterMode.Simple" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
+                    AllowFiltering="true" FilterMode="FilterMode.Simple" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                    RowRender="@OnUserRowRender">
         <Columns>
             <RadzenDataGridColumn Title="" Width="66px" Sortable="false" Filterable="false">
                 <Template>
@@ -37,7 +52,14 @@ else if (_loaded)
             <RadzenDataGridColumn Title="Teams" Property="@nameof(UserViewModel.TeamCount)" Filterable="false" />
             <RadzenDataGridColumn Title="Last seen" Property="@nameof(UserViewModel.LastSeen)" Filterable="false">
                 <Template>
-                    <DateTimeView Date="@context.LastSeen" />
+                    @if (LastSeenText.IsNever(context.LastSeen))
+                    {
+                        <RadzenText TextStyle="TextStyle.Caption">@LastSeenText.Never</RadzenText>
+                    }
+                    else
+                    {
+                        <DateTimeView Date="@context.LastSeen" />
+                    }
                 </Template>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn Title="" Width="200px" Sortable="false" Filterable="false">
@@ -59,6 +81,10 @@ else if (_loaded)
                                 @if (_showAdminUpload)
                                 {
                                     <RadzenSplitButtonItem Text="Set icon" Value="@SetIconAction" Icon="image" />
+                                }
+                                @if (ShowAuditLogButton)
+                                {
+                                    <RadzenSplitButtonItem Text="Audit log" Value="@AuditAction" Icon="manage_search" />
                                 }
                                 @ActionItems
                                 <RadzenSplitButtonItem Text="Delete" Value="@DeleteAction" Icon="delete" />
@@ -84,10 +110,29 @@ else if (_loaded)
                     <RadzenText TextStyle="TextStyle.Caption">@_selectedUser.EMail</RadzenText>
                 </RadzenStack>
             </RadzenStack>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" class="rz-mb-2">
+                <RadzenText TextStyle="TextStyle.Caption">User key</RadzenText>
+                <code>@_selectedUser.Key</code>
+                <RadzenButton Icon="content_copy" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                              title="Copy user key" Click="@(() => CopyAsync(_selectedUser.Key))" />
+            </RadzenStack>
             <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-mb-1">Team memberships</RadzenText>
             <RadzenDataGrid Data="@_selectedUser.Teams" TItem="UserTeamInfo" AllowSorting="true">
                 <Columns>
-                    <RadzenDataGridColumn Title="Team" Property="TeamName" />
+                    <RadzenDataGridColumn Title="Team" Property="TeamName">
+                        <Template>
+                            @if (TeamSelected.HasDelegate && !string.IsNullOrEmpty(context.TeamKey))
+                            {
+                                <RadzenButton Text="@context.TeamName" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Text"
+                                              Size="ButtonSize.Small" title="Show this team"
+                                              Click="@(() => TeamSelected.InvokeAsync(context.TeamKey))" />
+                            }
+                            else
+                            {
+                                @context.TeamName
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
                     <RadzenDataGridColumn Title="Role" Property="AccessLevel" Width="120px" />
                     <RadzenDataGridColumn Title="State" Property="State" Width="100px" />
                 </Columns>
@@ -117,11 +162,28 @@ else
     /// <summary>Raised when a consumer-supplied split-button item (<see cref="ActionItems"/>) is clicked.</summary>
     [Parameter] public EventCallback<UserRowAction> ActionInvoked { get; set; }
 
+    /// <summary>
+    /// Show a per-row action opening the audit log scoped to that user. Off by default — the audit log is
+    /// only queryable when audit storage is configured, so a host opts in once it is.
+    /// </summary>
+    [Parameter] public bool ShowAuditLogButton { get; set; }
+
+    /// <summary>
+    /// Key of the user to expand when the view first renders. Lets a host (or the sibling teams tab)
+    /// arrive with one user already open.
+    /// </summary>
+    [Parameter] public string FocusUserKey { get; set; }
+
+    /// <summary>Raised when a team is clicked in a user's membership list, carrying that team's key.</summary>
+    [Parameter] public EventCallback<string> TeamSelected { get; set; }
+
     private const string VerifyAction = "verify";
     private const string DeleteAction = "delete";
     private const string SetIconAction = "set-icon";
     private const string RenameAction = "rename";
+    private const string AuditAction = "audit";
 
+    private string _currentUserKey;
     private bool _loaded;
     private bool _canAdminister = true;
     private bool _showDirectory;
@@ -146,11 +208,35 @@ else
 
         if (_canAdminister)
         {
+            _currentUserKey = (await UserService.GetCurrentUserAsync())?.Key;
             await LoadDataAsync();
+            _selectedUser = _allUsers.FirstOrDefault(u => u.Key == FocusUserKey);
             _loaded = true;
         }
 
         await base.OnInitializedAsync();
+    }
+
+    /// <summary>
+    /// Opens the user that a sibling surface asked to focus. Runs on parameter changes rather than only at
+    /// initialization, because the tab is already rendered when the teams tab hands a user key across.
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrEmpty(FocusUserKey) || _selectedUser?.Key == FocusUserKey) return;
+
+        var focused = _allUsers.FirstOrDefault(u => u.Key == FocusUserKey);
+        if (focused != null) _selectedUser = focused;
+    }
+
+    private void OnUserRowRender(RowRenderEventArgs<UserViewModel> args)
+    {
+        if (MemberHighlight.IsCurrentMember(args.Data?.Key, _currentUserKey))
+        {
+            // Marker attribute only — the tint is applied to the cells (see the <style> block above),
+            // because Radzen's <td> cells carry their own background and paint over a row-level style.
+            args.Attributes["data-tharga-current-user"] = "true";
+        }
     }
 
     private async Task LoadDataAsync()
@@ -209,6 +295,9 @@ else
                 break;
             case RenameAction:
                 await RenameUserAsync(user);
+                break;
+            case AuditAction:
+                await OpenAuditLogAsync(user);
                 break;
             default:
                 await ActionInvoked.InvokeAsync(new UserRowAction(item.Value, user));
@@ -269,6 +358,24 @@ else
     private void ToggleDetails(UserViewModel user)
     {
         _selectedUser = _selectedUser?.Key == user.Key ? null : user;
+    }
+
+    private async Task CopyAsync(string value)
+    {
+        await Js.InvokeVoidAsync("clipboard.copyText", value);
+    }
+
+    /// <summary>
+    /// Pins the audit log to this user by identity rather than by key: audit entries record the caller's
+    /// identity, not the user record's key.
+    /// </summary>
+    private async Task OpenAuditLogAsync(UserViewModel user)
+    {
+        var pinned = new Audit.AuditPinnedFilter { CallerIdentity = user.EMail ?? user.Name };
+
+        await DialogService.OpenAsync($"Audit log — {user.Name ?? user.EMail}", _ =>
+            @<Tharga.Team.Blazor.Features.Audit.AuditLogView PinnedFilter="@pinned" />,
+            new DialogOptions { Width = "90vw", Height = "85vh", Resizable = true, Draggable = true });
     }
 
     private async Task VerifyUserAsync(UserViewModel user)

@@ -15,8 +15,17 @@ else
 }
 
 @code {
-    /// <summary>The team to render an avatar for.</summary>
+    /// <summary>A team to render the avatar for. When set, takes precedence over the individual fields.</summary>
     [Parameter] public ITeam Team { get; set; }
+
+    /// <summary>The team's key (used with the individual-field form).</summary>
+    [Parameter] public string TeamKey { get; set; }
+
+    /// <summary>Display name (for the initials fallback).</summary>
+    [Parameter] public string Name { get; set; }
+
+    /// <summary>Reference of an explicitly-uploaded icon, if any.</summary>
+    [Parameter] public string IconReference { get; set; }
 
     /// <summary>CSS size (width and height) of the avatar. Default 40px.</summary>
     [Parameter] public string Size { get; set; } = "40px";
@@ -27,7 +36,11 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        if (Team == null)
+        var key = Team?.Key ?? TeamKey;
+        var display = Team?.Name ?? Name;
+        var iconReference = Team?.Icon ?? IconReference;
+
+        if (string.IsNullOrEmpty(display) && string.IsNullOrEmpty(iconReference))
         {
             _url = null;
             _initials = "?";
@@ -35,15 +48,15 @@ else
             return;
         }
 
-        _alt = Team.Name;
-        _initials = IconInitials.From(Team.Name);
+        _alt = display;
+        _initials = IconInitials.From(display);
 
         var subject = new IconSubject
         {
             Kind = IconKind.Team,
-            Key = Team.Key,
-            Name = Team.Name,
-            IconReference = Team.Icon
+            Key = key,
+            Name = display,
+            IconReference = iconReference
         };
 
         var image = await IconResolver.ResolveAsync(subject);
