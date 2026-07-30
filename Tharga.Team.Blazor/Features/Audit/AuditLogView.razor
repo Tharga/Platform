@@ -41,7 +41,11 @@ else
                             </Items>
                         </RadzenSelectBar>
                     </RadzenStack>
-                    <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_teams.Any() && PinnedFilter?.TeamKey == null)">
+                    @* One option is not a filter — the same rule as Source below. With the options now
+                       drawn from inside the pinned scope, a dimension the pin already fixes collapses to
+                       one value and hides itself: a system API key has no team, a team key has exactly
+                       one, and neither is something the reader can act on. *@
+                    <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(AuditFilterVisibility.ShouldShow(_teams.Count, PinnedFilter?.TeamKey != null))">
                         <RadzenLabel Text="Team" />
                         <RadzenDropDown @bind-Value="_filterTeams" TValue="IEnumerable<string>" Data="@_teams"
                                         TextProperty="@nameof(TeamInfo.Name)" ValueProperty="@nameof(TeamInfo.Key)"
@@ -50,7 +54,7 @@ else
                                         Style="width: 200px;" />
                     </RadzenStack>
                     @* A single source tells the reader nothing they can act on — one option is not a filter. *@
-                    <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_sources.Count > 1)">
+                    <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(AuditFilterVisibility.ShouldShow(_sources.Count, false))">
                         <RadzenLabel Text="Source" />
                         <RadzenSelectBar @bind-Value="_filterSources" TValue="IEnumerable<string>" Multiple="true"
                                          Change="@OnFilterChanged" Size="ButtonSize.Small">
@@ -66,7 +70,7 @@ else
                        feature "apikey", action "manage". Labelled as such so the connection to the Scope
                        column is visible, and kept as two filters so "everything that changed anything"
                        (action: manage, across features) stays one click. *@
-                    <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_features.Any() && PinnedFilter?.Feature == null)">
+                    <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(AuditFilterVisibility.ShouldShow(_features.Count, PinnedFilter?.Feature != null))">
                         <RadzenLabel Text="Scope feature" />
                         <RadzenSelectBar @bind-Value="_filterFeatures" TValue="IEnumerable<string>" Multiple="true"
                                          Change="@OnFilterChanged" Size="ButtonSize.Small">
@@ -81,7 +85,7 @@ else
                     @* Action and Event carry many values and grow with the app, so they are drop-downs
                        rather than select bars — a bar of every action wraps to several rows and pushes
                        the grid off screen. *@
-                    <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(_actions.Any() && PinnedFilter?.Action == null)">
+                    <RadzenStack Orientation="Orientation.Vertical" Gap="0" Visible="@(AuditFilterVisibility.ShouldShow(_actions.Count, PinnedFilter?.Action != null))">
                         <RadzenLabel Text="Scope action" />
                         <RadzenDropDown @bind-Value="_filterActions" TValue="IEnumerable<string>" Data="@_actions"
                                         Multiple="true" AllowClear="true" AllowFiltering="true"

@@ -238,26 +238,29 @@ else
                                     </RadzenDataGridColumn>
                                     <RadzenDataGridColumn>
                                         <Template>
-                                            <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem">
-                                                @if (CanManageMembers(team) && context.Invitation != null)
-                                                {
-                                                    <span title="Copy invitation link">
-                                                        <StandardButton Icon="link" Click="@(() => CopyInvitationLink(team, context.Key))"/>
-                                                    </span>
-                                                }
-                                                @if (CanManageMembers(team) && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
-                                                {
-                                                    <span title="Remove member">
-                                                        <StandardButton Icon="remove" Click="@(() => RemoveUserFromTeam(team, context.Key))"/>
-                                                    </span>
-                                                }
-                                                @if (ShowAuditLogButton && CanReadMemberAudit(team))
-                                                {
-                                                    <span title="Audit log for this member">
-                                                        <StandardButton Icon="manage_search" Click="@(() => OpenMemberAuditLogAsync(team, context.Key))"/>
-                                                    </span>
-                                                }
-                                            </RadzenStack>
+                                            @{
+                                                var memberActions = MemberActions(team, context);
+                                            }
+                                            @if (memberActions.Count == 1)
+                                            {
+                                                <span title="@memberActions[0].Text">
+                                                    <StandardButton Icon="@memberActions[0].Icon"
+                                                                    Click="@(() => InvokeMemberActionAsync(memberActions[0].Value, team, context.Key))"/>
+                                                </span>
+                                            }
+                                            else if (memberActions.Count > 1)
+                                            {
+                                                <RadzenSplitButton Text="@memberActions[0].Text" Icon="@memberActions[0].Icon"
+                                                                   ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                                                                   Click="@(item => OnMemberActionAsync(item, team, context.Key, memberActions[0].Value))">
+                                                    <ChildContent>
+                                                        @foreach (var action in memberActions.Skip(1))
+                                                        {
+                                                            <RadzenSplitButtonItem Text="@action.Text" Value="@action.Value" Icon="@action.Icon"/>
+                                                        }
+                                                    </ChildContent>
+                                                </RadzenSplitButton>
+                                            }
                                         </Template>
                                     </RadzenDataGridColumn>
                                 </Columns>
@@ -723,6 +726,37 @@ else
     /// The actions available on a team, in priority order — the first is the split button's default
     /// (primary) action, with "Invite user" preferred when available.
     /// </summary>
+    private const string CopyInviteAction = "copy-invite";
+    private const string RemoveMemberAction = "remove-member";
+    private const string MemberAuditAction = "member-audit";
+
+    /// <summary>
+    /// Row actions for one member, in the order they collapse: the first is the primary button, the rest
+    /// go in the dropdown. Built as a list rather than three conditional buttons so a member with several
+    /// available actions gets one split button instead of a row of icons.
+    /// </summary>
+    private List<(string Value, string Text, string Icon)> MemberActions(ITeam<TMember> team, TMember member)
+    {
+        var actions = new List<(string, string, string)>();
+        if (CanManageMembers(team) && member.Invitation != null) actions.Add((CopyInviteAction, "Copy invitation link", "link"));
+        if (ShowAuditLogButton && CanReadMemberAudit(team)) actions.Add((MemberAuditAction, "Audit log", "manage_search"));
+        if (CanManageMembers(team) && _user.Key != member.Key && member.AccessLevel != AccessLevel.Owner) actions.Add((RemoveMemberAction, "Remove member", "remove"));
+        return actions;
+    }
+
+    private Task OnMemberActionAsync(RadzenSplitButtonItem item, ITeam<TMember> team, string memberKey, string defaultValue)
+        => InvokeMemberActionAsync(item?.Value ?? defaultValue, team, memberKey);
+
+    private async Task InvokeMemberActionAsync(string value, ITeam<TMember> team, string memberKey)
+    {
+        switch (value)
+        {
+            case CopyInviteAction: await CopyInvitationLink(team, memberKey); break;
+            case MemberAuditAction: await OpenMemberAuditLogAsync(team, memberKey); break;
+            case RemoveMemberAction: await RemoveUserFromTeam(team, memberKey); break;
+        }
+    }
+
     private List<(string Value, string Text, string Icon)> TeamActions(ITeam<TMember> team)
     {
         var actions = new List<(string, string, string)>();
@@ -779,14 +813,17 @@ else
         var user = _users.FirstOrDefault(x => x.Key == memberKey);
         var identity = user?.EMail ?? user?.Name ?? memberKey;
 
-        var pinned = new Features.Audit.AuditPinnedFilter
+        var pinned = new Tharga.Team.Blazor.Features.Audit.AuditPinnedFilter
         {
             CallerIdentity = identity,
             TeamKey = team.Key
         };
 
+        // Fully qualified deliberately. Razor resolves a component tag by @using or by full name only —
+        // it does not walk enclosing namespaces the way C# does, so a partially-qualified tag compiles
+        // clean and renders as an unknown HTML element: an empty dialog, no exception, no log.
         await DialogService.OpenAsync($"Audit log — {identity}", _ =>
-            @<Features.Audit.AuditLogView PinnedFilter="@pinned" />,
+            @<Tharga.Team.Blazor.Features.Audit.AuditLogView PinnedFilter="@pinned" />,
             new DialogOptions { Width = "90vw", Height = "85vh", Resizable = true, Draggable = true });
     }
 
