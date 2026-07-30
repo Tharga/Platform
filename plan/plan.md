@@ -61,8 +61,9 @@ Feature scope in `feature.md`. Tests run before each commit; `plan.md` is update
       list; (c) `ConfigureSystemScopes` does **not** withhold `teams:delete` / `users:manage` from system
       API keys — the framework auto-registers both; (d) the `users:manage`-alone asymmetry for user delete.
 
-- [ ] **6. Push and hand over for testing**
-      Do **not** open the PR — the close-out commit must be last.
+- [~] **6. Push and hand over for testing**
+      *Pushed 2026-07-30 as `feature/teams-tab-action-templates` (3 commits). PR deliberately not opened —
+      the close-out commit must be last. Awaiting the user's test.*
 
 ## Remaining (close-out, only on the user's confirmation)
 
