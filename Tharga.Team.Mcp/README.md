@@ -15,7 +15,7 @@ Team bridge for [Tharga.Mcp](https://www.nuget.org/packages/Tharga.Mcp). Connect
 - Populates `IMcpContext` from the authenticated `HttpContext.User` (works with both OIDC and API Key authentication)
 - Enforces provider scope class: `McpScope.System` requires `Roles.Developer`, `McpScope.Team` requires team membership
 - Emits audit log entries for every MCP tool invocation — success and failure
-- Registers built-in `mcp:*` scopes in Team's scope registry
+- Registers built-in `mcp:*` scopes in **both** of Team's scope registries — see below
 - Requires authentication on the MCP endpoint — anonymous requests are rejected
 
 ## Quick start
@@ -29,6 +29,40 @@ builder.Services.AddThargaMcp(mcp =>
 
 app.UseThargaMcp();
 ```
+
+## Granting `mcp:discover`
+
+`AddTeam()` registers the built-in `mcp:*` scopes in both the **team** and the **system** registry,
+because both routes to holding one are legitimate. `mcp:discover` can therefore be granted three ways:
+
+| Route | How | Where it authorizes |
+|---|---|---|
+| Access level | Registered at `AccessLevel.Viewer`, so any member at Viewer or above holds it | Inside the caller's **selected team** |
+| App role | `o.ConfigureSystemRoles = r => r.Map("Developer", McpScopes.Discover);` | System-wide, no team needed |
+| System API key | Grant it when minting the key | System-wide, no team needed |
+
+`IMcpScopeChecker` accepts either provenance. A **system** grant authorizes with no team selected; a
+**team** grant authorizes only alongside a `TeamKey` claim — a scope claim without a team context is not
+a grant, and is refused.
+
+```csharp
+public sealed class MyTool(IMcpScopeChecker scopeChecker)
+{
+    public Task<string> ListAsync()
+    {
+        scopeChecker.Require(McpScopes.Discover);   // throws UnauthorizedAccessException if not held
+        ...
+    }
+}
+```
+
+`IMcpScopeChecker` is an opt-in helper for tools that want to enforce a scope imperatively; nothing in
+this package or `Tharga.MongoDB.Mcp` calls it for you.
+
+> **Behaviour change.** `mcp:discover` was previously registered as a team scope but checked only against
+> system claims, so an access-level grant could never satisfy it and a tool calling
+> `Require(McpScopes.Discover)` rejected every caller — including a team Owner. If you wrote a test
+> asserting that rejection, it now passes the caller instead.
 
 ## User and team resources
 

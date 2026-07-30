@@ -11,19 +11,25 @@
 @inject NotificationService NotificationService
 @inject ContextMenuService ContextMenuService
 
-@if (_apiKeyServiceMissing)
+@* Branch order is a tested decision, not markup convention — see AccessGuardState. Testing the access
+   flag ahead of the loaded flag renders "Access denied" on the first frame of every load, because both
+   default to false and access is only resolved after the awaits in OnInitializedAsync. *@
+@{
+    var guard = AccessGuardState.Resolve(_apiKeyServiceMissing, _teamLoaded, _hasAccess);
+}
+@if (guard == AccessGuard.NotConfigured)
 {
     <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat">
         API key management is not configured. Register <code>IApiKeyManagementService</code> in Program.cs to enable this view.
     </RadzenAlert>
 }
-else if (!_hasAccess)
-{
-    <RadzenText>Access denied. You need the API key management permission to view this page.</RadzenText>
-}
-else if (!_teamLoaded)
+else if (guard == AccessGuard.Loading)
 {
     <Loading />
+}
+else if (guard == AccessGuard.Denied)
+{
+    <RadzenText>Access denied. You need the API key management permission to view this page.</RadzenText>
 }
 else if (_selectedTeam == null)
 {

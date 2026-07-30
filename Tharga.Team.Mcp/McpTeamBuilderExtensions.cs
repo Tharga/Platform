@@ -34,10 +34,18 @@ public static class McpTeamBuilderExtensions
 
         builder.Services.TryAddSingleton<IMcpScopeChecker, McpScopeChecker>();
 
-        // Register built-in mcp:* scopes. Uses AddThargaScopes, which creates the registry if missing.
+        // Register built-in mcp:* scopes into both registries, because both routes to holding one are
+        // legitimate: an access level grants it inside a team, while an app role or a system API key
+        // grants it system-wide. Registering only as a team scope left it grantable but unsatisfiable —
+        // the checker read system claims alone. Each extension creates its registry if missing.
         builder.Services.AddThargaScopes(scopes =>
         {
             scopes.Register(McpScopes.Discover, AccessLevel.Viewer, "Discover and list available MCP tools and resources.");
+        });
+
+        builder.Services.AddThargaSystemScopes(scopes =>
+        {
+            scopes.Register(McpScopes.Discover, "Discover and list available MCP tools and resources.");
         });
 
         // Always-on user-scope and team-scope resource providers. They self-gate on the

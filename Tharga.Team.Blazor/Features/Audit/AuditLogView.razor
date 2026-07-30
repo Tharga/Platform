@@ -1,14 +1,25 @@
 ﻿@using Tharga.Team.Service.Audit
 
-@if (!_hasAccess)
-{
-    <RadzenText>Access denied.</RadzenText>
+@* Branch order is a tested decision, not markup convention — see AccessGuardState. This view had the
+   same defect as ApiKeyView: _hasAccess defaults to false and is only assigned after an await, so
+   testing it first rendered "Access denied." on the first frame of every open, including inside the
+   per-row audit dialogs where it is the whole content. *@
+@{
+    var guard = AccessGuardState.Resolve(_auditLoggerMissing, _accessResolved, _hasAccess);
 }
-else if (_auditLoggerMissing)
+@if (guard == AccessGuard.NotConfigured)
 {
     <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat">
         Audit logging is not configured. Call <code>AddThargaAuditLogging()</code> in Program.cs to enable this view.
     </RadzenAlert>
+}
+else if (guard == AccessGuard.Loading)
+{
+    <Loading />
+}
+else if (guard == AccessGuard.Denied)
+{
+    <RadzenText>Access denied.</RadzenText>
 }
 else if (_mongoAvailable == null)
 {

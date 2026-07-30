@@ -51,6 +51,7 @@
   <ItemGroup>
     <!-- API-key lifecycle registration is internal; AddThargaTeam (Blazor) wires it and tests exercise it. -->
     <InternalsVisibleTo Include="Tharga.Team.Blazor" />
+    <InternalsVisibleTo Include="Tharga.Team.Mcp" />
     <InternalsVisibleTo Include="Tharga.Team.Service.Tests" />
   </ItemGroup>
 </Project>
