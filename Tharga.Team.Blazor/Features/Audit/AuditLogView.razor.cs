@@ -38,6 +38,12 @@ public partial class AuditLogView : ComponentBase
     private const int ChartQueryLimit = 5000;
 
     private bool _hasAccess;
+
+    /// <summary>
+    /// Whether <see cref="_hasAccess"/> has been computed yet. Without this the view cannot tell "denied"
+    /// from "not asked yet", and renders the former on every first frame.
+    /// </summary>
+    private bool _accessResolved;
     private CompositeAuditLogger _auditLogger;
     private bool _auditLoggerMissing;
     private bool? _mongoAvailable;
@@ -81,6 +87,7 @@ public partial class AuditLogView : ComponentBase
             ? TeamScopeGate.HasTeamScope(user, AuditScopes.Read, pinnedTeam)
               || TeamScopeGate.HasSystemScope(user, AuditScopes.Read)
             : TeamScopeGate.HasSystemScope(user, AuditScopes.Read);
+        _accessResolved = true;
         if (!_hasAccess) return;
 
         _auditLogger = ServiceProvider.GetService<CompositeAuditLogger>();
