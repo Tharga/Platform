@@ -11,6 +11,42 @@ public record ThargaBlazorOptions : BlazorOptions
     internal Type _apiKeyService;
     internal Type _claimsEnricher;
     internal Type _textProvider;
+    internal Type _iconStoreType;
+    internal readonly List<Type> _iconSourceTypes = [];
+
+    /// <summary>
+    /// Icon upload limits — maximum bytes and permitted content types.
+    /// </summary>
+    public IconOptions Icon { get; set; } = new();
+
+    /// <summary>
+    /// Runtime-adjustable icon behaviour: Gravatar on/off and style, a default image, upload toggles.
+    /// </summary>
+    /// <remarks>
+    /// Registered as a singleton and mutable at runtime, so the instance itself is the contract — the
+    /// facade assigns its own object here rather than copying values, to keep a host's later changes
+    /// visible to the resolver.
+    /// </remarks>
+    public IconSettings IconSettings { get; internal set; } = new();
+
+    /// <summary>
+    /// Replace the icon <b>storage</b> backend (<see cref="IIconStore"/> — where icon bytes live). When
+    /// not set, the built-in <c>MongoIconStore</c> (from <c>AddThargaTeamRepository</c>) is used.
+    /// </summary>
+    public void AddIconStore<T>() where T : class, IIconStore
+    {
+        _iconStoreType = typeof(T);
+    }
+
+    /// <summary>
+    /// Add an icon <b>source</b> (<see cref="IIconSource"/> — where a displayed image comes from). May be
+    /// called more than once; sources are consulted in registration order after
+    /// <see cref="StoredIconSource"/>, so a stored icon takes precedence and custom sources fill in.
+    /// </summary>
+    public void AddIconSource<T>() where T : class, IIconSource
+    {
+        _iconSourceTypes.Add(typeof(T));
+    }
 
     /// <summary>
     /// Automatically create the first team for users.

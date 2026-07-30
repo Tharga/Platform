@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -77,6 +77,13 @@ public static class ThargaTeamRegistration
             o._memberType = options.Blazor._memberType;
             o._apiKeyService = options.Blazor._apiKeyService;
             o._claimsEnricher = options.Blazor._claimsEnricher;
+
+            // Icon configuration lives on the facade's own options for backwards compatibility, so forward
+            // it into the layer that now registers the chain.
+            o.Icon = options.Icon;
+            o.IconSettings = options.IconSettings;
+            o._iconStoreType = options._iconStoreType;
+            o._iconSourceTypes.AddRange(options._iconSourceTypes);
         }, builder.Configuration);
 
         // API key lifecycle handlers (opt-in) — wrap IApiKeyAdministrationService once and register the
@@ -164,31 +171,9 @@ public static class ThargaTeamRegistration
             builder.Services.AddScoped(typeof(IUserDirectoryService), options._userDirectoryServiceType);
         }
 
-        // Icons — two seams with built-in defaults. Storage: a custom IIconStore wins over the built-in
-        // MongoIconStore (registered by AddThargaTeamRepository). Sourcing: StoredIconSource is registered
-        // FIRST so a platform-stored icon takes precedence, then the consumer sources fill in.
-        builder.Services.Configure<IconOptions>(io =>
-        {
-            io.MaxBytes = options.Icon.MaxBytes;
-            io.AllowedContentTypes = options.Icon.AllowedContentTypes;
-        });
-        if (options._iconStoreType != null)
-        {
-            builder.Services.AddScoped(typeof(IIconStore), options._iconStoreType);
-        }
-        builder.Services.AddSingleton(options.IconSettings);
-        builder.Services.AddScoped<IIconSource, StoredIconSource>();
-        foreach (var sourceType in options._iconSourceTypes)
-        {
-            builder.Services.AddScoped(typeof(IIconSource), sourceType);
-        }
-        // Fallbacks for users with no uploaded/custom icon (an upload thus overrides them): Gravatar (if
-        // enabled), then a configured generic default image, then the avatar's own initials.
-        builder.Services.AddScoped<IIconSource, GravatarIconSource>();
-        builder.Services.AddScoped<IIconSource, DefaultIconSource>();
-        builder.Services.AddScoped<IIconResolver, IconResolver>();
-        builder.Services.AddScoped<Features.User.AvatarChangeNotifier>();
-        builder.Services.AddHttpClient(IconHttpClientName);
+        // Icons are registered by AddThargaTeamBlazor, which this method already calls — see the options
+        // forwarding above. They used to be registered here, which left the granular path unable to render
+        // LoginDisplay at all (Tharga/Team#157).
 
         // Email sender: custom type > SMTP (if EmailOptions set) > nothing
         if (options._emailSenderType != null)
@@ -225,30 +210,11 @@ public static class ThargaTeamRegistration
             app.UseThargaControllers();
         }
 
-        MapIconEndpoint(app);
+        app.UseThargaTeamBlazor();
     }
 
     /// <summary>
     /// Serves stored icons at <see cref="IconRoute.Base"/>/{reference} for authenticated callers. The
     /// reference changes whenever the icon changes, so a served URL is immutable and cached aggressively.
     /// </summary>
-    private static void MapIconEndpoint(WebApplication app)
-    {
-        app.MapGet($"{IconRoute.Base}/{{reference}}", async (string reference, HttpContext context, CancellationToken cancellationToken) =>
-        {
-            if (context.User?.Identity?.IsAuthenticated != true)
-                return Results.Unauthorized();
-
-            var store = context.RequestServices.GetService<IIconStore>();
-            if (store == null)
-                return Results.NotFound();
-
-            var content = await store.LoadAsync(reference, cancellationToken);
-            if (content == null)
-                return Results.NotFound();
-
-            context.Response.Headers.CacheControl = "private, max-age=31536000, immutable";
-            return Results.File(content.Data, content.ContentType);
-        });
-    }
 }

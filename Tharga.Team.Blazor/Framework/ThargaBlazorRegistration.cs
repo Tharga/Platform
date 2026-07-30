@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
@@ -179,7 +180,86 @@ public static class ThargaBlazorRegistration
             DecorateUserServiceWithAuthorization(services);
         }
 
+        RegisterIcons(services, o);
+
         services.AddSingleton(Options.Create(o));
+    }
+
+    /// <summary>
+    /// Icons — two seams with built-in defaults. Storage: a custom <see cref="IIconStore"/> wins over the
+    /// built-in <c>MongoIconStore</c> (registered by <c>AddThargaTeamRepository</c>). Sourcing:
+    /// <see cref="StoredIconSource"/> is registered FIRST so a stored icon takes precedence, then consumer
+    /// sources fill in, then the fallbacks.
+    /// </summary>
+    /// <remarks>
+    /// Registered here rather than in the <c>AddThargaTeam</c> facade, and unconditionally. <c>LoginDisplay</c>
+    /// sits in the layout and hard-injects <see cref="Features.User.AvatarChangeNotifier"/>, so a host on the
+    /// documented granular path used to get <c>InvalidOperationException</c> on every render, taking the
+    /// circuit with it (Tharga/Team#157). An opt-in would have reproduced the same crash for anyone who
+    /// forgot it, and <c>ValidateOnBuild</c> cannot warn them — Blazor resolves <c>@inject</c> properties at
+    /// render time, outside the graph the validator walks.
+    /// </remarks>
+    private static void RegisterIcons(IServiceCollection services, ThargaBlazorOptions o)
+    {
+        services.Configure<IconOptions>(io =>
+        {
+            io.MaxBytes = o.Icon.MaxBytes;
+            io.AllowedContentTypes = o.Icon.AllowedContentTypes;
+        });
+
+        if (o._iconStoreType != null)
+        {
+            services.AddScoped(typeof(IIconStore), o._iconStoreType);
+        }
+
+        services.AddSingleton(o.IconSettings);
+        services.AddScoped<IIconSource, StoredIconSource>();
+        foreach (var sourceType in o._iconSourceTypes)
+        {
+            services.AddScoped(typeof(IIconSource), sourceType);
+        }
+
+        // Fallbacks for users with no uploaded/custom icon (an upload thus overrides them): Gravatar (if
+        // enabled), then a configured generic default image, then the avatar's own initials.
+        services.AddScoped<IIconSource, GravatarIconSource>();
+        services.AddScoped<IIconSource, DefaultIconSource>();
+        services.AddScoped<IIconResolver, IconResolver>();
+        services.AddScoped<Features.User.AvatarChangeNotifier>();
+        services.AddHttpClient(IconHttpClientName);
+    }
+
+    /// <summary>Named client used to fetch remote icon images (e.g. Gravatar).</summary>
+    internal const string IconHttpClientName = "tharga-icon-download";
+
+    /// <summary>
+    /// Maps the middleware and endpoints the Blazor layer needs — currently the icon-serving endpoint at
+    /// <see cref="IconRoute.Base"/>/{reference}. Call this once on the built application when using the
+    /// granular setup path; <c>UseThargaTeam</c> calls it for you.
+    /// </summary>
+    /// <remarks>
+    /// The counterpart to <see cref="AddThargaTeamBlazor(IHostApplicationBuilder, Action{ThargaBlazorOptions})"/>,
+    /// mirroring the existing <c>AddThargaAuth</c> / <c>UseThargaAuth</c> pair. Without it a granular host
+    /// could register the icon chain and still not serve a stored icon back, because the endpoint was
+    /// mapped only by the facade (Tharga/Team#157).
+    /// </remarks>
+    public static void UseThargaTeamBlazor(this WebApplication app)
+    {
+        app.MapGet($"{IconRoute.Base}/{{reference}}", async (string reference, HttpContext context, CancellationToken cancellationToken) =>
+        {
+            if (context.User?.Identity?.IsAuthenticated != true)
+                return Results.Unauthorized();
+
+            var store = context.RequestServices.GetService<IIconStore>();
+            if (store == null)
+                return Results.NotFound();
+
+            var content = await store.LoadAsync(reference, cancellationToken);
+            if (content == null)
+                return Results.NotFound();
+
+            context.Response.Headers.CacheControl = "private, max-age=31536000, immutable";
+            return Results.File(content.Data, content.ContentType);
+        });
     }
 
     private static void DecorateWithAuthorization(IServiceCollection services, TeamLifecycleOptions lifecycle)
