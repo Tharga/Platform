@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Tharga.Mcp;
 using Tharga.Team;
 
@@ -90,14 +90,23 @@ public sealed class TeamResourceProvider : IMcpResourceProvider
         };
     }
 
+    /// <remarks>
+    /// Reads by key rather than by scanning the caller's memberships. <c>GetTeamsAsync()</c> resolves the
+    /// current <i>user</i>, so an API key — authenticated, and carrying the team in a server-issued claim —
+    /// had no teams and could never read the very resource <c>ListResourcesAsync</c> had just advertised
+    /// to it. Listing gated on the claim while reading gated on membership, and the two disagreed.
+    /// <para>
+    /// <b>Safe only because <paramref name="teamKey"/> comes from <c>IMcpContext.TeamId</c></b> — the
+    /// caller's own <c>TeamKey</c> claim, issued by the server — and never from the request. A caller can
+    /// therefore only ever name its own team. <see cref="ITeamService.GetTeamByKeyAsync"/> is deliberately
+    /// unauthorized ("regardless of the caller's membership"), so passing a caller-supplied key here would
+    /// be a cross-team read with nothing to stop it.
+    /// </para>
+    /// </remarks>
     private async Task<McpResourceContent> ReadTeamAsync(string teamKey, CancellationToken cancellationToken)
     {
-        ITeam team = null;
-        await foreach (var candidate in _teamService.GetTeamsAsync().WithCancellation(cancellationToken))
-        {
-            if (candidate.Key == teamKey) { team = candidate; break; }
-        }
-        if (team == null) throw new InvalidOperationException($"Team '{teamKey}' not found for the caller.");
+        var team = await _teamService.GetTeamByKeyAsync(teamKey);
+        if (team == null) throw new InvalidOperationException($"Team '{teamKey}' not found.");
 
         var payload = new
         {

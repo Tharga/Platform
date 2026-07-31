@@ -51,6 +51,54 @@ public class AddTeamTests
         Assert.Equal("Host registration.", registered[0].Description);
     }
 
+    /// <summary>
+    /// The credential an MCP caller actually presents. Without this the endpoint's policy names no scheme,
+    /// so it authenticates against the application's default one — OIDC in a Blazor host — and an agent
+    /// with a valid API key is answered with a 302 to a login page (Tharga/Mcp#18).
+    /// </summary>
+    [Fact]
+    public void AddTeam_ContributesTheApiKeyAuthenticationScheme()
+    {
+        var services = new ServiceCollection();
+
+        services.AddThargaMcp(mcp => mcp.AddTeam());
+
+        var options = services.BuildServiceProvider().GetRequiredService<ThargaMcpOptions>();
+        Assert.Contains(ApiKeyConstants.SchemeName, options.AuthenticationSchemes);
+    }
+
+    /// <summary>A host may add its own alongside; contributing must not replace what is already there.</summary>
+    [Fact]
+    public void AddTeam_LeavesAHostContributedSchemeInPlace()
+    {
+        var services = new ServiceCollection();
+
+        services.AddThargaMcp(mcp =>
+        {
+            mcp.Options.AuthenticationSchemes.Add("Cookies");
+            mcp.AddTeam();
+        });
+
+        var options = services.BuildServiceProvider().GetRequiredService<ThargaMcpOptions>();
+        Assert.Equal(["Cookies", ApiKeyConstants.SchemeName], options.AuthenticationSchemes);
+    }
+
+    /// <summary>Registering twice must not duplicate the scheme in the policy.</summary>
+    [Fact]
+    public void AddTeam_DoesNotContributeTheSchemeTwice()
+    {
+        var services = new ServiceCollection();
+
+        services.AddThargaMcp(mcp =>
+        {
+            mcp.AddTeam();
+            mcp.AddTeam();
+        });
+
+        var options = services.BuildServiceProvider().GetRequiredService<ThargaMcpOptions>();
+        Assert.Single(options.AuthenticationSchemes, x => x == ApiKeyConstants.SchemeName);
+    }
+
     [Fact]
     public void ReplacesDefaultContextAccessorWithHttpContextBacked()
     {

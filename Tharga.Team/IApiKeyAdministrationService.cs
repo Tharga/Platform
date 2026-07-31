@@ -1,4 +1,4 @@
-namespace Tharga.Team;
+﻿namespace Tharga.Team;
 
 /// <summary>
 /// Service for managing and validating API keys.
@@ -17,7 +17,14 @@ public interface IApiKeyAdministrationService
     /// <summary>Generates a new API key value for an existing key entry. Returns the entity with the raw key visible once.</summary>
     Task<IApiKey> RefreshKeyAsync(string teamKey, string key);
 
-    /// <summary>Locks an API key so it can no longer be used for authentication. Verifies team ownership.</summary>
+    /// <summary>
+    /// Discards the stored secret so the raw key value can never be retrieved again. Verifies team ownership.
+    /// </summary>
+    /// <remarks>
+    /// <b>This does not disable the key.</b> A locked key still authenticates — locking only makes the
+    /// value unrecoverable, which is why <c>ApiKeyOptions.AutoLockKeys</c> can lock every key at creation
+    /// without breaking anything. To stop a key working, delete it; there is no disable yet.
+    /// </remarks>
     Task LockKeyAsync(string teamKey, string key);
 
     /// <summary>Deletes an API key. Verifies team ownership.</summary>
@@ -48,7 +55,10 @@ public interface IApiKeyAdministrationService
     /// <summary>Regenerates a system key's raw value. Returns the entity with the raw key visible once.</summary>
     Task<IApiKey> RefreshSystemKeyAsync(string key);
 
-    /// <summary>Locks a system API key so it can no longer authenticate.</summary>
+    /// <summary>
+    /// Discards the stored secret of a system API key so its raw value can never be retrieved again.
+    /// </summary>
+    /// <remarks><b>This does not disable the key</b> — see <see cref="LockKeyAsync"/>.</remarks>
     Task LockSystemKeyAsync(string key);
 
     /// <summary>Deletes a system API key.</summary>
