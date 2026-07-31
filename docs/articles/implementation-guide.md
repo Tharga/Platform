@@ -323,6 +323,24 @@ builder.Services.AddThargaControllers(o =>
 });
 ```
 
+#### Which credentials reach the API
+
+`AuthenticationSchemes` lists the schemes Tharga's own controllers accept. It defaults to the API-key
+scheme alone, which is what an API caller normally presents:
+
+```csharp
+builder.Services.AddThargaControllers(o =>
+{
+    o.AuthenticationSchemes.Add(CookieAuthenticationDefaults.AuthenticationScheme);   // also allow a signed-in user
+});
+```
+
+Naming the schemes up front matters more than it looks. A policy that names **no** scheme authenticates
+against the application's *default* scheme — in a Blazor host that is OIDC, so an unauthenticated API call
+is answered with a **302 to a login page** instead of a `401`. An agent or script following that redirect
+receives HTML and a `200`. This is the same trap as [`Tharga/Mcp#18`](https://github.com/Tharga/Mcp/issues/18),
+which is why both surfaces now configure schemes explicitly.
+
 ### Customizing the OpenAPI document (.NET 10+)
 
 `AddThargaControllers` owns the OpenAPI document and registers the API-key security scheme on it. To add your own `IOpenApiDocumentTransformer` / `IOpenApiOperationTransformer` — for example, per-scope operation filtering so the generated spec only exposes operations the caller is authorized for — use the `ConfigureOpenApi` hook rather than calling `AddOpenApi("v1", …)` directly:
@@ -340,6 +358,42 @@ The callback receives the same `OpenApiOptions` Tharga configures, so your trans
 - OpenAPI endpoint with API key security scheme
 - Swagger UI at `/<SwaggerRoutePrefix>`
 - API key header convention (`X-API-KEY`)
+- **`GET /api/audit`** — the audit log over REST (see below)
+
+### Reading the audit log over REST
+
+`AddThargaControllers` ships one controller of its own, so audit data is reachable from a script or an
+agent rather than only from the Blazor view.
+
+```
+GET /api/audit?teamKey=ABC123&from=2026-01-01&take=100
+X-API-KEY: <key>
+```
+
+| Parameter | Meaning |
+|---|---|
+| `teamKey` | Restrict to one team. **Omit to read across all teams** — that requires a *system* `audit:read` grant |
+| `from`, `to` | Time window |
+| `feature`, `action` | Filter by what was done |
+| `success` | `true`/`false` |
+| `skip`, `take` | Paging; `take` is capped at 500 |
+
+Authorization is the **same rule the Blazor view uses** — both call `AuditAccess.CanRead`, so the two
+surfaces cannot drift apart as either changes:
+
+| Caller | Result |
+|---|---|
+| No credential | `401` |
+| Holds team `audit:read` for that team | `200` |
+| Holds team `audit:read` for a *different* team | `403` |
+| Omits `teamKey` without a **system** `audit:read` grant | `403` |
+| Holds system `audit:read` | `200`, any team or all teams |
+
+`audit:read` is registered at `AccessLevel.Administrator`, so a Viewer- or User-level caller is refused
+even for its own team.
+
+Denials are `403`, never `404` — a `404` would confirm whether a team exists to a caller not allowed to
+know that.
 
 ### Usage
 
