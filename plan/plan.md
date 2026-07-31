@@ -76,17 +76,24 @@ Ordered so the Critical fix (#157) can ship even if the bUnit setup in step 2 pr
 
 - [x] **8. Verify build + full suite, commit** — *Done: 1065 passed / 0 failed; build clean.*
 
-- [ ] **9. Documentation** (#160 item 4)
+- [x] **9. Documentation** (#160 item 4)
+      *Done — `icons.md` gained a granular-path section (no extra registration needed; just
+      `UseThargaTeamBlazor()` for the endpoint) with an upgrade note telling workaround-holders to delete
+      theirs, the `IIconStore` forwarding trap with code showing accept-and-forward, a callout that
+      uploads are now refused rather than discarded, and a note that the dialog wording varies by
+      processor. **Also reworded both `RequireIconStore` messages** — they named only registration, which
+      is misleading in the common case where the store IS registered and the subclass did not forward the
+      constructor parameter. That was the issue's own complaint about the message.*
       `docs/articles/icons.md`: a granular-path section (registration + `UseThargaTeamBlazor`), and the
       `IIconStore` forwarding requirement for `TeamServiceRepositoryBase` / `UserServiceRepositoryBase`
       subclasses. Reword `RequireIconStore()`'s message to mention the constructor parameter, since it
       currently points away from the cause. Separate `docs:` commit.
 
-- [ ] **10. Version line 3.7 → 3.8**
+- [x] **10. Version line 3.7 → 3.8** — *Done.*
       New public API (`UseThargaTeamBlazor`, `ThargaBlazorOptions.IconSettings`). Must land in this PR —
       the constant is hand-maintained and nothing in CI bumps it.
 
-- [ ] **11. Push and hand over for testing**
+- [~] **11. Push and hand over for testing**
       Do **not** open the PR — the close-out commit must be last.
 
 ## Remaining (close-out, only on the user's confirmation)
