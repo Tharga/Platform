@@ -36,6 +36,40 @@ app.UseAuthorization();
 app.Run();
 ```
 
+## Reading the audit log over REST
+
+`AddThargaControllers` registers one controller of its own — `GET /api/audit` — so audit data is reachable
+from a script or an agent, not only from the Blazor view.
+
+```
+GET /api/audit?teamKey=ABC123&from=2026-01-01&take=100
+X-API-KEY: <key>
+```
+
+Filters: `teamKey`, `from`, `to`, `feature`, `action`, `success`, `skip`, `take` (capped at 500).
+**Omitting `teamKey` reads across all teams** and requires a *system* `audit:read` grant.
+
+Authorization is the same `AuditAccess.CanRead` rule the Blazor `AuditLogView` uses, so the two surfaces
+cannot drift. A team grant reaches only its own team; `audit:read` is registered at
+`AccessLevel.Administrator`, so Viewer- and User-level callers are refused even for their own team.
+Denials are `403` rather than `404`, so they do not reveal whether a team exists.
+
+## Which credentials reach the API
+
+`ThargaControllerOptions.AuthenticationSchemes` lists the schemes Tharga's controllers accept, defaulting
+to the API-key scheme. Add your own to also admit a signed-in user:
+
+```csharp
+using Microsoft.AspNetCore.Authentication.Cookies;
+
+builder.Services.AddThargaControllers(o =>
+    o.AuthenticationSchemes.Add(CookieAuthenticationDefaults.AuthenticationScheme));
+```
+
+A policy naming no scheme falls back to the application's **default** scheme — OIDC in a Blazor host — so
+an unauthenticated API call gets a 302 to a login page rather than a 401, and an agent following it
+receives HTML with a 200. Naming schemes explicitly is what avoids that.
+
 ## Customizing the OpenAPI document
 
 `AddThargaControllers` owns the OpenAPI document (it registers the API-key security scheme on it). To add your own `IOpenApiDocumentTransformer` / `IOpenApiOperationTransformer` — for example, to filter the generated spec down to the operations the current caller is authorized for — use the `ConfigureOpenApi` hook instead of calling `AddOpenApi("v1", …)` yourself:

@@ -80,13 +80,9 @@ public partial class AuditLogView : ComponentBase
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
 
-        // Pinned to a team: audit:read on that team is enough, however the caller came by it.
-        // Unpinned: the view queries every team, so it takes a system-wide grant. Without the distinction a
-        // team administrator whose access level includes audit:read could read the whole system's log.
-        _hasAccess = PinnedFilter?.TeamKey is { } pinnedTeam
-            ? TeamScopeGate.HasTeamScope(user, AuditScopes.Read, pinnedTeam)
-              || TeamScopeGate.HasSystemScope(user, AuditScopes.Read)
-            : TeamScopeGate.HasSystemScope(user, AuditScopes.Read);
+        // Shared with the REST endpoint rather than restated here: the rule decided in two places is the
+        // rule that drifts, and the surface that drifts is the one nobody tested.
+        _hasAccess = AuditAccess.CanRead(user, PinnedFilter?.TeamKey);
         _accessResolved = true;
         if (!_hasAccess) return;
 

@@ -1,4 +1,4 @@
-using Tharga.Team;
+﻿using Tharga.Team;
 
 namespace Tharga.Team.Service;
 
@@ -26,6 +26,12 @@ public static class ApiKeyConstants
 
     /// <summary>OpenAPI security scheme identifier.</summary>
     public const string OpenApiSchemeId = "ApiKey";
+
+    /// <summary>
+    /// Authorization policy for the toolkit's own HTTP endpoints. Requires an authenticated caller against
+    /// <c>ThargaControllerOptions.AuthenticationSchemes</c> — the API-key scheme by default.
+    /// </summary>
+    public const string ThargaApiPolicyName = "ThargaApiPolicy";
 
     /// <summary>Authorization policy name for system-level API keys (keys not bound to a team).</summary>
     public const string SystemPolicyName = "SystemApiKeyPolicy";
