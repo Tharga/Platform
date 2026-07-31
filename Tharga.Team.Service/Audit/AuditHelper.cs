@@ -31,9 +31,16 @@ internal static class AuditHelper
             _ => AuditCallerSource.Unknown
         };
 
-        var callerType = callerSource == AuditCallerSource.Api
-            ? AuditCallerType.ApiKey
-            : AuditCallerType.User;
+        // Only positive evidence names an actor. This used to fall through to User for anything that was
+        // not an API key, so a caller with no HttpContext at all — a hosted service, a message handler —
+        // was recorded as a person with a null identity (Tharga/Team#163). An authenticated principal
+        // under an unrecognised scheme is still a person; the absence of one is not.
+        var callerType = callerSource switch
+        {
+            AuditCallerSource.Api => AuditCallerType.ApiKey,
+            AuditCallerSource.Web => AuditCallerType.User,
+            _ => identity?.IsAuthenticated == true ? AuditCallerType.User : AuditCallerType.Unknown
+        };
 
         return new AuditEntry
         {
