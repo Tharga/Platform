@@ -51,18 +51,30 @@ Ordered so the Critical fix (#157) can ship even if the bUnit setup in step 2 pr
 - **Warning check:** the build's CS1574/CS1587 in `TeamMenuText.cs:5` pre-date this branch (verified
   against master); the one warning this work introduced (obsolete `TestContext`) is fixed.
 
-- [ ] **6. Capability gating for user icons** (#160 items 1 and 3)
+- [x] **6. Capability gating for user icons** (#160 items 1 and 3)
+      *Done — new public `IconCapability` in `Tharga.Team`: `CanPersistUserIcon(Type)` (entity declares
+      `Icon`) and `CanProcessImages(IIconProcessor)` (not the no-op). 7 tests.
+      Both upload dialogs now inject `IIconProcessor` and say **"Images larger than N MB are rejected"**
+      when nothing can downscale, instead of promising downscaling unconditionally.*
       Two decisions, both pure and unit-testable, both about not offering what cannot work:
       - Whether the upload UI is offered at all — needs the entity to declare `Icon` *and* a store.
       - Whether the dialog may claim automatic downscaling — needs a non-no-op `IIconProcessor`.
       Plus a single startup warning when uploads are enabled but the entity cannot persist a reference.
 
-- [ ] **7. Stop the orphan blob** (#160 item 2)
+- [x] **7. Stop the orphan blob** (#160 item 2)
+      *Done, and it closed #160 item 1 in the same move.* The guard is the **same check** for both
+      defects, so it went in one place: `RequireIconPersistence(user)` throws `NotSupportedException`
+      naming the entity type and the fix, **before** any bytes are written. Applied to both entry points
+      — `SetOwnIconAsync` (self-upload) and `SetUserIconAsync` (admin upload); the second was easy to
+      miss reading the issue, which only quotes the repository method.
+      Preferred over compensating after the fact, per the plan: not writing beats deleting. It also
+      matches `RequireIconStore`, which already names its own unmet prerequisite — the internal
+      inconsistency the issue called its strongest argument.
       `UserServiceBase.SetUserIconAsync` stores bytes then writes the reference. Either check the
       capability before storing, or delete the blob when the reference write is skipped. Prefer the former
       — not writing is cheaper than compensating.
 
-- [ ] **8. Verify build + full suite, commit**
+- [x] **8. Verify build + full suite, commit** — *Done: 1065 passed / 0 failed; build clean.*
 
 - [ ] **9. Documentation** (#160 item 4)
       `docs/articles/icons.md`: a granular-path section (registration + `UseThargaTeamBlazor`), and the
