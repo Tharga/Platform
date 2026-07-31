@@ -218,8 +218,12 @@ public abstract class UserServiceBase : IUserService
 
     private IIconStore RequireIconStore()
         => _iconStore ?? throw new NotSupportedException(
-            "No IIconStore is registered. User icons require a registered icon store (the built-in " +
-            "MongoIconStore is registered by AddThargaTeamRepository, or supply one via o.AddIconStore<T>()).");
+            "No IIconStore was supplied to this service. User icons require one, and there are two ways to " +
+            "be missing it: (a) none is registered — the built-in MongoIconStore comes from " +
+            "AddThargaTeamRepository, or supply your own via o.AddIconStore<T>(); or (b) it IS registered " +
+            "but this service did not receive it — UserServiceRepositoryBase takes an optional " +
+            "'IIconStore iconStore = null' constructor parameter, so a subclass that does not forward it " +
+            "gets null here. See docs/articles/icons.md.");
 
     private Task<IUser> GetCurrentUserAsync() => GetCurrentUserAsync(null);
 

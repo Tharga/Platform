@@ -77,6 +77,32 @@ public record UserEntity : EntityBase, IUser
 }
 ```
 
+> **Without that property, uploads are refused.** The reference write is a no-op on an entity that does
+> not declare `Icon`, so an upload used to store the image bytes, silently discard the reference, and
+> report success — an unchanged avatar, an orphan in the icon store, and nothing logged. Both
+> `SetOwnIconAsync` and `SetUserIconAsync` now throw `NotSupportedException` naming the entity type,
+> **before** any bytes are written. If you see it, declare the property.
+
+### Forwarding `IIconStore` in a service subclass
+
+`MongoIconStore` being registered by `AddThargaTeamRepository` is necessary but not sufficient.
+`TeamServiceRepositoryBase` and `UserServiceRepositoryBase` take the store as an **optional** constructor
+parameter, so a subclass that does not forward it receives `null` and every icon operation throws — even
+though the store is correctly registered:
+
+```csharp
+public class UserService(
+    IUserRepository<UserEntity> repository,
+    IHttpContextAccessor httpContextAccessor,
+    IIconStore iconStore = null)                       // accept it...
+    : UserServiceRepositoryBase<UserEntity>(repository, httpContextAccessor, iconStore)   // ...and forward it
+{
+}
+```
+
+Omit the parameter and the failure reads as a registration problem, which sends you to look in the wrong
+place. The exception text names both causes for that reason.
+
 - **Self-service:** the profile page's **Change picture** action (`IUserService.SetOwnIconAsync` /
   `ClearOwnIconAsync`) lets a user upload their own icon as an alternative to Gravatar (gated by
   `IconSettings.AllowUserUpload`). The top-right profile avatar refreshes live.
@@ -88,8 +114,39 @@ resolves stored → Gravatar → initials.
 
 ## Serving endpoint
 
-Stored icons are served at `GET /_tharga/icon/{reference}` (mapped by `UseThargaTeam`) to
-authenticated callers, with an immutable cache header (the reference changes when the icon changes).
+Stored icons are served at `GET /_tharga/icon/{reference}` to authenticated callers, with an immutable
+cache header (the reference changes when the icon changes).
+
+`UseThargaTeam` maps it for you. On the granular setup path, map it yourself — see below.
+
+## The granular setup path
+
+Hosts using `AddThargaAuth` + `AddThargaTeamBlazor` rather than the `AddThargaTeam` facade need no extra
+icon registration: `AddThargaTeamBlazor` registers the whole chain (`IconSettings`, the icon sources,
+`IIconResolver`, `AvatarChangeNotifier`). Configure it on the same options object the facade uses:
+
+```csharp
+builder.AddThargaTeamBlazor(o =>
+{
+    o.IconSettings.AllowUserUpload = false;
+    o.Icon.MaxBytes = 512 * 1024;
+    // o.AddIconStore<MyStore>();  o.AddIconSource<MySource>();
+});
+
+var app = builder.Build();
+app.UseThargaAuth();
+app.UseThargaTeamBlazor();   // maps GET /_tharga/icon/{reference}
+```
+
+`UseThargaTeamBlazor` is the counterpart to `AddThargaTeamBlazor`, mirroring `AddThargaAuth`/`UseThargaAuth`.
+Skip it and avatars still render — stored icons simply 404, falling back to Gravatar or initials.
+
+> **Upgrading from an earlier version?** The icon chain used to be registered only inside the facade, so
+> `LoginDisplay` — which is in the layout and therefore renders on every page — threw on the granular path
+> and took the Blazor circuit with it. `ValidateOnBuild` could not warn you, because Blazor resolves
+> `@inject` properties at render time rather than through the constructor graph it walks. If you added a
+> hand-rolled registration block to work around that, **delete it** now that the library registers the
+> chain itself.
 
 ## Automatic downscaling — `Tharga.Team.Images`
 
@@ -104,6 +161,12 @@ builder.Services.AddThargaImageProcessing();
 It registers an `IIconProcessor` (ImageSharp) that the built-in store runs before validating/storing.
 Images already within bounds and formats it can't decode (e.g. SVG) pass through unchanged. Bring your
 own by registering a custom `IIconProcessor`.
+
+**The upload dialogs say which behaviour is in effect.** Without a real processor the default is
+`NoOpIconProcessor`, which does not resize, so the dialog reads *"Images larger than N MB are rejected"*
+rather than promising downscaling that will not happen. Add the package and it switches to *"Large images
+are downscaled automatically."* `IconCapability.CanProcessImages(processor)` is the same check if you
+need it in your own UI.
 
 ## Quick start
 
