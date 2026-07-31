@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication.Cookies;
-using Radzen;
+﻿using Radzen;
 using Serilog;
 using Serilog.Events;
 using Tharga.Mcp;
@@ -15,8 +14,6 @@ using Tharga.Team.Images;
 using Tharga.Team.MongoDB;
 using Tharga.Team.Service;
 using Tharga.Team.Service.Audit;
-
-const string McpAccessPolicy = "McpAccess";
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -151,22 +148,10 @@ if (!string.IsNullOrEmpty(builder.Configuration["AzureAd:ClientSecret"]))
 
 builder.Services.AddThargaMcp(mcp =>
 {
-    // TEMPORARY WORKAROUND — remove when Tharga/Mcp#18 ships.
-    // RequireAuth off so we can apply our own policy below. The built-in one calls a bare
-    // .RequireAuthorization(), which uses the DEFAULT authentication scheme — OIDC here — so an API key
-    // is never consulted and a key-authenticated caller is redirected to the login page instead. Once
-    // AddTeam() contributes the API-key scheme, this whole block collapses back to mcp.AddTeam() plus a
-    // bare app.UseThargaMcp().
-    mcp.Options.RequireAuth = false;
+    // RequireAuth is on by default and now accepts an API key: AddTeam() contributes the API-key scheme,
+    // so the endpoint no longer falls back to the application's default (OIDC) and reject agents.
     mcp.AddTeam();
 });
-
-// Accept either an API key or an interactive sign-in, so /mcp can be explored both ways and the
-// difference in what each caller sees is the point of the demo.
-builder.Services.AddAuthorizationBuilder()
-    .AddPolicy(McpAccessPolicy, policy => policy
-        .AddAuthenticationSchemes(ApiKeyConstants.SchemeName, CookieAuthenticationDefaults.AuthenticationScheme)
-        .RequireAuthenticatedUser());
 
 // TeamAccessInterceptor is deliberately NOT registered yet. Claim construction reads the user record to
 // decide what the caller may do, so it necessarily precedes any authorization decision — and every
@@ -199,7 +184,7 @@ app.UseHttpsRedirection();
 app.UseAntiforgery();
 
 app.UseThargaTeam();
-app.UseThargaMcp().RequireAuthorization(McpAccessPolicy);
+app.UseThargaMcp();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()

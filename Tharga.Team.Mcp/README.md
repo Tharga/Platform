@@ -1,4 +1,4 @@
-# Tharga Team Mcp
+﻿# Tharga Team Mcp
 [![NuGet](https://img.shields.io/nuget/v/Tharga.Team.Mcp)](https://www.nuget.org/packages/Tharga.Team.Mcp)
 ![Nuget](https://img.shields.io/nuget/dt/Tharga.Team.Mcp)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -63,6 +63,27 @@ this package or `Tharga.MongoDB.Mcp` calls it for you.
 > system claims, so an access-level grant could never satisfy it and a tool calling
 > `Require(McpScopes.Discover)` rejected every caller — including a team Owner. If you wrote a test
 > asserting that rejection, it now passes the caller instead.
+
+## Authentication
+
+`mcp.AddTeam()` contributes the API-key scheme to the MCP endpoint, so the default
+`ThargaMcpOptions.RequireAuth = true` accepts an API key with no further configuration:
+
+```csharp
+builder.Services.AddThargaMcp(mcp => mcp.AddTeam());
+app.UseThargaMcp();
+```
+
+That matters because MCP callers are agents — there is normally no user, so an API key is the expected
+credential. Before `Tharga.Mcp` 1.0.1, `RequireAuth` emitted a policy naming no scheme, which
+authenticated against the application's **default** scheme; in a Blazor host that is OIDC, so a valid key
+was answered with a 302 to a login page ([Tharga/Mcp#18](https://github.com/Tharga/Mcp/issues/18)).
+
+Add your own scheme alongside if you also want a signed-in user to reach the endpoint:
+
+```csharp
+mcp.Options.AuthenticationSchemes.Add(CookieAuthenticationDefaults.AuthenticationScheme);
+```
 
 ## User and team resources
 

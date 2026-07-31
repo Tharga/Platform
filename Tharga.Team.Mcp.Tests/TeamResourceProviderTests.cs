@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Tharga.Mcp;
 using Tharga.Team.Mcp;
 using Tharga.Team;
@@ -84,7 +84,7 @@ public class TeamResourceProviderTests
         team.Name.Returns("Acme");
         team.Icon.Returns((string)null);
         team.ConsentedRoles.Returns(new[] { "viewer" });
-        _teamService.GetTeamsAsync().Returns(ToAsyncEnumerable(team));
+        _teamService.GetTeamByKeyAsync("T-1").Returns(team);
 
         var sut = new TeamResourceProvider(_teamService, _apiKeyService);
         var content = await sut.ReadResourceAsync(TeamResourceProvider.TeamUri, MakeContext("T-1"), TestContext.Current.CancellationToken);
@@ -96,18 +96,57 @@ public class TeamResourceProviderTests
         Assert.Equal(1, root.GetProperty("consentedRoles").GetArrayLength());
     }
 
+    /// <summary>
+    /// A caller authenticated by API key has no *user*, so scanning the caller's memberships found nothing
+    /// and every read failed — even for the team the key names. Listing advertised the resource and
+    /// reading refused it (Tharga/Mcp probing, 2026-07-31).
+    /// </summary>
     [Fact]
-    public async Task ReadResourceAsync_TeamUri_NotInCallerTeams_Throws()
+    public async Task ReadResourceAsync_TeamUri_SucceedsForACallerWithNoUserMemberships()
     {
-        // The MCP caller's TeamKey claim says T-1 but GetTeamsAsync() returns a different team.
-        var otherTeam = Substitute.For<ITeam>();
-        otherTeam.Key.Returns("T-OTHER");
-        _teamService.GetTeamsAsync().Returns(ToAsyncEnumerable(otherTeam));
+        var team = Substitute.For<ITeam>();
+        team.Key.Returns("T-1");
+        team.Name.Returns("Acme");
+        team.ConsentedRoles.Returns(Array.Empty<string>());
+        _teamService.GetTeamByKeyAsync("T-1").Returns(team);
+        _teamService.GetTeamsAsync().Returns(ToAsyncEnumerable<ITeam>());   // no memberships, as for an API key
+
+        var sut = new TeamResourceProvider(_teamService, _apiKeyService);
+        var content = await sut.ReadResourceAsync(TeamResourceProvider.TeamUri, MakeContext("T-1"), TestContext.Current.CancellationToken);
+
+        using var doc = JsonDocument.Parse(content.Text);
+        Assert.Equal("T-1", doc.RootElement.GetProperty("key").GetString());
+    }
+
+    /// <summary>
+    /// The safety property the fix rests on. `GetTeamByKeyAsync` is deliberately unauthorized, so reading
+    /// by key is only safe while the key comes from the caller's own server-issued `TeamKey` claim and
+    /// never from the request. This pins that: the team read is always the one the context names.
+    /// </summary>
+    [Fact]
+    public async Task ReadResourceAsync_TeamUri_ReadsOnlyTheTeamTheContextNames()
+    {
+        var own = Substitute.For<ITeam>();
+        own.Key.Returns("T-1");
+        own.ConsentedRoles.Returns(Array.Empty<string>());
+        _teamService.GetTeamByKeyAsync("T-1").Returns(own);
+
+        var sut = new TeamResourceProvider(_teamService, _apiKeyService);
+        await sut.ReadResourceAsync(TeamResourceProvider.TeamUri, MakeContext("T-1"), TestContext.Current.CancellationToken);
+
+        await _teamService.Received(1).GetTeamByKeyAsync("T-1");
+        await _teamService.DidNotReceive().GetTeamByKeyAsync(Arg.Is<string>(x => x != "T-1"));
+    }
+
+    [Fact]
+    public async Task ReadResourceAsync_TeamUri_UnknownTeam_Throws()
+    {
+        _teamService.GetTeamByKeyAsync("T-9").Returns((ITeam)null);
 
         var sut = new TeamResourceProvider(_teamService, _apiKeyService);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.ReadResourceAsync(TeamResourceProvider.TeamUri, MakeContext("T-1"), TestContext.Current.CancellationToken));
+            sut.ReadResourceAsync(TeamResourceProvider.TeamUri, MakeContext("T-9"), TestContext.Current.CancellationToken));
     }
 
     [Fact]
