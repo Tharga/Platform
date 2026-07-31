@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Tharga.Team.Service.Audit;
@@ -25,6 +26,11 @@ public static class AuditServiceCollectionExtensions
             o.BatchSize = options.BatchSize;
             o.FlushIntervalSeconds = options.FlushIntervalSeconds;
         });
+
+        // Lets work with no HTTP caller declare who it is. Registered unconditionally and regardless of
+        // storage mode: a host that audits at all may have a background job, and the accessor costs
+        // nothing until something pushes a scope.
+        services.TryAddSingleton<IAuditContextAccessor, AuditContextAccessor>();
 
         if (options.StorageMode.HasFlag(AuditStorageMode.Logger))
         {

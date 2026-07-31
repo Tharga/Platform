@@ -42,6 +42,16 @@ internal static class AuditHelper
             _ => identity?.IsAuthenticated == true ? AuditCallerType.User : AuditCallerType.Unknown
         };
 
+        // A declared background actor fills in only where no authenticated caller was found. A real
+        // principal always wins: a scope left open on a pooled thread must never be able to relabel a
+        // genuine user's action as the system's.
+        var ambient = identity?.IsAuthenticated == true ? null : AuditContextAccessor.Ambient;
+        if (ambient != null)
+        {
+            callerType = ambient.CallerType;
+            callerSource = ambient.CallerSource;
+        }
+
         return new AuditEntry
         {
             Timestamp = DateTime.UtcNow,
@@ -53,11 +63,15 @@ internal static class AuditHelper
             Success = success,
             ErrorMessage = errorMessage,
             CallerType = callerType,
-            CorrelationId = Guid.TryParse(httpContextAccessor?.HttpContext?.TraceIdentifier, out var traceId) ? traceId : Guid.NewGuid(),
+            // A job's correlation id groups every entry it writes. Without one each entry gets its own
+            // generated id, which is exactly the grouping a worker needs and cannot reconstruct later.
+            CorrelationId = ambient?.CorrelationId
+                ?? (Guid.TryParse(httpContextAccessor?.HttpContext?.TraceIdentifier, out var traceId) ? traceId : Guid.NewGuid()),
             CallerIdentity = user?.FindFirst(ClaimTypes.Name)?.Value
                 ?? user?.FindFirst("preferred_username")?.Value
                 ?? user?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                ?? user?.FindFirst("name")?.Value,
+                ?? user?.FindFirst("name")?.Value
+                ?? ambient?.Identity,
             CallerKeyId = user?.FindFirst(TeamClaimTypes.ApiKeyId)?.Value,
             TeamKey = teamKey ?? user?.FindFirst(TeamClaimTypes.TeamKey)?.Value,
             AccessLevel = user?.FindFirst(TeamClaimTypes.AccessLevel)?.Value,

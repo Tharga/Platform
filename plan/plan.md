@@ -26,21 +26,30 @@ backlog items are folded in.
       **Tests first, and the important one is the negative:** no `HttpContext` must not produce `User`.
       That single assertion is the defect.
 
-- [~] **3. `IAuditContextAccessor` — the ambient scope** (#163, second half)
+- [x] **3. `IAuditContextAccessor` — the ambient scope** (#163, second half)
+      *Done — `AuditActor` record + `IAuditContextAccessor`/`AuditContextAccessor`, 9 tests covering
+      await-survival, nesting, 20 concurrent flows, double-dispose, and both precedence directions.*
+      **Precedence is narrower than "HTTP wins":** an **authenticated** principal wins, but an anonymous
+      request does not — a job triggered through an unauthenticated endpoint still knows what it is, and
+      "anonymous" is not a caller worth preferring over a declared one.
+      `AuditActor.CorrelationId` also overrides the generated per-entry id, which is what lets a worker
+      pull one job's entries back together — the grouping Eplicta asked for and cannot reconstruct later.
       `AsyncLocal`-backed, with a disposable scope: `using var _ = auditContext.Push(new AuditActor(...))`.
       `BuildEntry` falls back to it when there is no `HttpContext`; an HTTP principal always wins, so a
       stray scope cannot impersonate a real caller.
       Tests: the scope survives `await`; nested scopes restore the outer on dispose; concurrent async flows
       do not see each other's actor; an HTTP caller ignores an ambient scope entirely.
 
-- [ ] **4. Register it, and document the worker pattern**
+- [x] **4. Register it** — *Done: `TryAddSingleton` in `AddThargaAuditLogging`, unconditional and
+      independent of storage mode; the accessor costs nothing until something pushes a scope. The worker
+      pattern is documented in step 9 rather than here.*
       Registration alongside the other audit services, and the usage shape Eplicta needs — a scope per
       claimed job carrying service identity, team key and a per-job correlation id.
 
-- [ ] **5. Verify build + full suite, commit**
+- [x] **5. Verify build + full suite, commit** — *Done: 1083 passed / 0 failed; build clean. #163 is closed and shippable from here.*
       #163 is closed and shippable from here.
 
-- [ ] **6. `CallerUserKey`** (backlog → Audit item 1)
+- [~] **6. `CallerUserKey`** (backlog → Audit item 1)
       Field on `AuditEntry`, populated in `BuildEntry` from the resolved user; `AuditQuery` filter;
       `AuditPinnedFilter`; Mongo round-trip in `MongoDbAuditLogger` (both mapping directions — the entity
       and back). Then switch the per-user audit dialogs in `UsersListView` and `TeamComponent` from
