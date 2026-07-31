@@ -1,4 +1,4 @@
-namespace Tharga.Team.Service.Audit;
+﻿namespace Tharga.Team.Service.Audit;
 
 /// <summary>
 /// Interface for audit logging. Implementations handle storage (MongoDB, ILogger, etc.).
@@ -21,6 +21,9 @@ public record AuditQuery
 
     /// <summary>Filters entries by the API key Guid string that authenticated the caller (matches <see cref="AuditEntry.CallerKeyId"/>).</summary>
     public string CallerKeyId { get; init; }
+
+    /// <summary>Filters entries by the acting user's authentication subject (matches <see cref="AuditEntry.CallerUserIdentity"/>). Exact match, unlike <see cref="CallerIdentity"/>.</summary>
+    public string CallerUserIdentity { get; init; }
 
     public string MethodName { get; init; }
     public string Feature { get; init; }

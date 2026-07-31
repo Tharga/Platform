@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Tharga.Team.Service.Audit;
 
@@ -64,6 +64,47 @@ public class AuditActorTests
 
         Assert.Equal(AuditCallerType.User, entry.CallerType);
         Assert.Equal(AuditCallerSource.Unknown, entry.CallerSource);
+    }
+
+    /// <summary>
+    /// The stable identifier. <see cref="AuditEntry.CallerIdentity"/> resolves through a fallback chain
+    /// and is matched by substring, so a dialog pinned to an email finds nothing when the identity
+    /// provider put a display name in the name claim. This one is the subject or nothing.
+    /// </summary>
+    [Fact]
+    public void CallerUserIdentity_IsTheSubject_NotTheDisplayName()
+    {
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.Name, "Ada Lovelace"),
+            new Claim(ClaimTypes.NameIdentifier, "sub-123")
+        ], "Cookies"));
+
+        var entry = Build(Accessor(principal));
+
+        Assert.Equal("Ada Lovelace", entry.CallerIdentity);
+        Assert.Equal("sub-123", entry.CallerUserIdentity);
+    }
+
+    /// <summary>
+    /// No fallback chain, deliberately. A field that is sometimes the subject and sometimes a display
+    /// name cannot be matched exactly, which is the whole defect being fixed.
+    /// </summary>
+    [Fact]
+    public void CallerUserIdentity_IsNull_WhenNoSubjectClaimIsPresent()
+    {
+        var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, "Ada Lovelace")], "Cookies"));
+
+        var entry = Build(Accessor(principal));
+
+        Assert.Equal("Ada Lovelace", entry.CallerIdentity);
+        Assert.Null(entry.CallerUserIdentity);
+    }
+
+    [Fact]
+    public void CallerUserIdentity_IsNull_ForACallerWithNoPrincipal()
+    {
+        Assert.Null(Build(httpContextAccessor: null).CallerUserIdentity);
     }
 
     private static AuditEntry Build(IHttpContextAccessor httpContextAccessor)

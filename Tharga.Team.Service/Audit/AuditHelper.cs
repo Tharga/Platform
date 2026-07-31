@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 
@@ -73,6 +73,9 @@ internal static class AuditHelper
                 ?? user?.FindFirst("name")?.Value
                 ?? ambient?.Identity,
             CallerKeyId = user?.FindFirst(TeamClaimTypes.ApiKeyId)?.Value,
+            // Deliberately no fallback chain: this is the subject or nothing, which is what makes it
+            // exact-matchable. CallerIdentity stays the human-readable one.
+            CallerUserIdentity = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value,
             TeamKey = teamKey ?? user?.FindFirst(TeamClaimTypes.TeamKey)?.Value,
             AccessLevel = user?.FindFirst(TeamClaimTypes.AccessLevel)?.Value,
             CallerSource = callerSource,

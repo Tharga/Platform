@@ -49,7 +49,21 @@ backlog items are folded in.
 - [x] **5. Verify build + full suite, commit** — *Done: 1083 passed / 0 failed; build clean. #163 is closed and shippable from here.*
       #163 is closed and shippable from here.
 
-- [~] **6. `CallerUserKey`** (backlog → Audit item 1)
+- [x] **6. `CallerUserIdentity`** (backlog → Audit item 1)
+      *Done — 3 tests; suite green (1086).*
+      **Named differently from the plan, on purpose.** The plan said `CallerUserKey`, meaning
+      `IUser.Key`. But there is no user-key claim to populate it from: `MemberKey` is per-team, and
+      `TeamMembershipClaimsBuilder.BuildAsync` returns early when no team is selected — so a new claim
+      added there would be absent exactly when a user acts outside a team. `ClaimTypes.NameIdentifier`
+      (the subject, = `IUser.Identity`) is always present for an authenticated caller and needs no new
+      claims plumbing, so the field holds that and is named for it. `UserViewModel.Identity` already
+      existed to pin against.
+      Threaded through all six surfaces the `CallerKeyId` precedent uses — `AuditEntry`,
+      `AuditEntryEntity`, `AuditQuery`, both Mongo mapping directions, the query filter — plus
+      `AuditPinnedFilter` and `ApplyPinnedFilter`. Both dialogs now pin it instead of substring-matching
+      a display string.
+      **Export checked, as the plan required:** JSON serializes the whole entry so it was automatic; CSV
+      is a fixed column list and needed a new `Subject` column beside `CallerID`.
       Field on `AuditEntry`, populated in `BuildEntry` from the resolved user; `AuditQuery` filter;
       `AuditPinnedFilter`; Mongo round-trip in `MongoDbAuditLogger` (both mapping directions — the entity
       and back). Then switch the per-user audit dialogs in `UsersListView` and `TeamComponent` from
@@ -57,7 +71,7 @@ backlog items are folded in.
       **Check the CSV/JSON export and the grid** pick it up, the way `Metadata` had to be threaded through
       all four surfaces when it was added.
 
-- [ ] **7. Caller filter in `AuditLogView`** (backlog → Audit item 2)
+- [~] **7. Caller filter in `AuditLogView`** (backlog → Audit item 2)
       Top-bar control, following the existing pattern: options drawn from inside the pinned scope, and
       hidden via `AuditFilterVisibility.ShouldShow` when it offers fewer than two choices.
 

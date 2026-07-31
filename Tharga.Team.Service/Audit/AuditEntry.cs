@@ -1,4 +1,4 @@
-namespace Tharga.Team.Service.Audit;
+﻿namespace Tharga.Team.Service.Audit;
 
 /// <summary>
 /// Represents a single audit log entry. Immutable record created by the audit infrastructure.
@@ -27,6 +27,19 @@ public record AuditEntry
     /// Null when the caller did not authenticate via an API key.
     /// </summary>
     public string CallerKeyId { get; init; }
+
+    /// <summary>
+    /// The authentication subject of the user who acted (<see cref="IUser.Identity"/>), or null for an
+    /// API key, a background actor, or an unknown caller.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="CallerIdentity"/> is a display string resolved through a fallback chain — name claim,
+    /// then preferred_username, then subject — so its content depends on which claims the identity
+    /// provider emits, and a filter matching it has to do so by substring. This is always the subject or
+    /// nothing, which makes an exact match possible. Same reasoning as <see cref="CallerKeyId"/>, which
+    /// exists because a key's display name was "human-friendly but not unique".
+    /// </remarks>
+    public string CallerUserIdentity { get; init; }
 
     public string TeamKey { get; init; }
     public string AccessLevel { get; init; }

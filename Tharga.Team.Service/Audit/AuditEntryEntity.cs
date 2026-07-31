@@ -1,4 +1,4 @@
-using MongoDB.Bson;
+﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using Tharga.MongoDB;
 
@@ -31,6 +31,8 @@ public record AuditEntryEntity : EntityBase
 
     [BsonIgnoreIfNull]
     public string CallerKeyId { get; init; }
+
+    public string CallerUserIdentity { get; init; }
 
     public string TeamKey { get; init; }
     public string AccessLevel { get; init; }
