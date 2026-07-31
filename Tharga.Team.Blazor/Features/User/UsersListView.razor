@@ -402,7 +402,10 @@ else
     /// </summary>
     private async Task OpenAuditLogAsync(UserViewModel user)
     {
-        var pinned = new Audit.AuditPinnedFilter { CallerIdentity = user.EMail ?? user.Name };
+        // Pinned on the subject, not the display string. CallerIdentity resolves through a fallback
+        // chain and is matched by substring, so a dialog pinned to an email came up empty whenever the
+        // identity provider put a display name in the name claim.
+        var pinned = new Audit.AuditPinnedFilter { CallerUserIdentity = user.Identity };
 
         await DialogService.OpenAsync($"Audit log — {user.Name ?? user.EMail}", _ =>
             @<Tharga.Team.Blazor.Features.Audit.AuditLogView PinnedFilter="@pinned" />,

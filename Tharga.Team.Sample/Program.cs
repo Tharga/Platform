@@ -1,3 +1,4 @@
+﻿using Microsoft.AspNetCore.Authentication.Cookies;
 using Radzen;
 using Serilog;
 using Serilog.Events;
@@ -12,7 +13,10 @@ using Tharga.Team.Blazor.Framework;
 using Tharga.Team.Entra;
 using Tharga.Team.Images;
 using Tharga.Team.MongoDB;
+using Tharga.Team.Service;
 using Tharga.Team.Service.Audit;
+
+const string McpAccessPolicy = "McpAccess";
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -132,6 +136,10 @@ builder.AddThargaTeam(o =>
 // Demo: attach host-defined metadata to every audit entry (visible in the /audit detail row).
 builder.Services.AddThargaAuditEnricher<SampleAuditEnricher>();
 
+// Demo: audit work that has no HTTP caller. Writes one entry ~5s after startup, attributed to the job
+// rather than to a phantom user — visible on /audit as System / Background.
+builder.Services.AddHostedService<SampleBackgroundJob>();
+
 // Entra as the user directory (verify users, list directory-only users, opt-in directory delete).
 // App-only Graph auth needs a client secret, so the directory (and its UI) only lights up when one is
 // configured — e.g. `dotnet user-secrets set "AzureAd:ClientSecret" "<secret>"`. Graph permissions:
@@ -143,8 +151,22 @@ if (!string.IsNullOrEmpty(builder.Configuration["AzureAd:ClientSecret"]))
 
 builder.Services.AddThargaMcp(mcp =>
 {
+    // TEMPORARY WORKAROUND — remove when Tharga/Mcp#18 ships.
+    // RequireAuth off so we can apply our own policy below. The built-in one calls a bare
+    // .RequireAuthorization(), which uses the DEFAULT authentication scheme — OIDC here — so an API key
+    // is never consulted and a key-authenticated caller is redirected to the login page instead. Once
+    // AddTeam() contributes the API-key scheme, this whole block collapses back to mcp.AddTeam() plus a
+    // bare app.UseThargaMcp().
+    mcp.Options.RequireAuth = false;
     mcp.AddTeam();
 });
+
+// Accept either an API key or an interactive sign-in, so /mcp can be explored both ways and the
+// difference in what each caller sees is the point of the demo.
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(McpAccessPolicy, policy => policy
+        .AddAuthenticationSchemes(ApiKeyConstants.SchemeName, CookieAuthenticationDefaults.AuthenticationScheme)
+        .RequireAuthenticatedUser());
 
 // TeamAccessInterceptor is deliberately NOT registered yet. Claim construction reads the user record to
 // decide what the caller may do, so it necessarily precedes any authorization decision — and every
@@ -177,7 +199,7 @@ app.UseHttpsRedirection();
 app.UseAntiforgery();
 
 app.UseThargaTeam();
-app.UseThargaMcp();
+app.UseThargaMcp().RequireAuthorization(McpAccessPolicy);
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()

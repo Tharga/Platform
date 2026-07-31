@@ -815,9 +815,11 @@ else
         var user = _users.FirstOrDefault(x => x.Key == memberKey);
         var identity = user?.EMail ?? user?.Name ?? memberKey;
 
+        // Pinned on the subject rather than the display string — an exact match, where CallerIdentity
+        // is a substring match against whichever claim the identity provider happened to emit.
         var pinned = new Tharga.Team.Blazor.Features.Audit.AuditPinnedFilter
         {
-            CallerIdentity = identity,
+            CallerUserIdentity = user?.Identity,
             TeamKey = team.Key
         };
 

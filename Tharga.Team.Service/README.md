@@ -1,4 +1,4 @@
-# Tharga Team Service
+﻿# Tharga Team Service
 [![NuGet](https://img.shields.io/nuget/v/Tharga.Team.Service)](https://www.nuget.org/packages/Tharga.Team.Service)
 ![Nuget](https://img.shields.io/nuget/dt/Tharga.Team.Service)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -134,6 +134,33 @@ builder.Services.AddThargaAuditLogging(o =>
 | `ExcludedActions` / `ExcludedEndpoints` | empty | Skip noisy actions (e.g. `"read"`) or endpoints. |
 | `RetentionDays` | `90` | `int?` → MongoDB TTL index (`Timestamp_TTL`). **`null` or `<= 0` = keep forever** (no TTL index). Changing/removing the TTL on an existing collection may need a manual index drop. |
 | `BatchSize` / `FlushIntervalSeconds` | `100` / `5` | Background MongoDB writer tuning. |
+
+### Auditing background work
+
+Code with no HTTP request behind it — a hosted service, a message handler, a scheduled job — has no
+principal to attribute. It used to be recorded as `CallerType.User` with a null identity, i.e. a row
+claiming a person did it. It now records `Unknown` unless you declare an actor:
+
+```csharp
+using var _ = auditContext.Push(new AuditActor("nightly-retention", CorrelationId: runId));
+auditLogger.Log(auditEntryFactory.Create("retention", "sweep", teamKey: teamKey));
+// CallerType.System, CallerSource.Background, that identity and correlation id
+```
+
+Build the entry with **`IAuditEntryFactory`**: `IAuditLogger.Log` takes a pre-built entry and does not
+consult the ambient actor, so one you construct by hand will not carry it. `Tharga.Team.Sample` has a
+working example in `SampleBackgroundJob`.
+
+`IAuditContextAccessor` is registered by `AddThargaAuditLogging()` regardless of storage mode. The scope
+is `AsyncLocal`, so it survives `await` and nested calls, and restores the outer actor on dispose. An
+**authenticated** caller always wins over an ambient actor, so a scope left open on a pooled thread cannot
+relabel a real user's action; an *anonymous* request does not win.
+
+> **`CallerFilter` and background entries.** A source that is neither `Api` nor `Web` is matched against
+> `Api | Web`, so background entries are recorded under the default filter — and, less obviously, under a
+> filter narrowed to just one of them. There is no `Background` flag to include or exclude them
+> independently. If you need that distinction, say so and it can be added; the current behaviour errs
+> toward recording.
 
 ### Operation metadata
 

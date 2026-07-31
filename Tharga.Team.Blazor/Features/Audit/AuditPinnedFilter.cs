@@ -1,4 +1,4 @@
-using Tharga.Team.Service.Audit;
+﻿using Tharga.Team.Service.Audit;
 
 namespace Tharga.Team.Blazor.Features.Audit;
 
@@ -26,6 +26,9 @@ public sealed record AuditPinnedFilter
 
     /// <summary>Pin to a specific caller identity (substring match, case-insensitive).</summary>
     public string CallerIdentity { get; init; }
+
+    /// <summary>Pin to the acting user's authentication subject. Exact match — prefer this over <see cref="CallerIdentity"/> where the subject is known.</summary>
+    public string CallerUserIdentity { get; init; }
 
     /// <summary>Pin to a single feature.</summary>
     public string Feature { get; init; }
