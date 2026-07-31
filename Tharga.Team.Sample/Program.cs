@@ -96,7 +96,9 @@ builder.AddThargaTeam(o =>
     {
         scopes.Register(SystemTeamScopes.Read, "See every team (cross-team discovery).");
         scopes.Register("system:metrics:read", "Read infrastructure metrics.");
-        scopes.Register("mcp:discover", "Discover MCP tools and resources.");
+        // mcp:discover is registered by mcp.AddTeam() — in both registries, so it is grantable by access
+        // level, by system role, or to a system API key. Registering it here as well is harmless (the
+        // toolkit skips a name already present) but redundant.
     };
 
     // Map app/global roles to system scopes — a Developer user gains these as claims (team-independent).

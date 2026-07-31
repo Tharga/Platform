@@ -1,4 +1,4 @@
-@using System.Net.Http
+﻿@using System.Net.Http
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.Extensions.Options
 @using Tharga.Team
@@ -6,6 +6,7 @@
 @inject IUserService UserService
 @inject IHttpClientFactory HttpClientFactory
 @inject IOptions<IconOptions> IconOptions
+@inject IIconProcessor IconProcessor
 @inject AvatarChangeNotifier AvatarChangeNotifier
 @inject DialogService DialogService
 @inject NotificationService NotificationService
@@ -16,7 +17,7 @@
     and the pluggable IIconStore.
 *@
 <RadzenStack Gap="1rem">
-    <RadzenText TextStyle="TextStyle.Body2">Upload an image (up to @_maxUploadMb MB) or provide an image URL. Large images are downscaled automatically. This replaces your Gravatar image.</RadzenText>
+    <RadzenText TextStyle="TextStyle.Body2">Upload an image (up to @_maxUploadMb MB) or provide an image URL.@(_canDownscale ? " Large images are downscaled automatically." : $" Images larger than {_maxUploadMb} MB are rejected.") This replaces your Gravatar image.</RadzenText>
 
     <RadzenStack Gap="0.25rem">
         <RadzenLabel Text="Upload a file" />
@@ -56,7 +57,15 @@
     private bool _changed;
     private int _maxUploadMb;
 
-    protected override void OnInitialized() => _maxUploadMb = Math.Max(1, IconOptions.Value.MaxUploadBytes / (1024 * 1024));
+    // The default NoOpIconProcessor does not resize, so promising automatic downscaling
+    // without a real one tells the user something false — oversized uploads are rejected.
+    private bool _canDownscale;
+
+    protected override void OnInitialized()
+    {
+        _maxUploadMb = Math.Max(1, IconOptions.Value.MaxUploadBytes / (1024 * 1024));
+        _canDownscale = IconCapability.CanProcessImages(IconProcessor);
+    }
 
     private async Task OnFileSelected(InputFileChangeEventArgs e)
     {

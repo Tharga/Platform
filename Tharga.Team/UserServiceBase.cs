@@ -130,11 +130,33 @@ public abstract class UserServiceBase : IUserService
     /// </summary>
     protected virtual Task SetUserIconReferenceAsync(string userKey, string reference) => Task.CompletedTask;
 
+    /// <summary>
+    /// Refuses an icon upload the store cannot keep, <b>before</b> any bytes are written.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="SetUserIconReferenceAsync"/> is a no-op unless the entity declares
+    /// <see cref="IUser.Icon"/>, so without this the upload stored a blob, silently discarded the
+    /// reference, and reported success — leaving an orphan in the icon store and an unchanged avatar with
+    /// nothing logged. Throwing here also matches <c>RequireIconStore</c>, which already names its own
+    /// unmet prerequisite rather than doing nothing (Tharga/Team#160).
+    /// </remarks>
+    private static void RequireIconPersistence(IUser user)
+    {
+        if (IconCapability.CanPersistUserIcon(user.GetType())) return;
+
+        throw new NotSupportedException(
+            $"User icons require an '{nameof(IUser.Icon)}' property on the user entity, and " +
+            $"'{user.GetType().Name}' does not declare one. Without it the reference cannot be persisted " +
+            "and the upload would be discarded. Declare the property to opt in — see docs/articles/icons.md.");
+    }
+
     public virtual async Task SetOwnIconAsync(byte[] data, string contentType)
     {
         var store = RequireIconStore();
         var user = await GetCurrentUserAsync();
         if (user == null) throw new UnauthorizedAccessException("Authentication required.");
+
+        RequireIconPersistence(user);
 
         var previousReference = user.Icon;
         var reference = await store.SaveAsync(IconKind.User, user.Key, data, contentType);
@@ -167,6 +189,8 @@ public abstract class UserServiceBase : IUserService
         var user = await GetUserByKeyAsync(userKey);
         if (user == null) throw new InvalidOperationException($"User '{userKey}' was not found.");
 
+        RequireIconPersistence(user);
+
         var previousReference = user.Icon;
         var reference = await store.SaveAsync(IconKind.User, user.Key, data, contentType);
         await SetUserIconReferenceAsync(user.Key, reference);
@@ -194,8 +218,12 @@ public abstract class UserServiceBase : IUserService
 
     private IIconStore RequireIconStore()
         => _iconStore ?? throw new NotSupportedException(
-            "No IIconStore is registered. User icons require a registered icon store (the built-in " +
-            "MongoIconStore is registered by AddThargaTeamRepository, or supply one via o.AddIconStore<T>()).");
+            "No IIconStore was supplied to this service. User icons require one, and there are two ways to " +
+            "be missing it: (a) none is registered — the built-in MongoIconStore comes from " +
+            "AddThargaTeamRepository, or supply your own via o.AddIconStore<T>(); or (b) it IS registered " +
+            "but this service did not receive it — UserServiceRepositoryBase takes an optional " +
+            "'IIconStore iconStore = null' constructor parameter, so a subclass that does not forward it " +
+            "gets null here. See docs/articles/icons.md.");
 
     private Task<IUser> GetCurrentUserAsync() => GetCurrentUserAsync(null);
 
