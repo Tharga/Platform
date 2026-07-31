@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Tharga.Mcp;
@@ -33,6 +33,15 @@ public static class McpTeamBuilderExtensions
         builder.Services.AddSingleton<IMcpContextAccessor, HttpContextMcpContextAccessor>();
 
         builder.Services.TryAddSingleton<IMcpScopeChecker, McpScopeChecker>();
+
+        // MCP callers are agents presenting an API key — there is no user. Contribute the scheme so
+        // RequireAuth accepts that credential without the host knowing about schemes at all; a bare
+        // RequireAuthorization() resolves to the application's default scheme, which in a Blazor host is
+        // OIDC, and answered an agent with a 302 to a login page (Tharga/Mcp#18).
+        if (!builder.Options.AuthenticationSchemes.Contains(ApiKeyConstants.SchemeName))
+        {
+            builder.Options.AuthenticationSchemes.Add(ApiKeyConstants.SchemeName);
+        }
 
         // Register built-in mcp:* scopes into both registries, because both routes to holding one are
         // legitimate: an access level grants it inside a team, while an app role or a system API key
