@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Tharga.Team.Service.Audit;
 
@@ -81,6 +81,36 @@ public class AuditEntryFactoryTests
 
             Assert.Equal(AuditCallerType.User, entry.CallerType);
             Assert.Equal("someone@example.com", entry.CallerIdentity);
+        }
+    }
+
+    /// <summary>
+    /// A job that works on one team states it once on the scope rather than on every entry. Background
+    /// code has no selected team for the toolkit to infer, so without this the entries carry no team and
+    /// cannot be found on a team-scoped audit view.
+    /// </summary>
+    [Fact]
+    public void TheScopeCanDeclareTheTeam()
+    {
+        var context = new AuditContextAccessor();
+        var sut = new AuditEntryFactory(NoHttpContext());
+
+        using (context.Push(new AuditActor("nightly-retention", TeamKey: "t-1")))
+        {
+            Assert.Equal("t-1", sut.Create("retention", "sweep").TeamKey);
+        }
+    }
+
+    /// <summary>A job that crosses teams overrides per entry.</summary>
+    [Fact]
+    public void AnExplicitTeamKeyOverridesTheScope()
+    {
+        var context = new AuditContextAccessor();
+        var sut = new AuditEntryFactory(NoHttpContext());
+
+        using (context.Push(new AuditActor("nightly-retention", TeamKey: "t-1")))
+        {
+            Assert.Equal("t-2", sut.Create("retention", "sweep", teamKey: "t-2").TeamKey);
         }
     }
 

@@ -1,4 +1,4 @@
-using Tharga.Team.Service.Audit;
+﻿using Tharga.Team.Service.Audit;
 
 namespace Tharga.Team.Sample.Framework;
 
@@ -14,11 +14,17 @@ namespace Tharga.Team.Sample.Framework;
 /// Runs once shortly after startup so <c>/audit</c> has something to show without waiting. A real job
 /// would push a fresh scope per unit of work, with that unit's own correlation id.
 /// </para>
+/// <para>
+/// Takes <see cref="CompositeAuditLogger"/>, not <c>IAuditLogger</c>. The composite applies the caller
+/// and event filters and fans out to every configured backend; <c>IAuditLogger</c> resolves to whichever
+/// single backend was registered last, so an entry sent there reaches one store and skips the filters.
+/// The built-in auditing decorators take the composite for the same reason.
+/// </para>
 /// </remarks>
 public class SampleBackgroundJob(
     IAuditContextAccessor auditContext,
     IAuditEntryFactory auditEntryFactory,
-    IAuditLogger auditLogger,
+    CompositeAuditLogger auditLogger,
     ILogger<SampleBackgroundJob> logger)
     : BackgroundService
 {
@@ -30,6 +36,9 @@ public class SampleBackgroundJob(
 
         // One scope per unit of work. The correlation id groups every entry this run writes; without it
         // each entry gets its own and the grouping cannot be reconstructed afterwards.
+        // TeamKey is optional and declared once here rather than on every entry. Background code has no
+        // selected team for the toolkit to infer, so without it these rows carry no team and would not
+        // appear on a team-scoped audit view. A job crossing teams would pass teamKey per Create instead.
         using var _ = auditContext.Push(new AuditActor(JobName, CorrelationId: Guid.NewGuid()));
 
         auditLogger.Log(auditEntryFactory.Create(

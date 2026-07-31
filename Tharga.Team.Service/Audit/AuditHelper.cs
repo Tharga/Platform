@@ -76,7 +76,7 @@ internal static class AuditHelper
             // Deliberately no fallback chain: this is the subject or nothing, which is what makes it
             // exact-matchable. CallerIdentity stays the human-readable one.
             CallerUserIdentity = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value,
-            TeamKey = teamKey ?? user?.FindFirst(TeamClaimTypes.TeamKey)?.Value,
+            TeamKey = teamKey ?? user?.FindFirst(TeamClaimTypes.TeamKey)?.Value ?? ambient?.TeamKey,
             AccessLevel = user?.FindFirst(TeamClaimTypes.AccessLevel)?.Value,
             CallerSource = callerSource,
             Metadata = metadata is { Count: > 0 } ? new Dictionary<string, string>(metadata) : null,

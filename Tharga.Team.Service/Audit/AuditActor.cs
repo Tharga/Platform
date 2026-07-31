@@ -1,4 +1,4 @@
-namespace Tharga.Team.Service.Audit;
+﻿namespace Tharga.Team.Service.Audit;
 
 /// <summary>
 /// A declared actor for work that has no authenticated HTTP caller behind it — a hosted service, a
@@ -20,8 +20,16 @@ namespace Tharga.Team.Service.Audit;
 /// Optional. Set it per unit of work — one value per claimed job — so every entry that job writes can be
 /// pulled back together. Without it each entry gets its own generated id and the grouping is lost.
 /// </param>
+/// <param name="TeamKey">
+/// Optional. The team this work acts on. Background code has no selected team for the toolkit to infer
+/// one from, so without it entries are recorded with no team and cannot be found on a team-scoped audit
+/// view. Declaring it here means a job that works on one team states it once instead of on every entry;
+/// an explicit <c>teamKey</c> passed to <see cref="IAuditEntryFactory.Create"/> still wins, for a job
+/// that crosses teams.
+/// </param>
 public sealed record AuditActor(
     string Identity,
     AuditCallerType CallerType = AuditCallerType.System,
     AuditCallerSource CallerSource = AuditCallerSource.Background,
-    Guid? CorrelationId = null);
+    Guid? CorrelationId = null,
+    string TeamKey = null);

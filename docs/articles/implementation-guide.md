@@ -1191,7 +1191,7 @@ and system keys), and **user administration** (directory verify, bulk verify, us
 | Component | Description |
 |-----------|-------------|
 | `<AuditLogView />` | Audit log viewer with charts and filtering |
-| `IAuditLogger` | Injectable service for custom audit entries |
+| `CompositeAuditLogger` | Write your own audit entries. Applies the caller/event filters and fans out to every configured backend. **Inject this, not `IAuditLogger`** — that resolves to a single backend and bypasses the filters. |
 
 ### Audit entry fields
 
