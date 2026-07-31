@@ -1197,6 +1197,65 @@ and system keys), and **user administration** (directory verify, bulk verify, us
 
 Each audit entry captures: timestamp, correlation ID, event type, feature/action, caller identity, team key, access level, scope check results, duration, and a `Metadata` dictionary.
 
+### Who an entry is attributed to
+
+Three fields describe the actor, and they answer different questions:
+
+| Field | Holds | Match |
+|---|---|---|
+| `CallerIdentity` | A display string, resolved `name` → `preferred_username` → subject → `name` | Substring — its content depends on which claims your IdP emits |
+| `CallerUserIdentity` | The acting user's authentication subject, or null | **Exact** — the subject or nothing, never a fallback |
+| `CallerKeyId` | The API key's id, or null | Exact |
+
+Use `CallerUserIdentity` to correlate rows to one person; `CallerIdentity` is for reading.
+
+`CallerType` and `CallerSource` say what kind of actor it was:
+
+| Situation | `CallerType` | `CallerSource` |
+|---|---|---|
+| API-key request | `ApiKey` | `Api` |
+| Cookie / federated sign-in | `User` | `Web` |
+| Authenticated, unrecognised scheme | `User` | `Unknown` |
+| Anonymous request | `Unknown` | `Unknown` |
+| Declared background actor | `System` | `Background` |
+| No principal, no declared actor | `Unknown` | `Unknown` |
+
+> **Changed:** a caller with no `HttpContext` used to be recorded as `User` with a null identity — a row
+> claiming a person did what a background job did. It now records `Unknown`, or the declared actor below.
+> If you report on `CallerType == User`, those rows have moved.
+
+### Auditing background work
+
+Code outside a request — a hosted service, a message handler, a scheduled job — has no principal to
+attribute. Declare one for the duration of the work:
+
+```csharp
+public class ClaimedJobWorker(IAuditContextAccessor auditContext, ITeamService teamService)
+{
+    public async Task RunAsync(Job job, CancellationToken cancellationToken)
+    {
+        using var _ = auditContext.Push(new AuditActor(
+            Identity: "fortdocs-worker",
+            CorrelationId: job.Id));       // groups every entry this job writes
+
+        await teamService.DoSomethingAuditedAsync(job.TeamKey, cancellationToken);
+    }
+}
+```
+
+Entries written inside the scope carry that identity, `AuditCallerType.System` and
+`AuditCallerSource.Background`. Three things worth knowing:
+
+- **The scope is `AsyncLocal`**, so it survives `await` and flows into nested calls without being passed
+  along. Nested scopes restore the outer actor on dispose rather than clearing it.
+- **An authenticated caller always wins.** A scope left open on a pooled thread cannot relabel a real
+  user's action as the system's. An *anonymous* request does not win — a job triggered through an
+  unauthenticated endpoint still knows what it is.
+- **Set `CorrelationId` per unit of work.** Without it every entry gets its own generated id, and the
+  grouping cannot be reconstructed afterwards.
+
+`IAuditContextAccessor` is registered by `AddThargaAuditLogging()`, regardless of storage mode.
+
 ### Reading failures in the log view
 
 The **OK** column of `<AuditLogView />` shows a green check for a successful entry. For a failed entry it

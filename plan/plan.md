@@ -71,21 +71,37 @@ backlog items are folded in.
       **Check the CSV/JSON export and the grid** pick it up, the way `Metadata` had to be threaded through
       all four surfaces when it was added.
 
-- [~] **7. Caller filter in `AuditLogView`** (backlog → Audit item 2)
-      Top-bar control, following the existing pattern: options drawn from inside the pinned scope, and
-      hidden via `AuditFilterVisibility.ShouldShow` when it offers fewer than two choices.
+- [x] **7. Caller filter in `AuditLogView`** — **DROPPED: the capability already exists.**
+      The backlog item claimed "caller is a grid column, not a filter". That is wrong, and I wrote it
+      without checking the column definitions. Every column in the log grid explicitly sets
+      `Filterable="false"` **except Caller and Method**, and the grid has `AllowFiltering="true"` with
+      `FilterMode.Simple` — so both are filterable through the filter row, and `BuildQuery` already reads
+      a `CallerIdentity` filter descriptor and applies it (`AuditLogView.razor.cs:288`). The two
+      deliberately-left-filterable columns and the two descriptors it reads are the same two.
+      Adding a top-bar caller dropdown would duplicate a working control. Nothing to build; the backlog
+      entry is corrected rather than closed as delivered.
 
-- [ ] **8. Verify build + full suite, commit**
+- [x] **8. Verify build + full suite, commit** — *Done: 1086 passed / 0 failed.*
 
-- [ ] **9. Documentation**
+- [x] **9. Documentation**
+      *Done — `implementation-guide.md` gained "Who an entry is attributed to" (the three identity fields
+      and what each is for, plus the full CallerType/CallerSource matrix) and "Auditing background work"
+      with the worker pattern. `Tharga.Team.Service/README.md` gained the shorter version.*
+      **Found while writing it:** `AuditOptions.CallerFilter` defaults to `Api | Web`, which looked like
+      it would silently drop every `Background` entry — the exact rows this feature adds. It does not:
+      `CompositeAuditLogger.ShouldLog` maps any non-Api/non-Web source to `Api | Web`, so they pass. But
+      that also means a host narrowing the filter to just `Api` still gets background rows, and there is
+      no `Background` flag to control them independently. Documented as a known wart rather than changed
+      — adding a flag has an upgrade consideration (anyone who explicitly set `Api | Web` would start
+      excluding background) and deserves its own decision.
       The audit section of `implementation-guide.md` and `Tharga.Team.Service/README.md`: the actor model
       (who is recorded and how), the worker scope pattern with a code sample, and that `Unknown` now
       appears where `User` wrongly did. Separate `docs:` commit.
 
-- [ ] **10. Version line 3.8 → 3.9**
+- [x] **10. Version line 3.8 → 3.9** — *Done.*
       New public enum members, interface and field. Must land in this PR — the constant is hand-maintained.
 
-- [ ] **11. Push and hand over for testing**
+- [~] **11. Push and hand over for testing**
       Do **not** open the PR — the close-out commit must be last.
 
 ## Remaining (close-out, only on the user's confirmation)
