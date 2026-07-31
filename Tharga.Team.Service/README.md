@@ -60,6 +60,8 @@ Denials are `403` rather than `404`, so they do not reveal whether a team exists
 to the API-key scheme. Add your own to also admit a signed-in user:
 
 ```csharp
+using Microsoft.AspNetCore.Authentication.Cookies;
+
 builder.Services.AddThargaControllers(o =>
     o.AuthenticationSchemes.Add(CookieAuthenticationDefaults.AuthenticationScheme));
 ```

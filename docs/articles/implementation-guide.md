@@ -329,6 +329,8 @@ builder.Services.AddThargaControllers(o =>
 scheme alone, which is what an API caller normally presents:
 
 ```csharp
+using Microsoft.AspNetCore.Authentication.Cookies;
+
 builder.Services.AddThargaControllers(o =>
 {
     o.AuthenticationSchemes.Add(CookieAuthenticationDefaults.AuthenticationScheme);   // also allow a signed-in user
