@@ -44,16 +44,33 @@ Feature scope in `feature.md`. Tests run before each commit; `plan.md` is update
 
 - [x] **5. Verify build + full suite, commit** — *Done: 1071 passed / 0 failed; build clean (the one warning is pre-existing in `.Service`).*
 
-- [~] **6. Verify against the running sample**
+- [x] **6. Verify against the running sample**
+      *Done, and it corrected the diagnosis.* The first fix did **not** resolve the reported failure: the
+      stack trace from the running app showed `UserServiceBase.GetClaims` making the same assumption, on
+      the path MCP actually takes. The reproduction had confirmed the *mechanism*; I took it as confirming
+      the *call site*, which the plan explicitly said were different things. Both sites now route through
+      one shared `CircuitPrincipal.GetUserOrNullAsync` in `Tharga.Team`, so a third instance does not have
+      to be found from a stack trace.
+      **Outcome recorded for 06 phase 3:** `resources/read` on `team://team` with a team API key no longer
+      crashes — it now fails with `Team '…' not found for the caller`, which is the code working correctly.
+      `GetTeamsAsync()` resolves the current *user*; an API key has no user, so it falls outside the
+      membership model. **`resources/list` and `resources/read` therefore disagree** — list self-gates on
+      the `TeamKey` claim and returns three resources, read denies. That is invariant I5 failing today,
+      found before the matrix was written. Recorded on the 06 spec as a decision phase 3 must make, not an
+      assertion it can assume.
       `resources/read` on `team://team` with a team API key must stop returning `-32603`. Whether it then
       returns data or a clean authorization refusal is **not** this feature's business — record which,
       because it is the first real data point for 06 phase 3's matrix.
 
-- [ ] **7. Documentation**
+- [x] **7. Documentation** — *Reviewed, none needed, stated rather than skipped.* The fix removes a crash
+      and changes nothing a consumer configures or calls. `CircuitPrincipal` is public because two packages
+      need it, not because consumers are expected to; the background-work guidance added in the
+      audit-actor release already covers the case a consumer would hit. The MCP behaviour change belongs in
+      06's notes, where it is recorded.
       Only if the fix changes something a consumer would configure or rely on. A bug fix that removes a
       crash usually does not. Review, then state the outcome either way rather than skipping silently.
 
-- [ ] **8. Push and hand over for testing**
+- [~] **8. Push and hand over for testing**
       Do **not** open the PR — the close-out commit must be last.
 
 ## Remaining (close-out, only on the user's confirmation)

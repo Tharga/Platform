@@ -30,10 +30,14 @@ public abstract class UserServiceBase : IUserService
     /// </summary>
     protected virtual TimeSpan? LastSeenStampInterval => TimeSpan.FromMinutes(15);
 
+    /// <summary>
+    /// The caller, either as supplied or resolved from the circuit. Null when there is no circuit to ask —
+    /// an MCP request handler, a hosted service, a message handler — because nothing there can name a
+    /// caller, and crashing is not a better answer than saying so.
+    /// </summary>
     protected virtual async Task<ClaimsPrincipal> GetClaims(ClaimsPrincipal claimsPrincipal)
     {
-        claimsPrincipal ??= (await _authenticationStateProvider.GetAuthenticationStateAsync()).User;
-        return claimsPrincipal;
+        return claimsPrincipal ?? await CircuitPrincipal.GetUserOrNullAsync(_authenticationStateProvider);
     }
 
     protected abstract Task<IUser> GetUserAsync(ClaimsPrincipal claimsPrincipal);
@@ -42,6 +46,8 @@ public abstract class UserServiceBase : IUserService
     public async Task<IUser> GetCurrentUserAsync(ClaimsPrincipal claimsPrincipal)
     {
         claimsPrincipal = await GetClaims(claimsPrincipal);
+        if (claimsPrincipal == null) return null;
+
         var identity = claimsPrincipal.GetIdentity().Identity;
         if (identity == null) return null;
 
