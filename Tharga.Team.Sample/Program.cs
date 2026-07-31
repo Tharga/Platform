@@ -128,6 +128,11 @@ builder.AddThargaTeam(o =>
         roles.Map("Developer", "system:metrics:read", "mcp:discover", ApiKeyScopes.SystemManage, AuditScopes.Read, SystemUserScopes.Manage, SystemTeamScopes.Delete);
     };
 
+    // Controllers on, which exposes the toolkit's own REST endpoints — GET /api/audit — plus Swagger at
+    // /swagger. The endpoints accept an API key by default; add a cookie scheme to reach them signed in.
+    o.Controllers = new ThargaControllerOptions { SwaggerTitle = "Tharga Team Sample API" };
+    o.Controllers.AuthenticationSchemes.Add(CookieAuthenticationDefaults.AuthenticationScheme);
+
     // Logger | MongoDB so the audit entries are both logged and queryable by AuditLogView — the default
     // is Logger-only, which leaves the /audit page empty.
     o.Audit = new AuditOptions { StorageMode = AuditStorageMode.Logger | AuditStorageMode.MongoDB };

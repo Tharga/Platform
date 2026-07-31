@@ -1,4 +1,4 @@
-#if NET10_0_OR_GREATER
+﻿#if NET10_0_OR_GREATER
 using Microsoft.AspNetCore.OpenApi;
 #endif
 
@@ -18,6 +18,21 @@ public class ThargaControllerOptions
     /// Swagger UI route prefix. Defaults to "swagger".
     /// </summary>
     public string SwaggerRoutePrefix { get; set; } = "swagger";
+
+    /// <summary>
+    /// Authentication schemes the toolkit's HTTP endpoints accept. Defaults to the API-key scheme.
+    /// </summary>
+    /// <remarks>
+    /// Named explicitly rather than left to the application's default scheme. A bare <c>[Authorize]</c>
+    /// authenticates against the default, which in a host with interactive sign-in is OIDC — so an
+    /// API-key caller would be answered with a redirect to a login page instead of data. That is exactly
+    /// the defect fixed upstream in <see href="https://github.com/Tharga/Mcp/issues/18">Tharga/Mcp#18</see>
+    /// for the MCP endpoint, and it would reappear here unmodified.
+    /// <para>
+    /// Add your own — a cookie scheme, say — to let a signed-in user reach these endpoints too.
+    /// </para>
+    /// </remarks>
+    public IList<string> AuthenticationSchemes { get; } = [ApiKeyConstants.SchemeName];
 
 #if NET10_0_OR_GREATER
     internal Action<OpenApiOptions> OpenApiConfigure { get; private set; }

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi;
 using Tharga.Toolkit.Password;
@@ -20,6 +20,17 @@ public static class ControllersRegistration
 
         services.AddSingleton(options);
         services.AddControllers();
+
+        // The policy the toolkit's own endpoints use, built from the configured schemes so an API key is
+        // accepted without the host naming a scheme — see ThargaControllerOptions.AuthenticationSchemes.
+        services.AddAuthorizationBuilder()
+            .AddPolicy(ApiKeyConstants.ThargaApiPolicyName, policy =>
+            {
+                if (options.AuthenticationSchemes.Count > 0)
+                    policy.AddAuthenticationSchemes([.. options.AuthenticationSchemes]);
+
+                policy.RequireAuthenticatedUser();
+            });
 
 #if NET10_0_OR_GREATER
         services.AddOpenApi(o =>
