@@ -1,4 +1,4 @@
-# Tharga Team — Implementation Guide
+﻿# Tharga Team — Implementation Guide
 
 Step-by-step instructions for adding Tharga Team features to a Blazor application.
 
@@ -1230,7 +1230,10 @@ Code outside a request — a hosted service, a message handler, a scheduled job 
 attribute. Declare one for the duration of the work:
 
 ```csharp
-public class ClaimedJobWorker(IAuditContextAccessor auditContext, ITeamService teamService)
+public class ClaimedJobWorker(
+    IAuditContextAccessor auditContext,
+    IAuditEntryFactory auditEntryFactory,
+    IAuditLogger auditLogger)
 {
     public async Task RunAsync(Job job, CancellationToken cancellationToken)
     {
@@ -1238,10 +1241,17 @@ public class ClaimedJobWorker(IAuditContextAccessor auditContext, ITeamService t
             Identity: "fortdocs-worker",
             CorrelationId: job.Id));       // groups every entry this job writes
 
-        await teamService.DoSomethingAuditedAsync(job.TeamKey, cancellationToken);
+        auditLogger.Log(auditEntryFactory.Create("job", "claim", teamKey: job.TeamKey));
     }
 }
 ```
+
+**Build entries with `IAuditEntryFactory`, not by hand.** `IAuditLogger.Log` takes a pre-built entry and
+does not consult the ambient actor, so an `AuditEntry` you construct yourself will not carry the actor
+however carefully you scoped it. The factory resolves the caller the same way the built-in decorators do
+— HTTP principal if there is one, declared actor if not.
+
+Supply `teamKey` explicitly for background work: there is no selected team to infer it from.
 
 Entries written inside the scope carry that identity, `AuditCallerType.System` and
 `AuditCallerSource.Background`. Three things worth knowing:

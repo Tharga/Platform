@@ -132,6 +132,10 @@ builder.AddThargaTeam(o =>
 // Demo: attach host-defined metadata to every audit entry (visible in the /audit detail row).
 builder.Services.AddThargaAuditEnricher<SampleAuditEnricher>();
 
+// Demo: audit work that has no HTTP caller. Writes one entry ~5s after startup, attributed to the job
+// rather than to a phantom user — visible on /audit as System / Background.
+builder.Services.AddHostedService<SampleBackgroundJob>();
+
 // Entra as the user directory (verify users, list directory-only users, opt-in directory delete).
 // App-only Graph auth needs a client secret, so the directory (and its UI) only lights up when one is
 // configured — e.g. `dotnet user-secrets set "AzureAd:ClientSecret" "<secret>"`. Graph permissions:

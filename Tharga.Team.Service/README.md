@@ -1,4 +1,4 @@
-# Tharga Team Service
+﻿# Tharga Team Service
 [![NuGet](https://img.shields.io/nuget/v/Tharga.Team.Service)](https://www.nuget.org/packages/Tharga.Team.Service)
 ![Nuget](https://img.shields.io/nuget/dt/Tharga.Team.Service)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -143,8 +143,13 @@ claiming a person did it. It now records `Unknown` unless you declare an actor:
 
 ```csharp
 using var _ = auditContext.Push(new AuditActor("nightly-retention", CorrelationId: runId));
-// entries written here: CallerType.System, CallerSource.Background, that identity and correlation id
+auditLogger.Log(auditEntryFactory.Create("retention", "sweep", teamKey: teamKey));
+// CallerType.System, CallerSource.Background, that identity and correlation id
 ```
+
+Build the entry with **`IAuditEntryFactory`**: `IAuditLogger.Log` takes a pre-built entry and does not
+consult the ambient actor, so one you construct by hand will not carry it. `Tharga.Team.Sample` has a
+working example in `SampleBackgroundJob`.
 
 `IAuditContextAccessor` is registered by `AddThargaAuditLogging()` regardless of storage mode. The scope
 is `AsyncLocal`, so it survives `await` and nested calls, and restores the outer actor on dispose. An

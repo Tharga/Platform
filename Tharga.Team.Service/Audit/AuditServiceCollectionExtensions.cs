@@ -32,6 +32,12 @@ public static class AuditServiceCollectionExtensions
         // nothing until something pushes a scope.
         services.TryAddSingleton<IAuditContextAccessor, AuditContextAccessor>();
 
+        // The consumer's route into that actor. IAuditLogger takes a pre-built entry, so without this a
+        // host writing its own entries would construct them by hand and the declared actor would be
+        // ignored — the scope would be machinery wired to nothing.
+        services.AddHttpContextAccessor();
+        services.TryAddSingleton<IAuditEntryFactory, AuditEntryFactory>();
+
         if (options.StorageMode.HasFlag(AuditStorageMode.Logger))
         {
             services.AddSingleton<LoggerAuditLogger>();

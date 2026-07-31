@@ -98,8 +98,28 @@ backlog items are folded in.
       (who is recorded and how), the worker scope pattern with a code sample, and that `Unknown` now
       appears where `User` wrongly did. Separate `docs:` commit.
 
-- [x] **10. Version line 3.8 → 3.9** — *Done.*
+- [x] **10. Version line — NO BUMP, stays 3.8.**
+      *I bumped it to 3.9 and reverted. Corrected policy (user, 2026-07-31): bump only when an existing
+      feature changes such that a **consumer has to act**. New opt-in services, interfaces and enum
+      members are a **patch** — "public API growth" is not the same as "consumers must act", and nobody
+      has to change anything here to keep working. Saved to memory so it applies going forward.*
       New public enum members, interface and field. Must land in this PR — the constant is hand-maintained.
+
+- [x] **12. `IAuditEntryFactory` — the consumer's route into the actor**
+      *Done — 4 tests. Found by the user asking how to test this in the sample.*
+      **The feature did not work end to end without it.** `AuditHelper.BuildEntry` — the only thing that
+      reads the ambient actor — is called from just the three auditing decorators and `ScopeProxy`, all
+      of which sit behind authorization requiring a principal, so background code cannot reach them. And
+      the documented consumer path is `IAuditLogger.Log(entry)` with an entry built **by hand**, which
+      never consults the actor. A consumer could therefore push a scope and observe no change at all.
+      The factory wraps `BuildEntry`, so a hand-written entry now resolves the caller the same way the
+      decorators do. Both docs were corrected — the worker sample I had written first would have taught a
+      pattern that silently does nothing.
+
+- [x] **13. Sample background job**
+      *Done — `SampleBackgroundJob` writes one audit entry ~5s after startup, attributed to the job.
+      Follows the `SampleAuditEnricher` precedent: the hook is exercisable out of the box rather than
+      only describable.*
 
 - [~] **11. Push and hand over for testing**
       Do **not** open the PR — the close-out commit must be last.
