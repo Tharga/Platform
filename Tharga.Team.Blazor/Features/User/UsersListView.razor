@@ -240,7 +240,7 @@ else
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var hasUsersManage = TeamScopeGate.HasSystemScope(authState.User, SystemUserScopes.Manage);
-        var directoryRegistered = ServiceProvider.GetService<IUserDirectoryService>() != null;
+        var directoryRegistered = ServiceProvider.GetService<IUserDirectoryService>() is { IsConfigured: true };
         _canSeeAllTeams = TeamVisibility.CanSeeAllTeams(authState.User);
         _canAdminister = UserAdminGate.CanAdministerUsers(hasUsersManage);
         _showDirectory = UserAdminGate.ShowDirectoryFeatures(hasUsersManage, directoryRegistered);

@@ -91,18 +91,32 @@ That is a third case, not a fix to this one — file it separately if wanted.
 
 ---
 
-## 5. Entra directory fails safe when unconfigured
+## 5. Entra directory fails safe when unconfigured — DONE 2026-08-01
 
-- [ ] `CredentialEntraTokenProvider` currently throws `InvalidOperationException` on the **first Graph
-      call** when `TenantId` / `ClientId` / `ClientSecret` are incomplete — so a half-configured
-      directory registers cleanly and fails at use time, in the wrong place.
-- [ ] Report "not configured" instead, and have the directory surfaces stay hidden exactly as they do
-      when the service is unregistered.
-- [ ] Test both: complete configuration behaves as today; incomplete configuration reports
-      not-configured rather than throwing.
+- [x] `IUserDirectoryService.IsConfigured` as a **default interface member** (`=> true`), so hosts with
+      a custom directory implementation need no change. Same on `IEntraTokenProvider`, for hosts with a
+      custom token provider — asserted by a test using a provider that does not implement it.
+- [x] `CredentialEntraTokenProvider.IsConfigured` and `CreateCredential` now read the same fields
+      through one `HasCredentials` helper, so they cannot drift apart.
+- [x] `EntraUserDirectoryService.IsConfigured` delegates to the token provider — nothing else about it
+      can be half-configured, since the Graph address and scope both have working defaults.
+- [x] Both call sites (`UsersListView`, `UsersView`) now ask
+      `GetService<IUserDirectoryService>() is { IsConfigured: true }`. **No signature change to
+      `UserAdminGate.ShowDirectoryFeatures`** — its second parameter already meant "is a usable
+      directory present"; only the value feeding it was wrong. Doc updated to say so.
+- [x] 15 tests: every partial credential combination, custom-credential-instead-of-secret, the
+      service-delegates-to-provider pair, and the legacy-provider default.
 
-**Same defect class as #160** — an unmet prerequisite that announces itself late and somewhere
-unhelpful. Worth keeping the two consistent in how they report.
+**The throw stays, deliberately.** A host calling the service directly still gets the
+`InvalidOperationException` naming the three settings — and a test pins that the two agree, so a
+provider reporting configured can never then throw. The UI simply stops offering the button first.
+
+**Open question for the user — should this also be loud?** Hiding is what the request asked for and is
+right for the *operator*: a Verify button that always throws is the same defect as the per-team buttons
+that threw when clicked. But it is silent for the *developer*, which is exactly the pattern PlutusWave
+objected to in the triage. A startup throw would be loudest but could take a running host down on
+upgrade, which is too aggressive for a minor. A one-time startup **warning** naming the missing
+settings is the likely answer — **not built, needs a decision.**
 
 ---
 

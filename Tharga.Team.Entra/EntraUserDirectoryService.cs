@@ -26,6 +26,13 @@ public class EntraUserDirectoryService : IUserDirectoryService
         _tokenProvider = tokenProvider;
     }
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// Delegates to the token provider, which owns the credentials. Nothing else about this service can
+    /// be half-configured — the Graph address and scope both have working defaults.
+    /// </remarks>
+    public bool IsConfigured => _tokenProvider.IsConfigured;
+
     public async Task<DirectoryVerificationResult> VerifyUserAsync(IUser user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);

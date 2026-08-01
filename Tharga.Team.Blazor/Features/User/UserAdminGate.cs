@@ -12,6 +12,17 @@ public static class UserAdminGate
     public static bool CanAdministerUsers(bool hasUsersManageScope)
         => hasUsersManageScope;
 
+    /// <summary>
+    /// Whether the directory features (verify, badge column, directory-only tab, the directory delete
+    /// opt-in) are offered at all.
+    /// </summary>
+    /// <param name="hasUsersManageScope">Whether the caller holds <c>users:manage</c>.</param>
+    /// <param name="directoryRegistered">
+    /// Whether a directory is registered <i>and reports itself configured</i>. A registered directory
+    /// that is missing its credentials counts as absent here — offering Verify and then throwing on the
+    /// first Graph call is the defect this closes, and it is the same shape as the buttons that threw
+    /// when clicked before per-team action gating landed.
+    /// </param>
     public static bool ShowDirectoryFeatures(bool hasUsersManageScope, bool directoryRegistered)
         => hasUsersManageScope && directoryRegistered;
 

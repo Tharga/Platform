@@ -20,6 +20,14 @@ public sealed class CredentialEntraTokenProvider : IEntraTokenProvider
         _options = options.Value;
     }
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// Answers the same question <see cref="CreateCredential"/> asks, from the same fields, so the two
+    /// cannot disagree: a provider that reports configured must not then throw, and one that reports
+    /// unconfigured must not silently work.
+    /// </remarks>
+    public bool IsConfigured => HasCredentials(_options);
+
     public async ValueTask<string> GetTokenAsync(CancellationToken cancellationToken = default)
     {
         _credential ??= CreateCredential();
@@ -27,11 +35,17 @@ public sealed class CredentialEntraTokenProvider : IEntraTokenProvider
         return token.Token;
     }
 
+    private static bool HasCredentials(EntraDirectoryOptions options)
+        => options.Credential != null
+           || (!string.IsNullOrEmpty(options.TenantId)
+               && !string.IsNullOrEmpty(options.ClientId)
+               && !string.IsNullOrEmpty(options.ClientSecret));
+
     private TokenCredential CreateCredential()
     {
         if (_options.Credential != null) return _options.Credential;
 
-        if (string.IsNullOrEmpty(_options.TenantId) || string.IsNullOrEmpty(_options.ClientId) || string.IsNullOrEmpty(_options.ClientSecret))
+        if (!HasCredentials(_options))
         {
             throw new InvalidOperationException(
                 $"The Entra user directory is not configured: set {nameof(EntraDirectoryOptions.TenantId)}, " +

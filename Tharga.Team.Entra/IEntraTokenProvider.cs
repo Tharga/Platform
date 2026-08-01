@@ -7,5 +7,13 @@ namespace Tharga.Team.Entra;
 /// </summary>
 public interface IEntraTokenProvider
 {
+    /// <summary>
+    /// Whether this provider can acquire a token at all. <c>false</c> means credentials are missing, so
+    /// <see cref="GetTokenAsync"/> would fail however it were called — which is what makes it answerable
+    /// before the first call rather than during it.
+    /// </summary>
+    /// <remarks>Defaults to <c>true</c> so a custom provider needs no change.</remarks>
+    bool IsConfigured => true;
+
     ValueTask<string> GetTokenAsync(CancellationToken cancellationToken = default);
 }
