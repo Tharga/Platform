@@ -769,10 +769,29 @@ builder.Services.AddAuthentication()
 
 ### What becomes available
 
-- API key authentication handler (validates `X-API-KEY` header)
-- `[Authorize(Policy = "ApiKeyPolicy")]` attribute for controllers
+- API key authentication handler (validates `X-API-KEY`, or `Authorization: Bearer`)
+- Three authorization policies — see the table below
 - API key management UI via `<ApiKeyView />` (from Step 4)
 - Constants in `ApiKeyConstants.HeaderName`, `ApiKeyConstants.PolicyName`
+
+#### Which policy to use
+
+**The first two are disjoint, not a hierarchy.** `SystemApiKeyPolicy` is not "`ApiKeyPolicy` plus more".
+
+| Policy | Team key | System key |
+|---|---|---|
+| `ApiKeyConstants.PolicyName` (`ApiKeyPolicy`) | ✅ | ❌ |
+| `ApiKeyConstants.SystemPolicyName` (`SystemApiKeyPolicy`) | ❌ | ✅ |
+| `ApiKeyConstants.AnyKeyPolicyName` (`AnyApiKeyPolicy`) | ✅ | ✅ |
+
+> [!WARNING]
+> **Requiring both admits nothing.** ASP.NET Core combines policies when several are named, so
+> `RequireAuthorization(PolicyName, SystemPolicyName)` demands a key that is both at once — which no key
+> is. Use `AnyKeyPolicyName` for an endpoint both kinds should reach.
+
+**MCP endpoints need none of these** — `UseThargaMcp()` builds its own policy that admits both kinds,
+provided `mcp.AddTeam()` has contributed the API-key scheme. Naming a policy there narrows the endpoint
+rather than securing it.
 
 ### _Imports.razor (if referencing constants)
 

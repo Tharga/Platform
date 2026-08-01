@@ -65,30 +65,37 @@ it is a `[Theory]` matrix rather than four separate facts.
 `AnyKeyPolicyName` (it asserts nothing about `IsSystemKey`), so an **MCP** endpoint never needed a named
 policy for this. The gap was only ever on the controller side.
 
-## 4. The `Tharga.Mcp` pairing hazard
+## 4. ~~The `Tharga.Mcp` pairing hazard~~ — DROPPED 2026-08-01, the premise was wrong
 
-Covers acceptance criteria 4. **Settle the question in `feature.md` first.**
+**There is no incompatibility.** `ThargaMcpOptions.AuthenticationSchemes` is documented as *"Empty means
+the application's default scheme"*, so `Tharga.Mcp` 1.0.1 paired with a bridge that contributes nothing
+behaves **exactly as 1.0.0 did**. The combination loses the *benefit* of the new feature; nothing breaks.
+Confirmed against the shipped XML docs, and reproduced by step 2's test — removing the scheme
+contribution yields the documented 302 fallback, not a fault.
 
-- [ ] Decide: a version range in the `.csproj` (refuses at restore, but constrains deliberate upgrades)
-      or a startup check comparing the loaded assembly version against what the bridge was built for.
-- [ ] Implement the chosen one.
-- [ ] Test it, if the shape allows — a restore-time constraint is not unit-testable, which is itself an
-      argument for the startup check.
+**Also: there is no `Tharga.Mcp` 2.0.0.** The version range proposed in `feature.md` guarded against a
+version that has never been published. The user asking *"can Tharga.Mcp not use 2.0.0? I do not
+understand the problem"* is what prompted re-deriving this instead of repeating it.
 
-**Worth remembering while doing this:** the hazard did **not** cause the `/mcp` 404 it was blamed for.
-It is being fixed on its own merits, so resist making it carry more weight than it has.
+**How the item survived:** it was written while the /mcp 404 was still believed to be a pairing problem.
+When that diagnosis was corrected it was demoted from *cause* to *"still real on its own merits"* — but
+never re-checked. A claim that outlives the collapse of its only evidence is a claim nobody verified.
 
----
+### The real defect, filed against `Tharga.Mcp`
 
-## 5. Documentation
+`Tharga.Mcp` **1.0.0 → 1.0.1** is a *patch* that moved **ModelContextProtocol 1.4.1 → 2.0.0** — a major
+upgrade of the SDK it wraps, carrying a stateless-by-default HTTP transport and `MCP9005` deprecations.
+A consumer running `dotnet outdated -u` takes a patch without reading anything, because that is what a
+patch number means. Filed in `Requests.md` under `## Tharga.Mcp`. **Nothing to build in this repo.**
 
-- [ ] `Tharga.Team.Service/README.md` — the three policies together, and the disjointness note.
-- [ ] `docs/articles/implementation-guide.md` — same, where API-key auth is described.
-- [ ] Note in the MCP docs that `RequireAuth = true` admits both key kinds since 3.8.2, so a host does
-      not need its own policy for that case.
-- [ ] Separate `docs:` commit before close-out.
+## 5. Documentation — DONE 2026-08-01
 
----
+- [x] `Tharga.Team.Service/README.md` — a "Which policy to gate an endpoint with" table covering all
+      three, with the disjointness stated and the requiring-both trap as a warning callout.
+- [x] `docs/articles/implementation-guide.md` — the same table where API-key auth is described. The old
+      text named only `ApiKeyPolicy`, which is how a reader ends up assuming it is the general one.
+- [x] Both say **MCP endpoints need none of these**: `UseThargaMcp()` builds its own policy admitting
+      both key kinds, so naming one there narrows the endpoint rather than securing it.
 
 ## 6. Close-out (only when the user confirms the feature is done)
 
