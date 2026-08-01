@@ -61,6 +61,28 @@ public interface ITeamManagementService
     [RequireScope(TeamScopes.Read)]
     Task SetInvitationResponseAsync(string teamKey, string userKey, string inviteCode, bool accept);
 
+    /// <summary>What the team exposes to an oversight caller. Requires <c>team:manage</c> on that team.</summary>
+    /// <remarks>
+    /// Consent is a team's own statement about what it exposes inbound, so it is deliberately gated by
+    /// the in-team manage scope rather than by any system grant — an operator overriding it would be a
+    /// much larger claim than fixing a typo in a name.
+    /// </remarks>
+    [RequireScope(TeamScopes.Manage)]
+    Task SetTeamConsentAsync(string teamKey, string[] consentedRoles, AccessLevel? accessLevel = null);
+
+    /// <summary>
+    /// Gives an <b>ownerless</b> team an owner from its existing members. Requires the
+    /// <see cref="SystemTeamScopes.AssignOwner"/> system scope.
+    /// </summary>
+    /// <remarks>
+    /// The scope is a <i>system</i> grant, unlike everything else here — a member could not have produced
+    /// an ownerless team, so there is no in-team case. Enforcement lives in
+    /// <c>AuthorizationTeamServiceDecorator</c>; the attribute below documents the team-bound half of the
+    /// signature and does not describe the whole rule.
+    /// </remarks>
+    [RequireScope(SystemTeamScopes.AssignOwner)]
+    Task AssignOwnerAsync(string teamKey, string newOwnerUserKey);
+
     /// <summary>One team and its members. Requires <c>team:read</c> on that team.</summary>
     [RequireScope(TeamScopes.Read)]
     Task<ITeam<TMember>> GetTeamAsync<TMember>(string teamKey) where TMember : ITeamMember;

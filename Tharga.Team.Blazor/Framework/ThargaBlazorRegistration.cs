@@ -69,6 +69,8 @@ public static class ThargaBlazorRegistration
                 services.AddScoped(typeof(ITeamManagementService), sp => sp.GetRequiredService(managementServiceType));
                 services.AddScoped(typeof(ITeamLifecycleService), sp => sp.GetRequiredService(managementServiceType));
                 services.AddScoped(typeof(ITeamDirectoryService), sp => sp.GetRequiredService(managementServiceType));
+                services.AddScoped(typeof(ITeamOversightService), sp => sp.GetRequiredService(managementServiceType));
+                services.AddScoped(typeof(ITeamInvitationService), sp => sp.GetRequiredService(managementServiceType));
             }
 
             if (o._apiKeyService != null)
