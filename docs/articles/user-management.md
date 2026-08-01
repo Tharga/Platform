@@ -124,6 +124,18 @@ var unavailable = provider.GetService<IUserDirectoryService>() is not { IsConfig
 Calling the service directly still throws `InvalidOperationException` naming the three settings, so a
 host that bypasses the UI gets a diagnosis rather than a silent failure.
 
+**A half-set configuration warns; an empty one does not.** Only one of the two is a mistake:
+
+| Configuration | Directory features | Log |
+|---|---|---|
+| No credential field set at all | hidden | silent — reads as a deliberate opt-out |
+| Some set, some missing | hidden | **Warning** naming exactly which values are missing |
+| A `Credential` supplied, or all three set | available | silent |
+
+Registering the directory in every environment while supplying secrets in only some is a normal shape,
+so that stays quiet. Half-filling a credential is not deliberate, and the symptom gives no clue where to
+look — so it warns once at startup, naming the missing values.
+
 ## The `users:manage` scope
 
 All user administration — **including viewing the users and teams admin lists** — requires the

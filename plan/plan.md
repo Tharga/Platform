@@ -111,12 +111,29 @@ That is a third case, not a fix to this one — file it separately if wanted.
 `InvalidOperationException` naming the three settings — and a test pins that the two agree, so a
 provider reporting configured can never then throw. The UI simply stops offering the button first.
 
-**Open question for the user — should this also be loud?** Hiding is what the request asked for and is
-right for the *operator*: a Verify button that always throws is the same defect as the per-team buttons
-that threw when clicked. But it is silent for the *developer*, which is exactly the pattern PlutusWave
-objected to in the triage. A startup throw would be loudest but could take a running host down on
-upgrade, which is too aggressive for a minor. A one-time startup **warning** naming the missing
-settings is the likely answer — **not built, needs a decision.**
+### 5b. Warn on a half-set configuration — DONE 2026-08-01 (user's rule)
+
+**The rule the user gave, and it is a better distinction than the one I proposed:** *absent* means the
+directory is not wanted, so stay silent; *wrongly configured* is a mistake, so warn. I had framed it as
+one question — "should this be loud?" — which would have warned every host that registers the directory
+without secrets in dev.
+
+- [x] No credential field set at all → hidden, **silent**. Registering the directory everywhere and
+      supplying secrets only in some environments is a normal shape.
+- [x] Some set and others empty → hidden, **Warning naming exactly which are missing**. Nobody
+      half-fills a credential on purpose, and the symptom gives no clue where to look.
+- [x] A supplied `Credential` suppresses the warning — it replaces the three fields.
+- [x] 6 further tests. Total for step 5: 21.
+
+**Logged from the constructor, not from `IsConfigured`.** The provider is a singleton, so it warns once
+per process rather than on every page render — and a property getter with a logging side effect is a
+trap for the next reader. The user's "perhaps that cannot be done before it is actually used" holds:
+this fires when something first resolves the directory, which is the admin page loading.
+
+**`Microsoft.Extensions.Logging.Abstractions` is deliberately NOT a `PackageReference`.** Adding it
+produced NU1510 — it is in the shared framework and the SDK prunes it. Removed rather than suppressed,
+because suppressing it is precisely what backlog item #26 exists to complain about in
+`Tharga.Team.Blazor`. Warning count is back to 11, the same as before this feature.
 
 ---
 

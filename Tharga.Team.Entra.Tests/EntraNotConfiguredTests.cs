@@ -95,6 +95,80 @@ public class EntraNotConfiguredTests
         Assert.True(sut.IsConfigured);
     }
 
+    /// <summary>
+    /// Nothing set at all is a deliberate opt-out — a host that registers the directory everywhere but
+    /// supplies secrets only in some environments. Silence is correct there.
+    /// </summary>
+    [Fact]
+    public void NoCredentialFieldSet_DoesNotWarn()
+    {
+        var logger = new CapturingLogger();
+
+        _ = new CredentialEntraTokenProvider(Options.Create(new EntraDirectoryOptions()), logger);
+
+        Assert.Empty(logger.Warnings);
+    }
+
+    /// <summary>
+    /// Half-filled credentials cannot be deliberate, and the symptom — directory features quietly absent
+    /// — gives no clue where to look. The warning has to name the missing values.
+    /// </summary>
+    [Theory]
+    [InlineData(null, "c", "s", "TenantId")]
+    [InlineData("t", null, "s", "ClientId")]
+    [InlineData("t", "c", null, "ClientSecret")]
+    public void PartiallyConfigured_WarnsNamingWhatIsMissing(string tenantId, string clientId, string clientSecret, string expected)
+    {
+        var logger = new CapturingLogger();
+
+        _ = new CredentialEntraTokenProvider(
+            Options.Create(new EntraDirectoryOptions { TenantId = tenantId, ClientId = clientId, ClientSecret = clientSecret }),
+            logger);
+
+        var warning = Assert.Single(logger.Warnings);
+        Assert.Contains(expected, warning);
+    }
+
+    [Fact]
+    public void FullyConfigured_DoesNotWarn()
+    {
+        var logger = new CapturingLogger();
+
+        _ = new CredentialEntraTokenProvider(
+            Options.Create(new EntraDirectoryOptions { TenantId = "t", ClientId = "c", ClientSecret = "s" }),
+            logger);
+
+        Assert.Empty(logger.Warnings);
+    }
+
+    /// <summary>A supplied credential replaces the three fields, so their absence is not a mistake.</summary>
+    [Fact]
+    public void CustomCredential_DoesNotWarnAboutMissingSecretFields()
+    {
+        var logger = new CapturingLogger();
+
+        _ = new CredentialEntraTokenProvider(
+            Options.Create(new EntraDirectoryOptions { Credential = new FakeCredential() }),
+            logger);
+
+        Assert.Empty(logger.Warnings);
+    }
+
+    private sealed class CapturingLogger : Microsoft.Extensions.Logging.ILogger<CredentialEntraTokenProvider>
+    {
+        public List<string> Warnings { get; } = [];
+
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId,
+            TState state, Exception exception, Func<TState, Exception, string> formatter)
+        {
+            if (logLevel == Microsoft.Extensions.Logging.LogLevel.Warning) Warnings.Add(formatter(state, exception));
+        }
+    }
+
     private sealed class StubTokenProvider(bool isConfigured) : IEntraTokenProvider
     {
         public bool IsConfigured { get; } = isConfigured;
