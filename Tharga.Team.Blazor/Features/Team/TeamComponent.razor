@@ -6,7 +6,9 @@
 @using Tharga.Team.Blazor.Features.User
 @using Tharga.Toolkit
 @typeparam TMember where TMember : class, Tharga.Team.ITeamMember
-@inject ITeamService TeamService
+@inject ITeamManagementService TeamManagementService
+@inject ITeamDirectoryService TeamDirectoryService
+@inject ITeamOversightService TeamOversightService
 @inject ITeamManagementService TeamManagementService
 @inject ITeamLifecycleService TeamLifecycleService
 @inject ITeamStateService TeamStateService
@@ -497,7 +499,7 @@ else
         {
             await ReloadTeams();
 
-            var updatedTeam = await TeamService.GetTeamAsync<TMember>(team.Key);
+            var updatedTeam = await TeamManagementService.GetTeamAsync<TMember>(team.Key);
             var invitedMember = updatedTeam?.Members
                 .FirstOrDefault(m => m.Invitation != null && m.Name == inviteResult.Name);
 
@@ -687,7 +689,7 @@ else
     private async Task SetConsent(ITeam<TMember> team, AccessLevel? level)
     {
         var roles = level.HasValue ? _consentRoles : Array.Empty<string>();
-        await TeamService.SetTeamConsentAsync(team.Key, roles, level);
+        await TeamManagementService.SetTeamConsentAsync(team.Key, roles, level);
         await ReloadTeams();
     }
 
@@ -856,8 +858,8 @@ else
         _teams = null;
         _selectedTeam = await TeamStateService.GetSelectedTeamAsync();
         var teams = _canSeeAllTeams
-            ? await TeamService.GetAllTeamsAsync<TMember>().ToArrayAsync()
-            : await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
+            ? await TeamOversightService.GetAllTeamsAsync<TMember>().ToArrayAsync()
+            : await TeamDirectoryService.GetTeamsAsync<TMember>().ToArrayAsync();
         _teams = teams.OrderBy(x => x.Name).ToArray();
         await BuildVisibleRolesAsync();
         StateHasChanged();
