@@ -3,7 +3,9 @@
 @using Microsoft.JSInterop
 @using Tharga.Team.Blazor.Features.Team
 @typeparam TMember where TMember : class, Tharga.Team.ITeamMember
-@inject ITeamService TeamService
+@inject ITeamManagementService TeamManagementService
+@inject ITeamDirectoryService TeamDirectoryService
+@inject ITeamOversightService TeamOversightService
 @inject IUserService UserService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject DialogService DialogService
@@ -266,8 +268,8 @@ else
     {
         _users = await UserService.GetAsync().ToArrayAsync();
         _teams = _canSeeAllTeams
-            ? await TeamService.GetAllTeamsAsync<TMember>().ToArrayAsync()
-            : await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
+            ? await TeamOversightService.GetAllTeamsAsync<TMember>().ToArrayAsync()
+            : await TeamDirectoryService.GetTeamsAsync<TMember>().ToArrayAsync();
 
         BuildViewModels();
     }
@@ -378,7 +380,7 @@ else
 
         try
         {
-            await TeamService.AssignOwnerAsync<TMember>(team.Key, ownerKey);
+            await TeamManagementService.AssignOwnerAsync(team.Key, ownerKey);
 
             // The roster drives both the Owner column and whether this action is offered at all, so the
             // list has to be rebuilt rather than patched — otherwise the action stays on a repaired team.
@@ -411,7 +413,7 @@ else
 
         try
         {
-            await TeamService.DeleteTeamAsync<TMember>(team.Key);
+            await TeamManagementService.DeleteTeamAsync(team.Key);
 
             if (_selectedTeam?.Key == team.Key) _selectedTeam = null;
             await LoadDataAsync();

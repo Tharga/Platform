@@ -96,6 +96,15 @@ public class TeamManagementService<TMember> : ITeamManagementService, ITeamLifec
         }
     }
 
+    /// <inheritdoc />
+    public async IAsyncEnumerable<ITeam> GetTeamsAsync()
+    {
+        await foreach (var team in GetTeamsAsync<TMember>())
+        {
+            yield return team;
+        }
+    }
+
     private bool GrantsTeamRead<T>(ITeam<T> team, IUser user) where T : ITeamMember
     {
         // No registry means the app does not use scopes; filtering here would refuse reads it never gated.
@@ -213,5 +222,11 @@ public class TeamManagementService<TMember> : ITeamManagementService, ITeamLifec
     {
         await RequireTeamReadAsync(teamKey);
         return await _inner.GetTeamMemberAsync(teamKey, userKey);
+    }
+
+    public async Task<IReadOnlyList<TenantRoleDefinition>> GetTeamCustomRolesAsync(string teamKey)
+    {
+        await RequireTeamReadAsync(teamKey);
+        return await _inner.GetTeamCustomRolesAsync(teamKey);
     }
 }

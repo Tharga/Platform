@@ -95,6 +95,15 @@ public interface ITeamManagementService
     [RequireScope(TeamScopes.Read)]
     IAsyncEnumerable<ITeamMember> GetMembersAsync(string teamKey);
 
+    /// <summary>The team's runtime-defined custom roles. Requires <c>team:read</c> on that team.</summary>
+    /// <remarks>
+    /// A read of team detail, so it is gated like the others — not like its write sibling
+    /// <see cref="SetTeamCustomRolesAsync"/>, which needs <c>team:manage</c>. Seeing which roles a team
+    /// defines is part of seeing the team.
+    /// </remarks>
+    [RequireScope(TeamScopes.Read)]
+    Task<IReadOnlyList<TenantRoleDefinition>> GetTeamCustomRolesAsync(string teamKey);
+
     /// <summary>One member of a team. Requires <c>team:read</c> on that team.</summary>
     [RequireScope(TeamScopes.Read)]
     Task<ITeamMember> GetTeamMemberAsync(string teamKey, string userKey);

@@ -126,10 +126,24 @@ not the same as holding every grant inside it.
 
 A component, controller or MCP provider should inject one of these — **never `ITeamService`**.
 
+> [!IMPORTANT]
+> **Behaviour change in 3.10.** `team:read` is now enforced on every first-level team read. A caller
+> lacking it is refused where it previously succeeded.
+>
+> **Almost certainly a no-op for you.** The scope is registered at `AccessLevel.Viewer`, so every
+> ordinary member already holds it. It bites **`AccessLevel.Custom`** — least-privilege machine keys
+> carrying only their explicit grants — which until now read team metadata, the full roster with access
+> levels and states, and API-key metadata regardless. Grant `team:read` to any `Custom` key that should
+> keep reading team data.
+>
+> An application with no `IScopeRegistry` registered is unaffected: it does not use scopes, and enforcing
+> would refuse reads it never gated.
+
+
 | Inject | For | Checked by |
 |---|---|---|
-| `ITeamManagementService` | One team: its details, roster, members, and every mutation | `team:read` on reads, `team:manage` / `member:manage` on mutations |
-| `ITeamDirectoryService` | The caller's **own** teams | Recomputed per team from that membership — teams not granting `team:read` are omitted |
+| `ITeamManagementService` | One team: its details, roster, members, custom roles, and every mutation | `team:read` on reads, `team:manage` / `member:manage` on mutations |
+| `ITeamDirectoryService` | The caller's **own** teams, with or without rosters | Recomputed per team from that membership — teams not granting `team:read` are omitted |
 | `ITeamOversightService` | **Every** team, regardless of membership | `teams:read` system scope. Discovery only |
 | `ITeamInvitationService` | Resolving an invite code | **The code itself.** An invitee holds no scope for the team they are joining |
 | `ITeamLifecycleService` | Creating a team | Authenticated caller plus `AllowTeamCreation` |
@@ -142,6 +156,10 @@ break sign-in.
 
 > A first-level surface injecting it bypasses authorization entirely. That is not hypothetical: it is
 > how `team:read` came to be registered, documented, granted — and checked by nothing.
+
+It is marked `[EditorBrowsable(Never)]`, so it no longer appears in IntelliSense. An architecture test
+fails the build if a component or MCP provider in this repo injects it; nothing yet protects a consumer
+project, which is what the planned Roslyn analyzer is for.
 
 **Three categories, not two**, and only the first is marked by an attribute:
 

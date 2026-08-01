@@ -98,7 +98,7 @@ else
     private ITenantRoleRegistry _roleRegistry;
     private ITenantRoleService _tenantRoleService;
     private ITeamManagementService _managementService;
-    private ITeamService _teamService;
+    private ITeamManagementService _teamService;
     private ITeamStateService _teamStateService;
 
     private RadzenDataGrid<EditableTenantRole> _grid;
@@ -117,7 +117,7 @@ else
         _roleRegistry = ServiceProvider.GetService<ITenantRoleRegistry>();
         _tenantRoleService = ServiceProvider.GetService<ITenantRoleService>();
         _managementService = ServiceProvider.GetService<ITeamManagementService>();
-        _teamService = ServiceProvider.GetService<ITeamService>();
+        _teamService = ServiceProvider.GetService<ITeamManagementService>();
         _teamStateService = ServiceProvider.GetService<ITeamStateService>();
 
         if (_scopeRegistry != null)

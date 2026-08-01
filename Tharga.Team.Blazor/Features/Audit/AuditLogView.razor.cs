@@ -12,7 +12,7 @@ namespace Tharga.Team.Blazor.Features.Audit;
 public partial class AuditLogView : ComponentBase
 {
     [Inject] private IServiceProvider ServiceProvider { get; init; }
-    [Inject] private ITeamService TeamService { get; init; }
+    [Inject] private ITeamDirectoryService TeamDirectoryService { get; init; }
     [Inject] private NotificationService NotificationService { get; init; }
     [Inject] private IJSRuntime JS { get; init; }
     [Inject] private AuthenticationStateProvider AuthStateProvider { get; init; }
@@ -107,7 +107,7 @@ public partial class AuditLogView : ComponentBase
 
         if (string.IsNullOrEmpty(TeamKey))
         {
-            await foreach (var team in TeamService.GetTeamsAsync())
+            await foreach (var team in TeamDirectoryService.GetTeamsAsync())
             {
                 _teams.Add(new TeamInfo(team.Key, team.Name));
             }

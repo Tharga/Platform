@@ -1,19 +1,18 @@
 ﻿@using System.Text.Json
-@using Microsoft.Extensions.Logging
 @using Tharga.Team
 @using Tharga.Toolkit
 @typeparam TMember where TMember : class, Tharga.Team.ITeamMember
 @inject ILocalStorageService LocalStorage
-@inject ITeamService TeamService
+@inject ITeamInvitationService TeamInvitationService
+@inject ITeamManagementService TeamManagementService
 @inject IUserService UserService
 @inject NavigationManager NavigationManager
-@inject ILogger<TeamInviteView<TMember>> Logger
 
-<RadzenStack Visible="@(!string.IsNullOrEmpty(_inviteCode) && _team != null)">
+<RadzenStack Visible="@(!string.IsNullOrEmpty(_inviteCode) && _invitation != null)">
     <CascadingAuthenticationState>
         <AuthorizeView>
             <Authorized>
-                <RadzenText Text="@($"You have been invited to team '{_team.Name}'. Do you want to join?")" />
+                <RadzenText Text="@($"You have been invited to team '{_invitation.TeamName}'. Do you want to join?")" />
                 <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem">
                     <StandardButton Text="Yes" Icon="check_circle" Click="JoinTeam" />
                     <StandardButton Text="No" Icon="do_not_disturb_on" Click="Decline" />
@@ -34,7 +33,7 @@
 @code
 {
     private string _inviteCode;
-    private ITeam<TMember> _team;
+    private TeamInvitation _invitation;
     private IUser _user;
 
     [Parameter]
@@ -52,36 +51,21 @@
         var inviteCode = await GetInviteCode();
         if (string.IsNullOrEmpty(inviteCode)) return;
 
-        try
+        // Resolved by the code, not by reading the team. The invitee holds no scope for the team they
+        // are joining, so the gated read would refuse them — and the read this replaces returned the whole
+        // roster to someone who had only been sent a link.
+        _invitation = await TeamInvitationService.GetInvitationAsync(inviteCode);
+
+        // Null covers malformed, unknown and already-answered alike; the service does not distinguish
+        // them, so neither can this.
+        if (_invitation == null || _invitation.AlreadyMember)
         {
-            var inviteModelJson = inviteCode.FromBase64();
-            var inviteModel = JsonSerializer.Deserialize<InviteModel>(inviteModelJson);
-            _team = await TeamService.GetTeamAsync<TMember>(inviteModel.TeamKey);
-            var member = _team?.Members.PickOneOrDefault(x => x.Invitation?.InviteKey == inviteModel.Code, Logger, _team.Key, inviteModel.Code);
-            if (member == null)
-            {
-                //No team or member found with this invitation.
-                inviteCode = null;
-            }
-            else
-            {
-                // var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-                _user = await UserService.GetCurrentUserAsync();
-                var currentMember = _team.Members.FirstOrDefault(x => x.Key == _user.Key && x.Invitation == null);
-                if (currentMember != null)
-                {
-                    //Current user is already a member of this team.
-                    inviteCode = null;
-                }
-                else
-                {
-                    //NOTE: This is an active correct invite for a user that is not yet a member.
-                }
-            }
-        }
-        catch (Exception)
-        {
+            _invitation = null;
             inviteCode = null;
+        }
+        else
+        {
+            _user = await UserService.GetCurrentUserAsync();
         }
 
         if (!string.IsNullOrEmpty(inviteCode))
@@ -118,7 +102,7 @@
         var inviteModelJson = _inviteCode.FromBase64();
         var inviteModel = JsonSerializer.Deserialize<InviteModel>(inviteModelJson);
 
-        await TeamService.SetInvitationResponseAsync(_team.Key, _user.Key, inviteModel.Code, true);
+        await TeamManagementService.SetInvitationResponseAsync(_invitation.TeamKey, _user.Key, inviteModel.Code, true);
         await LocalStorage.RemoveItemAsync(Constants.TeamInviteCode);
         NavigationManager.NavigateTo(Tharga.Blazor.Framework.UriExtensions.RemoveQuery(new Uri(NavigationManager.Uri)).AbsoluteUri, true);
     }
@@ -128,7 +112,7 @@
         var inviteModelJson = _inviteCode.FromBase64();
         var inviteModel = JsonSerializer.Deserialize<InviteModel>(inviteModelJson);
 
-        await TeamService.SetInvitationResponseAsync(_team.Key, _user.Key, inviteModel.Code, false);
+        await TeamManagementService.SetInvitationResponseAsync(_invitation.TeamKey, _user.Key, inviteModel.Code, false);
         await LocalStorage.RemoveItemAsync(Constants.TeamInviteCode);
         NavigationManager.NavigateTo(Tharga.Blazor.Framework.UriExtensions.RemoveQuery(new Uri(NavigationManager.Uri)).AbsoluteUri, true);
     }

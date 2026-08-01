@@ -1,5 +1,36 @@
-﻿namespace Tharga.Team;
+﻿using System.ComponentModel;
 
+namespace Tharga.Team;
+
+/// <summary>
+/// The team store — <b>the contract a host implements, not the one a component injects.</b>
+/// </summary>
+/// <remarks>
+/// <b>Deliberately unchecked.</b> Framework code reads through this while constructing the very claims
+/// that would authorize the read — <c>TeamMembershipClaimsBuilder</c> and
+/// <c>TeamClaimsAuthenticationStateProvider</c> both resolve a member while building the principal — so
+/// gating it would be circular and break sign-in. Authorization is applied by the decorators and gated
+/// services layered over it, not here.
+/// <para>
+/// <b>A component, controller or MCP provider injecting this bypasses authorization entirely.</b> That is
+/// not hypothetical: it is how <c>team:read</c> came to be registered, documented, granted — and checked
+/// by nothing. Reaching around the gate was the path of least resistance and nothing said otherwise.
+/// </para>
+/// <para>Inject one of these instead:</para>
+/// <list type="table">
+///   <item><term><see cref="ITeamManagementService"/></term><description>One team: its details, roster, members, and every mutation.</description></item>
+///   <item><term><see cref="ITeamDirectoryService"/></term><description>The caller's own teams, filtered by what each membership grants.</description></item>
+///   <item><term><see cref="ITeamOversightService"/></term><description>Every team, regardless of membership. Requires <c>teams:read</c>.</description></item>
+///   <item><term><see cref="ITeamInvitationService"/></term><description>Resolving an invite code, authorized by the code itself.</description></item>
+///   <item><term><see cref="ITeamLifecycleService"/></term><description>Creating a team.</description></item>
+/// </list>
+/// <para>
+/// Hidden from IntelliSense to prevent the honest mistake. It cannot prevent a deliberate or copy-pasted
+/// one — an architecture test covers this repo, and a Roslyn analyzer is the only thing that would reach
+/// consumer projects.
+/// </para>
+/// </remarks>
+[EditorBrowsable(EditorBrowsableState.Never)]
 public interface ITeamService
 {
     event EventHandler<TeamsListChangedEventArgs> TeamsListChangedEvent;

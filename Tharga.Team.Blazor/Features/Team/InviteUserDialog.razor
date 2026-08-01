@@ -3,7 +3,7 @@
 @using Tharga.Team
 @attribute [Authorize]
 @inject DialogService DialogService
-@inject ITeamService TeamService
+@inject ITeamManagementService TeamManagementService
 @inject IServiceProvider ServiceProvider
 
 <RadzenTemplateForm TItem="InviteUserModel" Data=@Model Submit=@OnSubmit Style="height: 100%;">
@@ -88,7 +88,7 @@
     {
         try
         {
-            await TeamService.AddMemberAsync(TeamKey, model);
+            await TeamManagementService.AddMemberAsync(TeamKey, model);
 
             DialogService.Close(new InviteResult { Success = true, Email = model.Email, Name = model.Name });
         }

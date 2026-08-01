@@ -13,7 +13,8 @@ namespace Tharga.Team.Mcp;
 public sealed class TeamUserResourceProvider : IMcpResourceProvider
 {
     private readonly IUserService _userService;
-    private readonly ITeamService _teamService;
+    private readonly ITeamManagementService _teamService;
+    private readonly ITeamDirectoryService _teamDirectory;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     public const string MeUri = "team://me";
@@ -25,11 +26,13 @@ public sealed class TeamUserResourceProvider : IMcpResourceProvider
 
     public TeamUserResourceProvider(
         IUserService userService,
-        ITeamService teamService,
+        ITeamManagementService teamService,
+        ITeamDirectoryService teamDirectory,
         IHttpContextAccessor httpContextAccessor)
     {
         _userService = userService;
         _teamService = teamService;
+        _teamDirectory = teamDirectory;
         _httpContextAccessor = httpContextAccessor;
     }
 
@@ -63,7 +66,7 @@ public sealed class TeamUserResourceProvider : IMcpResourceProvider
             throw new UnauthorizedAccessException("Authentication required.");
 
         var memberships = new List<object>();
-        await foreach (var team in _teamService.GetTeamsAsync().WithCancellation(cancellationToken))
+        await foreach (var team in _teamDirectory.GetTeamsAsync().WithCancellation(cancellationToken))
         {
             var memberRow = await FindMemberAsync(team.Key, user.Key, cancellationToken);
             memberships.Add(new

@@ -9,7 +9,7 @@
 @inject ITeamStateService TeamStateService
 @inject IServiceProvider ServiceProvider
 @inject IUserService UserService
-@inject ITeamService TeamService
+@inject ITeamOversightService TeamOversightService
 
 @*
     An ordinary application page for exercising access control as different users. Everything here reads
@@ -174,7 +174,7 @@
             async () => $"{(await UserService.GetTeamMemberUsersAsync()).Count} users"));
 
         _checks.Add(await CheckAsync("List every team", SystemTeamScopes.Read,
-            async () => $"{await TeamService.GetAllTeamsAsync().CountAsync()} teams"));
+            async () => $"{await TeamOversightService.GetAllTeamsAsync().CountAsync()} teams"));
 
         var apiKeyService = ServiceProvider.GetService<IApiKeyManagementService>();
         if (apiKeyService != null && _selectedTeam != null)

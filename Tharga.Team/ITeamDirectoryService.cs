@@ -23,4 +23,13 @@ public interface ITeamDirectoryService
     /// together, so a half-visible team would be a state nothing else in the model has.
     /// </summary>
     IAsyncEnumerable<ITeam<TMember>> GetTeamsAsync<TMember>() where TMember : ITeamMember;
+
+    /// <summary>
+    /// The same teams without their rosters, for a caller that does not know the host's member type.
+    /// </summary>
+    /// <remarks>
+    /// Filtered identically — it runs the generic overload and drops the rosters, rather than reproducing
+    /// the per-team scope recomputation. Two copies of that rule would be two chances for it to drift.
+    /// </remarks>
+    IAsyncEnumerable<ITeam> GetTeamsAsync();
 }

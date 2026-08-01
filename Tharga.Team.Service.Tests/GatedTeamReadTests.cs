@@ -103,6 +103,7 @@ public class GatedTeamReadTests
     [InlineData("by-key")]
     [InlineData("members")]
     [InlineData("member")]
+    [InlineData("custom-roles")]
     public async Task EveryGatedRead_IsRefusedWithoutTheScope(string operation)
     {
         var sut = Build(AccessLevel.Custom);
@@ -114,6 +115,7 @@ public class GatedTeamReadTests
                 case "team": await sut.GetTeamAsync<FakeMember>("team-1"); break;
                 case "by-key": await sut.GetTeamByKeyAsync("team-1"); break;
                 case "members": await foreach (var _ in sut.GetMembersAsync("team-1")) { } break;
+                case "custom-roles": await sut.GetTeamCustomRolesAsync("team-1"); break;
                 default: await sut.GetTeamMemberAsync("team-1", "someone"); break;
             }
         });
@@ -195,7 +197,7 @@ public class GatedTeamReadTests
         public Task AssignOwnerAsync<T>(string teamKey, string newOwnerUserKey) where T : ITeamMember => NotUsed<Task>();
         public Task SetTeamConsentAsync(string teamKey, string[] consentedRoles, AccessLevel? accessLevel = null) => NotUsed<Task>();
         public IAsyncEnumerable<ITeam> GetConsentedTeamsAsync(string[] userRoles) => NotUsed<IAsyncEnumerable<ITeam>>();
-        public Task<IReadOnlyList<TenantRoleDefinition>> GetTeamCustomRolesAsync(string teamKey) => NotUsed<Task<IReadOnlyList<TenantRoleDefinition>>>();
+        public Task<IReadOnlyList<TenantRoleDefinition>> GetTeamCustomRolesAsync(string teamKey) => Task.FromResult<IReadOnlyList<TenantRoleDefinition>>([]);
         public Task SetTeamCustomRolesAsync(string teamKey, IReadOnlyList<TenantRoleDefinition> customRoles) => NotUsed<Task>();
         public Task<int> RemoveUserFromAllTeamsAsync(string userKey) => NotUsed<Task<int>>();
         public Task<IReadOnlyList<ITeam>> GetTeamsForUserWithAccessLevelAsync(string userKey, AccessLevel accessLevel) => NotUsed<Task<IReadOnlyList<ITeam>>>();
