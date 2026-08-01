@@ -16,6 +16,9 @@ public class UserManagementService : IUserManagementService
     private readonly IUserDirectoryService _directoryService;
     private readonly bool _writeNameToDirectory;
 
+    /// <param name="userService">The user store.</param>
+    /// <param name="teamService">The team store, used to remove memberships and to find owned teams.</param>
+    /// <param name="directoryService">The external directory, when one is registered.</param>
     /// <param name="writeNameToDirectory">
     /// Whether an administrative rename also writes the name back to the directory. Default off: which
     /// side owns display names is a per-host decision, and a host federating from a corporate directory
