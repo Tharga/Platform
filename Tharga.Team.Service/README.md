@@ -122,6 +122,32 @@ Access level still applies within the team. `audit:read` is registered at `Acces
 Viewer-level key holding a team's credential is refused its own team's audit log — holding a team's key is
 not the same as holding every grant inside it.
 
+## Which policy to gate an endpoint with
+
+Three are registered. **The first two are disjoint, not a hierarchy** — `SystemApiKeyPolicy` is not
+"`ApiKeyPolicy` plus more", and the naming invites that reading.
+
+| Policy | Team key | System key |
+|---|---|---|
+| `ApiKeyConstants.PolicyName` (`ApiKeyPolicy`) | ✅ | ❌ |
+| `ApiKeyConstants.SystemPolicyName` (`SystemApiKeyPolicy`) | ❌ | ✅ |
+| `ApiKeyConstants.AnyKeyPolicyName` (`AnyApiKeyPolicy`) | ✅ | ✅ |
+
+```csharp
+app.MapGet("/reports", …).RequireAuthorization(ApiKeyConstants.AnyKeyPolicyName);
+```
+
+> [!WARNING]
+> **Requiring both admits nothing.** ASP.NET Core *combines* policies when several are named, so
+> `RequireAuthorization(PolicyName, SystemPolicyName)` demands a key that is simultaneously a team key
+> and a system key — which no key is. Use `AnyKeyPolicyName` for an endpoint both kinds should reach.
+> This is asserted by a test rather than left as advice.
+
+**MCP endpoints need none of these.** `UseThargaMcp()` builds its own policy from
+`ThargaMcpOptions.AuthenticationSchemes`, asserting nothing about `IsSystemKey`, so it already admits
+both kinds — provided a bridge has contributed a scheme, which `mcp.AddTeam()` does. Naming a policy
+there would narrow the endpoint rather than secure it.
+
 ## Team API keys
 
 Protect endpoints with the built-in policy:

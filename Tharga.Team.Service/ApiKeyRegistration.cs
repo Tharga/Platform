@@ -50,6 +50,15 @@ public static class ApiKeyRegistration
                 policy.RequireAuthenticatedUser();
                 policy.RequireClaim(TeamClaimTypes.IsSystemKey, "true");
             });
+
+            // Deliberately asserts nothing about IsSystemKey. The two policies above are disjoint, so
+            // requiring both admits nothing — this is the only built-in way to reach an endpoint with
+            // either kind of key.
+            options.AddPolicy(ApiKeyConstants.AnyKeyPolicyName, policy =>
+            {
+                policy.AddAuthenticationSchemes(ApiKeyConstants.SchemeName);
+                policy.RequireAuthenticatedUser();
+            });
         });
 
         builder.Services.AddAuditedApiKeyAdministrationService(typeof(TService));
