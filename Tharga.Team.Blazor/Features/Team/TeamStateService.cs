@@ -30,6 +30,16 @@ internal class TeamStateService : ITeamStateService
         _options = options.Value;
 
         _teamService.TeamsListChangedEvent += (s, e) => { TeamsListChangedEvent?.Invoke(s, e); };
+
+        // Bridged so a component never needs the internal ITeamService to hear it. The service raises this
+        // when it picks a team itself — auto-selection at sign-in — and subscribers see an ordinary
+        // selection change. Routed through SetSelectedTeamAsync rather than assigning the field, so the
+        // last-seen stamp and persistence still happen; that is what the selector used to do by hand, and
+        // the same-key guard in there stops a redundant round trip.
+        _teamService.SelectTeamEvent += async (_, e) =>
+        {
+            if (e.Team != null) await SetSelectedTeamAsync(e.Team);
+        };
     }
 
     public event EventHandler<TeamsListChangedEventArgs> TeamsListChangedEvent;

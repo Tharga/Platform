@@ -2,7 +2,8 @@
 @using Tharga.Team
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ITeamStateService TeamStateService
-@inject ITeamService TeamService
+@inject ITeamDirectoryService TeamDirectoryService
+@inject ITeamOversightService TeamOversightService
 @inject IThargaTextProvider TextProvider
 @inject IOptions<ThargaBlazorOptions> BlazorOptions
 
@@ -111,11 +112,6 @@
             await ReloadTeams();
         };
 
-        TeamService.SelectTeamEvent += (_, e) =>
-        {
-            SelectedTeam = e.Team;
-        };
-
         var current = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         if (current.User.Identity?.IsAuthenticated ?? false)
         {
@@ -130,8 +126,8 @@
         var current = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         _canSeeAllTeams = TeamVisibility.CanSeeAllTeams(current.User);
         _teams = _canSeeAllTeams
-            ? await TeamService.GetAllTeamsAsync().ToArrayAsync()
-            : await TeamService.GetTeamsAsync().ToArrayAsync();
+            ? await TeamOversightService.GetAllTeamsAsync().ToArrayAsync()
+            : await TeamDirectoryService.GetTeamsAsync().ToArrayAsync();
         var selectedTeam = await TeamStateService.GetSelectedTeamAsync();
         SelectedTeam ??= selectedTeam;
         StateHasChanged();

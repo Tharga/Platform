@@ -2,7 +2,8 @@
 @using Microsoft.JSInterop
 @using Tharga.Team.Blazor.Features.Team
 @typeparam TMember where TMember : class, Tharga.Team.ITeamMember
-@inject ITeamService TeamService
+@inject ITeamDirectoryService TeamDirectoryService
+@inject ITeamOversightService TeamOversightService
 @inject IUserService UserService
 @inject IUserManagementService UserManagementService
 @inject IServiceProvider ServiceProvider
@@ -283,8 +284,8 @@ else
     {
         _users = await UserService.GetAsync().ToArrayAsync();
         _teams = _canSeeAllTeams
-            ? await TeamService.GetAllTeamsAsync<TMember>().ToArrayAsync()
-            : await TeamService.GetTeamsAsync<TMember>().ToArrayAsync();
+            ? await TeamOversightService.GetAllTeamsAsync<TMember>().ToArrayAsync()
+            : await TeamDirectoryService.GetTeamsAsync<TMember>().ToArrayAsync();
 
         BuildViewModels();
     }
