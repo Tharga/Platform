@@ -66,13 +66,24 @@ it now belongs to the release described in `plan/feature.md` → superseded-by n
 
 ---
 
-## 4. `TeamSelector` — respect `AllowTeamCreation`  `[~] IN PROGRESS`
+## 4. `TeamSelector` — respect `AllowTeamCreation` — DONE 2026-08-01
 
-- [ ] Gate the teamless branch on `AllowTeamCreation`, matching `TeamComponent`, which already reads
-      the option in both directions (button when true, "creation is disabled" message when false).
-- [ ] Cover both link variants — the `CreateTeamRequested` callback branch and the `RadzenLink`
-      branch. Only gating one leaves the defect for hosts using the other.
-- [ ] Test the gate.
+- [x] New `TeamSelectorGate.ShowCreateTeamLink(teamCount, allowTeamCreation)` — internal and pure,
+      mirroring `MemberHighlight`. `_allowTeamCreation` read from options in `OnInitializedAsync`,
+      exactly as `TeamComponent` does it.
+- [x] **Both link variants covered.** The gate wraps the whole teamless block, so the
+      `CreateTeamRequested` callback branch and the `RadzenLink` branch are gated by one condition —
+      they cannot drift apart.
+- [x] 8 tests, including one asserting the selector now agrees with `TeamComponent` for a teamless
+      caller. The two contradicting each other is what made this a defect rather than a missing
+      feature, so the agreement is the thing worth pinning.
+
+**A structural trap avoided, worth recording.** The obvious edit — changing
+`else if (_teams.Length == 0)` to `else if (ShowCreateTeamLink(...))` — is wrong. With no teams and
+creation disabled it falls through to the `_teams.Length == 1` test, fails that too, and lands in the
+final `else`, rendering the team **dropdown for a caller with zero teams**. The gate has to nest
+*inside* the teamless branch, not replace it. A pure-function test would not have caught this; only
+reading the branch chain does.
 
 **Related, noted but not built here:** a caller holding `teams:read` with no membership gets no
 affordance for the teams they may see, because the teamless branch assumes teamless means new user.

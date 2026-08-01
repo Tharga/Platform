@@ -16,13 +16,16 @@
         }
         else if (_teams.Length == 0)
         {
-            @if (CreateTeamRequested.HasDelegate)
+            @if (TeamSelectorGate.ShowCreateTeamLink(_teams.Length, _allowTeamCreation))
             {
-                <a href="" class="rz-link" @onclick="InvokeCreateTeamRequested" @onclick:preventDefault>@_createTeamText</a>
-            }
-            else
-            {
-                <RadzenLink Text="@_createTeamText" Path="@_createTeamPath" />
+                @if (CreateTeamRequested.HasDelegate)
+                {
+                    <a href="" class="rz-link" @onclick="InvokeCreateTeamRequested" @onclick:preventDefault>@_createTeamText</a>
+                }
+                else
+                {
+                    <RadzenLink Text="@_createTeamText" Path="@_createTeamPath" />
+                }
             }
         }
         else if (_teams.Length == 1 && SelectedTeam != null)
@@ -74,6 +77,7 @@
     private string _loadingText = TeamMenuText.Loading.Default;
     private string _createTeamText = TeamMenuText.CreateTeam.Default;
     private string _createTeamPath = "/team";
+    private bool _allowTeamCreation = true;
 
     private ITeam SelectedTeam
     {
@@ -90,6 +94,8 @@
     {
         _loadingText = await TextProvider.GetAsync(TeamMenuText.Loading);
         _createTeamText = await TextProvider.GetAsync(TeamMenuText.CreateTeam);
+
+        _allowTeamCreation = BlazorOptions.Value.AllowTeamCreation;
 
         var configuredPath = BlazorOptions.Value.CreateTeamPath;
         if (!string.IsNullOrWhiteSpace(configuredPath)) _createTeamPath = configuredPath;
