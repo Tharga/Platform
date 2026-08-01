@@ -77,12 +77,30 @@ mechanism.
 
 ### Then the five gaps in the surface
 
-- [ ] **`GetAllTeamsAsync`** — wholly-system-wide gated home (decision taken: new interface, precedent
-      `ISystemApiKeyManagementService`).
-- [ ] **`SetTeamConsentAsync`** on `ITeamManagementService`.
-- [ ] **`AssignOwnerAsync`** on `ITeamManagementService` — added to `ITeamService` only in the previous
-      feature; the exact drift this feature exists to stop.
-- [ ] **`GetInvitationAsync(inviteCode)`** — new, authorized by the code rather than a scope.
+- [x] **`ITeamOversightService`** — `GetAllTeamsAsync` in both overloads. Its own interface because it is
+      **wholly system-wide**: a no-argument cross-team read on the wholly-team-bound
+      `ITeamManagementService` would break the invariant that makes one scope registration true of every
+      method, not merely sit oddly beside it. Enforcement is downstream on `SystemTeamScopes.Read`, where
+      it already was.
+- [x] **`SetTeamConsentAsync`** on `ITeamManagementService`, gated on the in-team `team:manage` — consent
+      is a team's own statement about what it exposes, so an operator overriding it via a system grant
+      would be a much larger claim than fixing a typo in a name.
+- [x] **`AssignOwnerAsync`** on `ITeamManagementService`. Its scope is a *system* grant, unlike every
+      other member — noted in the XML docs so the attribute is not read as the whole rule.
+- [x] **`ITeamInvitationService.GetInvitationAsync(inviteCode)`** — its own interface, authorized by the
+      **code** rather than a scope. An invitee holds nothing for the team they are joining, so requiring
+      a scope would make an invitation impossible to accept.
+
+**The invitation lookup is a real narrowing, not a relocation.** The old pattern decoded the code, read
+the *entire team* by key, and matched the roster in memory — returning every member, access level and
+membership state to someone who had only been sent a link. `GetInvitationAsync` returns four fields.
+
+**Malformed, unknown and already-used all return null.** Distinguishing them would confirm whether a
+team exists to an unauthenticated visitor holding a guessed link.
+
+**This is also why the invitation screen could not simply move onto the gated path** — and it is the
+break that PR 2 would otherwise have discovered at runtime: with enforcement live, an invitee calling
+`GetTeamAsync` is refused.
 - [x] **`SelectTeamEvent` — resolved, no new contract needed.** `TeamStateService` is internal framework
       code that already injects `ITeamService`, which the rule permits (the ban is on components,
       controllers and MCP providers). It can bridge the event, leaving `TeamSelector` on

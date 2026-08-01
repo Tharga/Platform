@@ -1,4 +1,6 @@
-﻿namespace Tharga.Team;
+﻿using System.Text.Json;
+
+namespace Tharga.Team;
 
 /// <summary>
 /// Delegates to <see cref="ITeamService"/> for all operations, enforcing <c>team:read</c> on the reads.
@@ -18,7 +20,7 @@
 /// Generic methods (GetTeamsAsync, DeleteTeamAsync, RenameTeamAsync) call non-generic
 /// internal versions since the proxy resolves the member type from the team data.
 /// </summary>
-public class TeamManagementService<TMember> : ITeamManagementService, ITeamLifecycleService, ITeamDirectoryService
+public class TeamManagementService<TMember> : ITeamManagementService, ITeamLifecycleService, ITeamDirectoryService, ITeamOversightService, ITeamInvitationService
     where TMember : class, ITeamMember
 {
     private readonly ITeamService _inner;
@@ -57,6 +59,18 @@ public class TeamManagementService<TMember> : ITeamManagementService, ITeamLifec
     public Task SetTeamCustomRolesAsync(string teamKey, IReadOnlyList<TenantRoleDefinition> customRoles) => _inner.SetTeamCustomRolesAsync(teamKey, customRoles);
     public Task SetMemberLastSeenAsync(string teamKey) => _inner.SetMemberLastSeenAsync(teamKey);
     public Task SetInvitationResponseAsync(string teamKey, string userKey, string inviteCode, bool accept) => _inner.SetInvitationResponseAsync(teamKey, userKey, inviteCode, accept);
+    public Task SetTeamConsentAsync(string teamKey, string[] consentedRoles, AccessLevel? accessLevel = null) => _inner.SetTeamConsentAsync(teamKey, consentedRoles, accessLevel);
+    public Task AssignOwnerAsync(string teamKey, string newOwnerUserKey) => _inner.AssignOwnerAsync<TMember>(teamKey, newOwnerUserKey);
+
+    /// <remarks>
+    /// Enforced downstream on <see cref="SystemTeamScopes.Read"/> by
+    /// <c>AuthorizationTeamServiceDecorator</c>, like the mutations — unlike the team-bound reads below,
+    /// which the decorator deliberately does not gate.
+    /// </remarks>
+    public IAsyncEnumerable<ITeam> GetAllTeamsAsync() => _inner.GetAllTeamsAsync();
+
+    /// <inheritdoc cref="GetAllTeamsAsync()"/>
+    public IAsyncEnumerable<ITeam<T>> GetAllTeamsAsync<T>() where T : ITeamMember => _inner.GetAllTeamsAsync<T>();
 
     /// <summary>
     /// The caller's own teams, filtered to those where their membership grants <c>team:read</c>.
@@ -101,6 +115,41 @@ public class TeamManagementService<TMember> : ITeamManagementService, ITeamLifec
         return _scopeRegistry
             .GetEffectiveScopes(member.AccessLevel, member.TenantRoles, member.ScopeOverrides)
             .Contains(TeamScopes.Read);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Reads through <c>_inner</c> deliberately: the invitee holds no scope on this team, so the gated
+    /// read would refuse them. The invite code is the check, and only the invitation it names is
+    /// returned — not the roster the old pattern exposed.
+    /// </remarks>
+    public async Task<TeamInvitation> GetInvitationAsync(string inviteCode)
+    {
+        if (string.IsNullOrWhiteSpace(inviteCode)) return null;
+
+        InviteModel invite;
+        try
+        {
+            invite = JsonSerializer.Deserialize<InviteModel>(Convert.FromBase64String(inviteCode));
+        }
+        catch
+        {
+            // Malformed, unknown and already-used are one answer to the caller — distinguishing them
+            // would confirm whether a team exists to someone who only has a link.
+            return null;
+        }
+
+        if (invite == null || string.IsNullOrEmpty(invite.TeamKey)) return null;
+
+        var team = await _inner.GetTeamAsync<TMember>(invite.TeamKey);
+        var invited = team?.Members?.FirstOrDefault(x => x.Invitation?.InviteKey == invite.Code);
+        if (invited == null) return null;
+
+        var user = _userService == null ? null : await _userService.GetCurrentUserAsync();
+        var alreadyMember = user != null &&
+            team.Members.Any(x => x.Key == user.Key && x.Invitation == null);
+
+        return new TeamInvitation(team.Key, team.Name, invited.Invitation?.EMail, alreadyMember);
     }
 
     /// <summary>
