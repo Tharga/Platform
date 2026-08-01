@@ -55,6 +55,22 @@ directory features quietly absent — gives no clue where to look, so it warns o
 > `AzureAd` section leaves `TenantId` null and the directory unusable. Set it explicitly in the
 > `configure` callback.
 
+## Writing a display name back
+
+`IUserDirectoryService.SetUserNameAsync` writes `displayName` via Graph `PATCH /users/{id}`. It needs no
+permission beyond the `User.ReadWrite.All` that deletion already requires.
+
+**Off by default.** Set `o.Blazor.WriteNameToDirectory = true` to have an **administrative** rename push
+the name to the directory as well. Self-service renaming is never pushed, whatever the option says.
+
+The local write always happens first and is never rolled back — a directory failure is reported on
+`UserNameChangeResult.DirectoryError`. Coupling them would let a Graph outage block renaming a user in
+the application.
+
+The driver: an application that collects no attributes at sign-up holds the real name while the directory
+holds a placeholder such as `"unknown"`, so the good name exists and cannot reach anyone administering the
+tenant. A host federating from a corporate directory wants the opposite, which is why this is opt-in.
+
 ## Entra app-registration permissions
 
 Grant the app registration **application** (app-only) Graph permissions, with admin consent:

@@ -30,6 +30,40 @@ public interface IUserManagementService
     Task<UserDeleteResult> DeleteUserAsync(string userKey, bool deleteFromDirectory = false, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Set a user's display name, and — when <c>o.Blazor.WriteNameToDirectory</c> is enabled and the user
+    /// is linked to a directory account — write it back to the external directory too.
+    /// </summary>
+    /// <remarks>
+    /// The local write always happens; a failure there throws. The directory write is best-effort and its
+    /// outcome is reported on the result rather than rolled back into the local one: they fail
+    /// independently, and coupling them would let a directory outage block renaming a user here.
+    /// <para>
+    /// Administrative rename only. The self-service path (<c>IUserService.SetUserNameAsync</c>) stays
+    /// local deliberately — a user editing their own display name in this application should not silently
+    /// rewrite the organization's directory.
+    /// </para>
+    /// </remarks>
+    [RequireScope(SystemUserScopes.Manage)]
+    Task<UserNameChangeResult> SetUserNameAsync(string userKey, string name, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The teams this user owns — the teams that deleting them would leave with no owner.
+    /// </summary>
+    /// <remarks>
+    /// Meant to be asked <b>before</b> confirming a delete, so the operator can transfer ownership
+    /// instead of learning afterwards that a team is unrecoverable: <c>TransferOwnershipAsync</c>
+    /// requires the caller to be the owner, so once the owner is gone only a holder of
+    /// <see cref="SystemTeamScopes.AssignOwner"/> can repair it.
+    /// <para>
+    /// On <see cref="IUserManagementService"/> rather than <c>ITeamService</c> deliberately. The question
+    /// is "what will deleting this user break", which is user administration; and it keeps the delete
+    /// dialog off the internal team contract, which no component should inject.
+    /// </para>
+    /// </remarks>
+    [RequireScope(SystemUserScopes.Manage)]
+    Task<IReadOnlyList<ITeam>> GetOwnedTeamsAsync(string userKey, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// List directory users that have no matching local user (matched by directory id, falling back to
     /// email), streamed as directory pages arrive.
     /// </summary>

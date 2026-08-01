@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Tharga.Blazor.Framework;
 using Tharga.Team;
@@ -53,6 +54,14 @@ public static class ThargaBlazorRegistration
             services.AddScoped(o._userService);
             services.AddScoped(typeof(IUserService), sp => sp.GetRequiredService(o._userService));
 
+            // Runs at startup, once everything else is registered — reachability depends on whether an
+            // icon store and a directory are present, and those may be registered after this point.
+            var userServiceType = o._userService;
+            var throwOnIncomplete = o.ThrowOnIncompleteUserService;
+            services.AddSingleton<IHostedService>(sp => new UserServiceCompletenessCheck(
+                sp, userServiceType, throwOnIncomplete,
+                sp.GetService<ILogger<UserServiceCompletenessCheck>>()));
+
             if (o._memberType != null)
             {
                 var managementServiceType = typeof(TeamManagementService<>).MakeGenericType(o._memberType);
@@ -89,12 +98,15 @@ public static class ThargaBlazorRegistration
                     scopes.Register(SystemTeamScopes.Delete, "Delete any team (cross-team), regardless of membership or the AllowTeamCreation option.");
                 if (scopes.All.All(s => s.Name != SystemUserScopes.Manage))
                     scopes.Register(SystemUserScopes.Manage, "Administer users (cross-team): verify against the external directory, list directory-only users, and delete users.");
+                if (scopes.All.All(s => s.Name != SystemTeamScopes.AssignOwner))
+                    scopes.Register(SystemTeamScopes.AssignOwner, "Give an ownerless team an owner, chosen from its existing members. Refused when the team already has one.");
             });
 
             services.AddScoped<IUserManagementService>(sp => new UserManagementService(
                 sp.GetRequiredService<IUserService>(),
                 sp.GetRequiredService<ITeamService>(),
-                sp.GetService<IUserDirectoryService>()));
+                sp.GetService<IUserDirectoryService>(),
+                o.WriteNameToDirectory));
 
             // Server-side claims enrichment — always registered, reads selected_team_id cookie.
             // The membership/consent claim computation is shared with the in-circuit revalidator below.
@@ -305,7 +317,11 @@ public static class ThargaBlazorRegistration
             else
                 throw new InvalidOperationException("Cannot resolve inner IUserService for authorization decoration.");
 
-            return new AuthorizationUserServiceDecorator(inner, sp.GetRequiredService<TeamAuthorizer>(), sp.GetRequiredService<ITeamService>);
+            // Cache invalidation sits closest to the store, so it runs on the write that actually
+            // happened — after authorization has already decided the call may proceed.
+            var cacheInvalidating = new CacheInvalidatingUserServiceDecorator(inner);
+
+            return new AuthorizationUserServiceDecorator(cacheInvalidating, sp.GetRequiredService<TeamAuthorizer>(), sp.GetRequiredService<ITeamService>);
         });
     }
 

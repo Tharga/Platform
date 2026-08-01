@@ -146,6 +146,25 @@ public abstract class TeamServiceRepositoryBase<TTeamEntity, TMember> : TeamServ
         return _teamRepository.RemoveMemberFromAllTeamsAsync(userKey);
     }
 
+    /// <remarks>
+    /// Filters the cross-team enumeration rather than adding a repository query. The set is bounded by
+    /// the number of teams, this runs once per delete confirmation rather than per request, and a
+    /// dedicated query would be a second place for the membership shape to be interpreted.
+    /// </remarks>
+    protected override async Task<IReadOnlyList<ITeam>> GetTeamsForUserWithAccessLevelInternalAsync(string userKey, AccessLevel accessLevel)
+    {
+        if (string.IsNullOrEmpty(userKey)) return [];
+
+        var matches = new List<ITeam>();
+        await foreach (var team in _teamRepository.GetAllTeamsAsync())
+        {
+            if (team?.Members?.Any(m => m != null && m.Key == userKey && m.AccessLevel == accessLevel) == true)
+                matches.Add(team);
+        }
+
+        return matches;
+    }
+
     protected override Task SetTeamIconReferenceInternalAsync(string teamKey, string reference)
     {
         return _teamRepository.SetIconAsync(teamKey, reference);

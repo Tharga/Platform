@@ -390,6 +390,38 @@ public class AuditingTeamServiceDecorator : ITeamService
         }
     }
 
+    /// <remarks>
+    /// A read, and deliberately not audited — it runs when a delete dialog opens, so recording it would
+    /// log an entry for looking at a confirmation the operator may then cancel. The delete it precedes is
+    /// audited, which is the act worth recording.
+    /// </remarks>
+    public Task<IReadOnlyList<ITeam>> GetTeamsForUserWithAccessLevelAsync(string userKey, AccessLevel accessLevel)
+        => _inner.GetTeamsForUserWithAccessLevelAsync(userKey, accessLevel);
+
+    /// <remarks>
+    /// Audited like any ownership change, and for a stronger reason: this one hands out <c>Owner</c>
+    /// with no sitting owner's consent. A refusal is recorded too — an attempt to repair a team that is
+    /// not broken is exactly what someone would try when taking one over.
+    /// </remarks>
+    public async Task AssignOwnerAsync<TMember>(string teamKey, string newOwnerUserKey) where TMember : ITeamMember
+    {
+        var metadata = Meta((AuditMetadataKeys.NewOwnerKey, newOwnerUserKey));
+
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            await _inner.AssignOwnerAsync<TMember>(teamKey, newOwnerUserKey);
+            sw.Stop();
+            Log("assign-owner", nameof(AssignOwnerAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey, metadata: metadata);
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            Log("assign-owner", nameof(AssignOwnerAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey, metadata);
+            throw;
+        }
+    }
+
     /// <summary>
     /// Builds a metadata bag, dropping pairs whose value is unknown. A failed "before" read therefore
     /// omits its key rather than recording a misleading null.

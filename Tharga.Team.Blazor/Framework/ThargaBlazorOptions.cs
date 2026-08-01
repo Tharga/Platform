@@ -63,6 +63,41 @@ public record ThargaBlazorOptions : BlazorOptions
     public bool AllowTeamCreation { get; set; } = true;
 
     /// <summary>
+    /// Fail startup when the host's user service leaves a persistence extension point un-overridden,
+    /// instead of logging an error. Default <c>false</c>.
+    /// </summary>
+    /// <remarks>
+    /// The gap is real either way: each un-overridden member accepts a write, reports success and
+    /// discards it. The default logs rather than throws because the condition is pre-existing wherever it
+    /// occurs, so throwing would turn a routine upgrade into an outage over a feature the host may never
+    /// use. Set this where a silently-discarded write is worse than a failed boot.
+    /// </remarks>
+    public bool ThrowOnIncompleteUserService { get; set; }
+
+    /// <summary>
+    /// Write a display name back to the external directory when an administrator renames a user.
+    /// Default <c>false</c>.
+    /// </summary>
+    /// <remarks>
+    /// Which side owns display names is a per-host decision. A host federating from a corporate directory
+    /// wants the directory authoritative and would be alarmed to find the application overwriting it; an
+    /// application that collects no attributes at sign-up is the opposite case — it holds the real name
+    /// while the directory holds a placeholder, and the good name cannot reach anyone administering the
+    /// tenant.
+    /// <para>
+    /// Applies to the <b>administrative</b> rename only. Self-service renaming stays local whatever this
+    /// is set to: a user editing their own display name here should not silently rewrite the
+    /// organization's directory.
+    /// </para>
+    /// <para>
+    /// The local write always happens. A directory failure is reported on
+    /// <see cref="UserNameChangeResult"/>, never rolled back — the two fail independently, and coupling
+    /// them would let a directory outage block renaming a user in this application.
+    /// </para>
+    /// </remarks>
+    public bool WriteNameToDirectory { get; set; }
+
+    /// <summary>
     /// Optional route that the built-in "Create team" entry points navigate to instead of
     /// performing the bare create. When set, the teamless "Create team" link in
     /// <c>TeamSelector</c> and the "Create new Team" button in <c>TeamComponent</c> redirect

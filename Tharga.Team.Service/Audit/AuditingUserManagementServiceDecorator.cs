@@ -26,6 +26,13 @@ public class AuditingUserManagementServiceDecorator : IUserManagementService
         _httpContextAccessor = httpContextAccessor;
     }
 
+    /// <remarks>
+    /// A read that runs when a delete confirmation opens, so it is not audited — logging it would record
+    /// an entry for looking at a dialog the operator may then cancel. The delete it precedes is audited.
+    /// </remarks>
+    public Task<IReadOnlyList<ITeam>> GetOwnedTeamsAsync(string userKey, CancellationToken cancellationToken = default)
+        => _inner.GetOwnedTeamsAsync(userKey, cancellationToken);
+
     public async Task<DirectoryVerificationResult> VerifyUserAsync(string userKey, CancellationToken cancellationToken = default)
     {
         var sw = Stopwatch.StartNew();
@@ -88,6 +95,32 @@ public class AuditingUserManagementServiceDecorator : IUserManagementService
         {
             sw.Stop();
             Log("delete", nameof(DeleteUserAsync), sw.ElapsedMilliseconds, false, ex.Message,
+                metadata: Meta((AuditMetadataKeys.UserKey, userKey)));
+            throw;
+        }
+    }
+
+    /// <remarks>
+    /// The directory outcome is recorded rather than just the local write: a rename that succeeded here
+    /// and failed there is the case someone will later need to explain, and it is invisible otherwise.
+    /// </remarks>
+    public async Task<UserNameChangeResult> SetUserNameAsync(string userKey, string name, CancellationToken cancellationToken = default)
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var result = await _inner.SetUserNameAsync(userKey, name, cancellationToken);
+            sw.Stop();
+            Log("set-user-name", nameof(SetUserNameAsync), sw.ElapsedMilliseconds, true, metadata: Meta(
+                (AuditMetadataKeys.UserKey, userKey),
+                (AuditMetadataKeys.UserNameNew, name),
+                (AuditMetadataKeys.DirectoryError, result?.DirectoryError)));
+            return result;
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            Log("set-user-name", nameof(SetUserNameAsync), sw.ElapsedMilliseconds, false, ex.Message,
                 metadata: Meta((AuditMetadataKeys.UserKey, userKey)));
             throw;
         }

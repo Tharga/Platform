@@ -29,6 +29,31 @@ public class UserAdminGateTests
         Assert.Equal(expected, UserAdminGate.ShowDirectoryFeatures(hasScope, directoryRegistered));
     }
 
+    /// <summary>The repair case: the scope, on a team that has actually lost its owner.</summary>
+    [Fact]
+    public void CanAssignOwner_ScopedCallerOnAnOwnerlessTeam_IsAllowed()
+    {
+        Assert.True(UserAdminGate.CanAssignOwner(hasAssignOwnerScope: true, teamIsOwnerless: true));
+    }
+
+    /// <summary>
+    /// The service refuses on a team that already has an owner, so offering the action there would be a
+    /// control that throws when clicked — the defect per-team action gating already had to fix once.
+    /// </summary>
+    [Fact]
+    public void CanAssignOwner_TeamThatHasAnOwner_IsHidden()
+    {
+        Assert.False(UserAdminGate.CanAssignOwner(hasAssignOwnerScope: true, teamIsOwnerless: false));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void CanAssignOwner_WithoutTheScope_IsHidden(bool teamIsOwnerless)
+    {
+        Assert.False(UserAdminGate.CanAssignOwner(hasAssignOwnerScope: false, teamIsOwnerless));
+    }
+
     [Fact]
     public void CanDeleteUser_AnotherUser_IsAllowed()
     {

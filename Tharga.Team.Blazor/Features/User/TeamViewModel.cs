@@ -28,6 +28,17 @@ public record TeamViewModel
     public string OwnerName { get; init; }
 
     /// <summary>
+    /// Whether the team has no member at <see cref="AccessLevel.Owner"/> — the state
+    /// <see cref="SystemTeamScopes.AssignOwner"/> repairs.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately not derived from <see cref="OwnerName"/> being null. That is also null for an owner
+    /// with no display name, and offering to "repair" a team that has an owner would produce an action
+    /// the service refuses.
+    /// </remarks>
+    public bool IsOwnerless { get; init; }
+
+    /// <summary>
     /// When anyone last used this team, or null if nobody ever has. Derived from the members'
     /// <see cref="ITeamMember.LastSeen"/>, which tracks team selection.
     /// </summary>

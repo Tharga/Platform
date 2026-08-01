@@ -38,6 +38,27 @@ public interface IUserDirectoryService
     Task DeleteUserAsync(string directoryId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Write a display name back to the directory.
+    /// </summary>
+    /// <remarks>
+    /// The only write here that is not destructive, and the reason it exists: an application that
+    /// collects no attributes at sign-up holds the real name while the directory holds a placeholder, so
+    /// the good name exists and cannot reach the people administering the tenant.
+    /// <para>
+    /// <b>Never called automatically.</b> Which side owns display names is a per-host decision — a host
+    /// federating from a corporate directory wants the directory authoritative and would be alarmed to
+    /// find the application overwriting it. Gated on <c>o.Blazor.WriteNameToDirectory</c>, default off.
+    /// </para>
+    /// <para>
+    /// Throws by default, so a directory implementation that cannot write says so rather than silently
+    /// accepting and discarding — the failure mode this codebase keeps having to fix.
+    /// </para>
+    /// </remarks>
+    Task SetUserNameAsync(string directoryId, string name, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException(
+            $"'{GetType().Name}' does not implement {nameof(SetUserNameAsync)}. Implement it to write display names back to the directory.");
+
+    /// <summary>
     /// Enumerate all users in the directory, streamed page by page.
     /// </summary>
     IAsyncEnumerable<DirectoryUser> GetUsersAsync(CancellationToken cancellationToken = default);

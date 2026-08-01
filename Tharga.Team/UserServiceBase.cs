@@ -6,7 +6,7 @@ using Tharga.Toolkit;
 
 namespace Tharga.Team;
 
-public abstract class UserServiceBase : IUserService
+public abstract class UserServiceBase : IUserService, IUserCacheInvalidator
 {
     protected readonly AuthenticationStateProvider _authenticationStateProvider;
 
@@ -241,5 +241,21 @@ public abstract class UserServiceBase : IUserService
     protected void InvalidateUserCache(string identity)
     {
         if (!string.IsNullOrEmpty(identity)) _userCache.TryRemove(identity, out _);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// The cache is keyed by identity, so this scans by <see cref="IUser.Key"/>. One entry per signed-in
+    /// user per process makes the scan cheaper than a second index that would then need invalidating
+    /// too.
+    /// </remarks>
+    public void InvalidateUserByKey(string userKey)
+    {
+        if (string.IsNullOrEmpty(userKey)) return;
+
+        foreach (var entry in _userCache)
+        {
+            if (entry.Value?.Key == userKey) _userCache.TryRemove(entry.Key, out _);
+        }
     }
 }

@@ -43,6 +43,19 @@ public interface ITeamService
     Task SetInvitationResponseAsync(string teamKey, string userKey, string inviteCode, bool accept);
     Task SetMemberLastSeenAsync(string teamKey);
     Task TransferOwnershipAsync<TMember>(string teamKey, string newOwnerUserKey) where TMember : ITeamMember;
+
+    /// <summary>
+    /// Gives an <b>ownerless</b> team an owner, chosen from its existing members. The repair path for a
+    /// team whose owner was deleted; requires the <see cref="SystemTeamScopes.AssignOwner"/> system
+    /// scope.
+    /// </summary>
+    /// <remarks>
+    /// Refuses when the team already has an owner, and when the candidate is not already a member — see
+    /// <see cref="TeamOwnership"/> for why both conditions are load-bearing. Distinct from
+    /// <see cref="TransferOwnershipAsync{TMember}"/>, which requires the caller to <i>be</i> the owner
+    /// and so cannot help once the owner is gone.
+    /// </remarks>
+    Task AssignOwnerAsync<TMember>(string teamKey, string newOwnerUserKey) where TMember : ITeamMember;
     Task SetTeamConsentAsync(string teamKey, string[] consentedRoles, AccessLevel? accessLevel = null);
     IAsyncEnumerable<ITeam> GetConsentedTeamsAsync(string[] userRoles);
     Task<IReadOnlyList<TenantRoleDefinition>> GetTeamCustomRolesAsync(string teamKey);
@@ -55,6 +68,29 @@ public interface ITeamService
     /// removed from.
     /// </summary>
     Task<int> RemoveUserFromAllTeamsAsync(string userKey);
+
+    /// <summary>
+    /// The teams where this user holds exactly <paramref name="accessLevel"/>. Requires the
+    /// <see cref="SystemUserScopes.Manage"/> system scope.
+    /// </summary>
+    /// <remarks>
+    /// The driver is user deletion: asking for <see cref="AccessLevel.Owner"/> answers "which teams will
+    /// this delete strand?", so the admin can transfer ownership <i>before</i> deleting rather than
+    /// being told afterwards that something is now unrecoverable.
+    /// <para>
+    /// <b>Exact match, not minimum.</b> "Teams they own" is the question; a caller wanting a threshold
+    /// can ask more than once. A minimum-level overload would make the common case ambiguous at the call
+    /// site, where <c>Owner</c> would silently also mean every level above it — of which there are none,
+    /// making the parameter read as if it did something it does not.
+    /// </para>
+    /// <para>
+    /// Gated on <c>users:manage</c> rather than <c>teams:read</c>, deliberately. The caller of this
+    /// already holds the right to remove the user from every one of these teams, so learning which they
+    /// are is strictly less than they can already do — and gating it on a scope they may not hold would
+    /// hide the warning from exactly the person about to cause the damage.
+    /// </para>
+    /// </remarks>
+    Task<IReadOnlyList<ITeam>> GetTeamsForUserWithAccessLevelAsync(string userKey, AccessLevel accessLevel);
 
     /// <summary>
     /// Sets the team's icon from raw image bytes: stores them via the registered <see cref="IIconStore"/>,
