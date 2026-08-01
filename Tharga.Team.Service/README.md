@@ -122,6 +122,39 @@ Access level still applies within the team. `audit:read` is registered at `Acces
 Viewer-level key holding a team's credential is refused its own team's audit log — holding a team's key is
 not the same as holding every grant inside it.
 
+## Which team service to inject
+
+A component, controller or MCP provider should inject one of these — **never `ITeamService`**.
+
+| Inject | For | Checked by |
+|---|---|---|
+| `ITeamManagementService` | One team: its details, roster, members, and every mutation | `team:read` on reads, `team:manage` / `member:manage` on mutations |
+| `ITeamDirectoryService` | The caller's **own** teams | Recomputed per team from that membership — teams not granting `team:read` are omitted |
+| `ITeamOversightService` | **Every** team, regardless of membership | `teams:read` system scope. Discovery only |
+| `ITeamInvitationService` | Resolving an invite code | **The code itself.** An invitee holds no scope for the team they are joining |
+| `ITeamLifecycleService` | Creating a team | Authenticated caller plus `AllowTeamCreation` |
+
+### `ITeamService` is the contract you implement, not the one you inject
+
+It is the host's own storage seam and is **deliberately unchecked** — framework code reads through it
+while constructing the very claims that would authorize the read, so gating it would be circular and
+break sign-in.
+
+> A first-level surface injecting it bypasses authorization entirely. That is not hypothetical: it is
+> how `team:read` came to be registered, documented, granted — and checked by nothing.
+
+**Three categories, not two**, and only the first is marked by an attribute:
+
+| Category | Marked by | Rule |
+|---|---|---|
+| **Gated** | `[RequireScope]` on every method | All-or-nothing. The interface is wholly team-bound or wholly system-wide, so one registration is true of every method |
+| **Filtered** | nothing — stated in XML docs | A first-level read naming no team, so it cannot be gated. Recomputes the caller's scopes per item and omits what they may not see |
+| **Internal** | `[EditorBrowsable(Never)]` + XML docs | The contract a host implements. Never inject from a component, controller or MCP provider |
+
+**An entry point's check need not be a scope.** An invitation is authorized by its invite code, because
+the invitee is not yet a member and holds nothing. The rule is that a first-level call is *checked*, not
+that it is checked by a scope.
+
 ## Which policy to gate an endpoint with
 
 Three are registered. **The first two are disjoint, not a hierarchy** — `SystemApiKeyPolicy` is not
