@@ -15,6 +15,27 @@
         This cannot be undone.
     </RadzenText>
 
+    @if (_ownedTeams is { Count: > 0 })
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat" AllowClose="false">
+            <RadzenText TextStyle="TextStyle.Body2">
+                <b>@UserName</b> is the owner of @(_ownedTeams.Count == 1 ? "a team" : $"{_ownedTeams.Count} teams").
+                Deleting them leaves @(_ownedTeams.Count == 1 ? "it" : "them") with no owner, and ownership
+                cannot be transferred afterwards — only an administrator holding
+                <code>@SystemTeamScopes.AssignOwner</code> can assign a new one.
+            </RadzenText>
+            <ul>
+                @foreach (var team in _ownedTeams)
+                {
+                    <li>@(team.Name ?? team.Key)</li>
+                }
+            </ul>
+            <RadzenText TextStyle="TextStyle.Body2">
+                Transfer ownership first if @(_ownedTeams.Count == 1 ? "this team is" : "these teams are") still in use.
+            </RadzenText>
+        </RadzenAlert>
+    }
+
     @if (ShowDirectoryOption)
     {
         @if (_checking)
@@ -89,9 +110,24 @@
     private bool _checking;
     private DirectoryUserStatus? _directoryStatus;
     private string _checkError;
+    private IReadOnlyList<ITeam> _ownedTeams;
 
     protected override async Task OnInitializedAsync()
     {
+        // Best-effort, and deliberately silent on failure. This warning improves a confirmation that
+        // already works; a store that cannot answer it must not block the delete behind an error.
+        if (!string.IsNullOrEmpty(UserKey))
+        {
+            try
+            {
+                _ownedTeams = await UserManagementService.GetOwnedTeamsAsync(UserKey);
+            }
+            catch
+            {
+                _ownedTeams = null;
+            }
+        }
+
         if (ShowDirectoryOption && !string.IsNullOrEmpty(UserKey))
         {
             _checking = true;

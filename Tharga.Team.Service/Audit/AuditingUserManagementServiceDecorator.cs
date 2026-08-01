@@ -26,6 +26,13 @@ public class AuditingUserManagementServiceDecorator : IUserManagementService
         _httpContextAccessor = httpContextAccessor;
     }
 
+    /// <remarks>
+    /// A read that runs when a delete confirmation opens, so it is not audited — logging it would record
+    /// an entry for looking at a dialog the operator may then cancel. The delete it precedes is audited.
+    /// </remarks>
+    public Task<IReadOnlyList<ITeam>> GetOwnedTeamsAsync(string userKey, CancellationToken cancellationToken = default)
+        => _inner.GetOwnedTeamsAsync(userKey, cancellationToken);
+
     public async Task<DirectoryVerificationResult> VerifyUserAsync(string userKey, CancellationToken cancellationToken = default)
     {
         var sw = Stopwatch.StartNew();

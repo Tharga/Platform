@@ -124,10 +124,25 @@ suppress the exact warning this exists to raise. Same reasoning as
 **Still open:** whether deletion should *refuse* for a sole owner or proceed with the warning shown.
 The read makes refusing possible; it does not decide it.
 
-### 4c. UI
+### 4c. UI — warning DONE, Teams-tab action REMAINING  `[~]`
 
-- [ ] Assign-owner action on the Teams tab of `TeamsListView`, beside the existing delete, gated through
-      a pure `UserAdminGate` function with tests. Needs the members drill-down to pick a candidate.
+- [x] **`IUserManagementService.GetOwnedTeamsAsync(userKey)`** — the dialog asks this, not `ITeamService`.
+      The delete dialog already injects `IUserManagementService`, and injecting the internal team
+      contract into a component is precisely what plan 07 exists to remove; adding one here would be
+      creating work for it.
+- [x] **The delete confirmation names the teams** the user owns and says ownership cannot be transferred
+      afterwards — only a holder of `teams:assign-owner` can repair it.
+- [x] **Best-effort and silent on failure.** A store that cannot answer must not block the delete behind
+      an error: this improves a confirmation that already worked.
+- [x] **Deletion proceeds — user's decision, 2026-08-01.** Refusing would block legitimate cases such as
+      winding up a one-person team, and the state is now repairable. Recorded as a comment at the removal
+      call so the next reader does not "fix" it into a refusal.
+- [x] `UserAdminGate.CanAssignOwner(hasAssignOwnerScope, teamIsOwnerless)` — 4 tests. **Both conditions**:
+      the service refuses on a team that already has an owner, so offering it there would be a control
+      that throws when clicked.
+
+- [ ] **Wire the action into `TeamsListView`** — a candidate picker over the team's existing members,
+      calling `AssignOwnerAsync`. The gate and the service are done; this is the remaining piece.
 
 ## 5. Directory display-name write-back
 

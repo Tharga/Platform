@@ -30,6 +30,23 @@ public interface IUserManagementService
     Task<UserDeleteResult> DeleteUserAsync(string userKey, bool deleteFromDirectory = false, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// The teams this user owns — the teams that deleting them would leave with no owner.
+    /// </summary>
+    /// <remarks>
+    /// Meant to be asked <b>before</b> confirming a delete, so the operator can transfer ownership
+    /// instead of learning afterwards that a team is unrecoverable: <c>TransferOwnershipAsync</c>
+    /// requires the caller to be the owner, so once the owner is gone only a holder of
+    /// <see cref="SystemTeamScopes.AssignOwner"/> can repair it.
+    /// <para>
+    /// On <see cref="IUserManagementService"/> rather than <c>ITeamService</c> deliberately. The question
+    /// is "what will deleting this user break", which is user administration; and it keeps the delete
+    /// dialog off the internal team contract, which no component should inject.
+    /// </para>
+    /// </remarks>
+    [RequireScope(SystemUserScopes.Manage)]
+    Task<IReadOnlyList<ITeam>> GetOwnedTeamsAsync(string userKey, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// List directory users that have no matching local user (matched by directory id, falling back to
     /// email), streamed as directory pages arrive.
     /// </summary>
