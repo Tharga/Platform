@@ -10,7 +10,8 @@ namespace Tharga.Team.Mcp.Tests;
 public class TeamUserResourceProviderTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly ITeamManagementService _teamService = Substitute.For<ITeamManagementService>();
+    private readonly ITeamDirectoryService _teamDirectory = Substitute.For<ITeamDirectoryService>();
     private readonly IHttpContextAccessor _httpContextAccessor = Substitute.For<IHttpContextAccessor>();
 
     private IMcpContext MakeContext(string userId)
@@ -28,7 +29,7 @@ public class TeamUserResourceProviderTests
     }
 
     private TeamUserResourceProvider CreateSut()
-        => new(_userService, _teamService, _httpContextAccessor);
+        => new(_userService, _teamService, _teamDirectory, _httpContextAccessor);
 
     [Fact]
     public async Task ListResourcesAsync_AnonymousContext_ReturnsEmpty()
@@ -87,7 +88,7 @@ public class TeamUserResourceProviderTests
         var team2 = Substitute.For<ITeam>();
         team2.Key.Returns("T-2");
         team2.Name.Returns("Second");
-        _teamService.GetTeamsAsync().Returns(ToAsyncEnumerable(team1, team2));
+        _teamDirectory.GetTeamsAsync().Returns(ToAsyncEnumerable(team1, team2));
 
         var aliceInT1 = Substitute.For<ITeamMember>();
         aliceInT1.Key.Returns("u-alice");

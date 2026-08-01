@@ -7,7 +7,7 @@ namespace Tharga.Team.Mcp.Tests;
 
 public class TeamResourceProviderTests
 {
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly ITeamManagementService _teamService = Substitute.For<ITeamManagementService>();
     private readonly IApiKeyAdministrationService _apiKeyService = Substitute.For<IApiKeyAdministrationService>();
 
     private IMcpContext MakeContext(string teamId)
@@ -109,7 +109,6 @@ public class TeamResourceProviderTests
         team.Name.Returns("Acme");
         team.ConsentedRoles.Returns(Array.Empty<string>());
         _teamService.GetTeamByKeyAsync("T-1").Returns(team);
-        _teamService.GetTeamsAsync().Returns(ToAsyncEnumerable<ITeam>());   // no memberships, as for an API key
 
         var sut = new TeamResourceProvider(_teamService, _apiKeyService);
         var content = await sut.ReadResourceAsync(TeamResourceProvider.TeamUri, MakeContext("T-1"), TestContext.Current.CancellationToken);

@@ -11,12 +11,12 @@ namespace Tharga.Team.Mcp;
 /// <see cref="UnauthorizedAccessException"/>.
 ///
 /// Cross-tenant enumeration (reading other teams the caller does not belong to) is intentionally
-/// not supported here — that lives in a System-scope provider once <c>ITeamService.GetAllTeamsAsync</c>
+/// not supported here — that lives in a System-scope provider once <c>ITeamManagementService.GetAllTeamsAsync</c>
 /// is added.
 /// </summary>
 public sealed class TeamResourceProvider : IMcpResourceProvider
 {
-    private readonly ITeamService _teamService;
+    private readonly ITeamManagementService _teamService;
     private readonly IApiKeyAdministrationService _apiKeyAdministrationService;
 
     public const string TeamUri = "team://team";
@@ -29,7 +29,7 @@ public sealed class TeamResourceProvider : IMcpResourceProvider
     };
 
     public TeamResourceProvider(
-        ITeamService teamService,
+        ITeamManagementService teamService,
         IApiKeyAdministrationService apiKeyAdministrationService = null)
     {
         _teamService = teamService;
@@ -98,7 +98,7 @@ public sealed class TeamResourceProvider : IMcpResourceProvider
     /// <para>
     /// <b>Safe only because <paramref name="teamKey"/> comes from <c>IMcpContext.TeamId</c></b> — the
     /// caller's own <c>TeamKey</c> claim, issued by the server — and never from the request. A caller can
-    /// therefore only ever name its own team. <see cref="ITeamService.GetTeamByKeyAsync"/> is deliberately
+    /// therefore only ever name its own team. <see cref="ITeamManagementService.GetTeamByKeyAsync"/> is deliberately
     /// unauthorized ("regardless of the caller's membership"), so passing a caller-supplied key here would
     /// be a cross-team read with nothing to stop it.
     /// </para>

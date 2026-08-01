@@ -214,7 +214,7 @@
         {
             var teamState = ServiceProvider.GetService<ITeamStateService>();
             var userService = ServiceProvider.GetService<IUserService>();
-            var teamService = ServiceProvider.GetService<ITeamService>();
+            var teamService = ServiceProvider.GetService<ITeamManagementService>();
             if (teamState != null && userService != null && teamService != null && principal != null)
             {
                 var team = await teamState.GetSelectedTeamAsync();
