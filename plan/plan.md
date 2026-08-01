@@ -120,17 +120,38 @@ settings is the likely answer — **not built, needs a decision.**
 
 ---
 
-## 6. Square uploaded icons by padding
+## 6. Square uploaded icons by padding — DONE 2026-08-01
 
-- [ ] `ImageSharpIconProcessor.ProcessAsync`: `ResizeMode.Pad`,
-      `side = Math.Min(Math.Max(width, height), max)`, `PadColor = Color.Transparent`.
-- [ ] **Fix the early return too** — it currently returns untouched when
-      `width <= max && height <= max`, so a small non-square image (100×50) bypasses processing and
-      stays non-square. The condition becomes "already square **and** within bounds".
-- [ ] Tests for all three cases: 1000×500 → 256×256, 100×50 → 100×100 (never upscaled), 300×300 →
-      256×256.
-- [ ] Confirm SVG and undecodable input still pass through the existing `catch` unchanged.
-- [ ] Bump `MAJOR_MINOR` in `.github/workflows/build.yml` — nothing in CI does this.
+- [x] `ResizeMode.Pad`, `side = Math.Min(Math.Max(width, height), max)`, `PadColor = Color.Transparent`.
+- [x] Early return fixed — the condition is now "already square **and** within bounds".
+- [x] 9 tests: 1000×500 → 256×256, 100×50 → 100×100, 50×100 → 100×100, 300×300 → 256×256, square
+      within bounds passes through, SVG/undecodable untouched, max=0 disabled, **padding is transparent**
+      and **content is not cropped**.
+- [x] Upload dialog wording updated in `TeamIconDialog` and `UserIconDialog` — they promised only
+      downscaling, which is now an incomplete description of what an upload produces.
+
+**Two things found while building that the spec did not mention:**
+
+- **Loading as `Rgba32` is required, not incidental.** `Image.Load(data)` keeps the source pixel format,
+  and a JPEG decodes to RGB with no alpha channel — padding that with `Color.Transparent` yields black
+  bars. `Image.Load<Rgba32>(data)` forces an alpha channel so the padding is genuinely transparent.
+  Pinned by `Padding_IsTransparent`, which asserts alpha 0 in the padded band and 255 in the content.
+- **No upscaling is guaranteed by the formula, not by a flag.** `ResizeMode.Pad` *will* enlarge a source
+  to fill its box. It never does here because the box side equals the source's own long side whenever
+  that fits within `MaxDimension`, making the fit-inside scale exactly 1. Worth stating, because
+  changing `side` to `max` would silently start upscaling every small icon.
+
+## 6b. `MAJOR_MINOR` — NOT bumped, by the user's decision (2026-08-01)
+
+Left at `3.8`, so this batch releases as **3.8.3**. The 2026-07-31 design note called for a minor bump
+because squaring silently changes stored output for new uploads.
+
+**The mitigation is the release note, and it is now doing work the version number will not.** The PR
+description must lead with the behaviour change — squaring is on by default, already-stored icons are
+not reprocessed, and a consumer relying on aspect-ratio-preserved output will see different images for
+new uploads. This repo has been here before: 3.5.3 carried a breaking claim-provenance change under a
+patch number, and the note in `Requests.md` still has to tell people *"do not infer 'safe patch
+upgrade' from the number here."*
 
 ---
 
