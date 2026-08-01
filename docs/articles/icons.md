@@ -148,25 +148,48 @@ Skip it and avatars still render — stored icons simply 404, falling back to Gr
 > hand-rolled registration block to work around that, **delete it** now that the library registers the
 > chain itself.
 
-## Automatic downscaling — `Tharga.Team.Images`
+## Automatic squaring and downscaling — `Tharga.Team.Images`
 
 Uploads larger than `IconOptions.MaxBytes` would be rejected. Add the optional **`Tharga.Team.Images`**
-package to instead **downscale** oversized images to fit `MaxDimension` (256 px), aspect preserved,
-re-encoded as PNG:
+package to instead fit images within `MaxDimension` (256 px), **square them by padding the short side
+with transparency**, and re-encode as PNG:
 
 ```csharp
 builder.Services.AddThargaImageProcessing();
 ```
 
 It registers an `IIconProcessor` (ImageSharp) that the built-in store runs before validating/storing.
-Images already within bounds and formats it can't decode (e.g. SVG) pass through unchanged. Bring your
-own by registering a custom `IIconProcessor`.
+Formats it can't decode (e.g. SVG) pass through unchanged, as do images already square and within
+bounds. Bring your own by registering a custom `IIconProcessor`.
+
+### What squaring produces
+
+**Content is never cropped and never upscaled.** The output side is
+`min(max(width, height), MaxDimension)` — so an image that already fits is padded at its own size rather
+than blown up to the box:
+
+| Source | Output | Why |
+|---|---|---|
+| 1000×500 | 256×256 | scaled to 256×128, then padded |
+| 100×50 | 100×100 | already fits, so padded only |
+| 50×100 | 100×100 | tall sources take the same path |
+| 300×300 | 256×256 | square, but larger than the box |
+| 100×100 | unchanged | square and within bounds — the only pass-through case |
+
+The point is avatar surfaces that reserve a square box: before squaring, each letterboxed a wide or tall
+source in its own way. Cropping would square them too, and is precisely the failure to avoid — it takes
+a face out of a portrait photo.
+
+> [!IMPORTANT]
+> **Behaviour change.** Output previously preserved the source aspect ratio, so a 1000×500 upload was
+> stored as 256×128. New uploads are now squared. **Already-stored icons are not reprocessed** — there is
+> no migration, and existing avatars keep their current shape until someone re-uploads.
 
 **The upload dialogs say which behaviour is in effect.** Without a real processor the default is
 `NoOpIconProcessor`, which does not resize, so the dialog reads *"Images larger than N MB are rejected"*
-rather than promising downscaling that will not happen. Add the package and it switches to *"Large images
-are downscaled automatically."* `IconCapability.CanProcessImages(processor)` is the same check if you
-need it in your own UI.
+rather than promising processing that will not happen. Add the package and it switches to *"Images are
+squared and downscaled automatically — the short side is padded, never cropped."*
+`IconCapability.CanProcessImages(processor)` is the same check if you need it in your own UI.
 
 ## Quick start
 

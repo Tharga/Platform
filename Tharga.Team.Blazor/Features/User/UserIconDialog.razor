@@ -17,7 +17,7 @@
     and the pluggable IIconStore.
 *@
 <RadzenStack Gap="1rem">
-    <RadzenText TextStyle="TextStyle.Body2">Upload an image (up to @_maxUploadMb MB) or provide an image URL.@(_canDownscale ? " Large images are downscaled automatically." : $" Images larger than {_maxUploadMb} MB are rejected.") This replaces your Gravatar image.</RadzenText>
+    <RadzenText TextStyle="TextStyle.Body2">Upload an image (up to @_maxUploadMb MB) or provide an image URL.@(_canDownscale ? " Images are squared and downscaled automatically — the short side is padded, never cropped." : $" Images larger than {_maxUploadMb} MB are rejected.") This replaces your Gravatar image.</RadzenText>
 
     <RadzenStack Gap="0.25rem">
         <RadzenLabel Text="Upload a file" />

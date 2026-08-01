@@ -101,6 +101,41 @@ When no directory service is registered, all directory features (verify actions,
 the directory-only tab, the delete-from-directory opt-in) are hidden — the rest of user administration
 still works.
 
+### A half-configured directory counts as no directory
+
+Registering `AddThargaEntraUserDirectory` without complete credentials — no `TenantId`, `ClientId` or
+`ClientSecret`, and no explicit `Credential` — leaves a directory that cannot answer. **Those same
+features stay hidden, exactly as if nothing were registered.** Offering a Verify button that throws on
+click is worse than not offering it.
+
+`IUserDirectoryService.IsConfigured` is what reports this. It defaults to `true`, so a custom directory
+implementation needs no change; override it if yours can be registered without being usable.
+
+```csharp
+// Both are equivalent from the UI's point of view.
+var unavailable = provider.GetService<IUserDirectoryService>() is not { IsConfigured: true };
+```
+
+> [!NOTE]
+> A common cause is Azure AD **B2C**, where the app registration has no `TenantId` key at all — the
+> tenant is embedded in `Authority`. Binding the `AzureAd` section then leaves `TenantId` null and the
+> directory silently unusable. Set it explicitly via the `configure` callback.
+
+Calling the service directly still throws `InvalidOperationException` naming the three settings, so a
+host that bypasses the UI gets a diagnosis rather than a silent failure.
+
+**A half-set configuration warns; an empty one does not.** Only one of the two is a mistake:
+
+| Configuration | Directory features | Log |
+|---|---|---|
+| No credential field set at all | hidden | silent — reads as a deliberate opt-out |
+| Some set, some missing | hidden | **Warning** naming exactly which values are missing |
+| A `Credential` supplied, or all three set | available | silent |
+
+Registering the directory in every environment while supplying secrets in only some is a normal shape,
+so that stays quiet. Half-filling a credential is not deliberate, and the symptom gives no clue where to
+look — so it warns once at startup, naming the missing values.
+
 ## The `users:manage` scope
 
 All user administration — **including viewing the users and teams admin lists** — requires the
@@ -149,10 +184,19 @@ doing three different jobs. The complete picture:
 | See either tab at all | `users:manage` | — |
 | See teams you are not a member of | `users:manage` + `teams:read` | — |
 | Delete a team | `users:manage` + `teams:delete` | `teams:read` in practice — see below |
-| Delete a user | `users:manage` | — |
-| Verify a user against the directory | `users:manage` | a registered `IUserDirectoryService` |
-| The directory-only tab | `users:manage` | a registered `IUserDirectoryService` |
+| Delete a user | `users:manage` | never your own row — see below |
+| Verify a user against the directory | `users:manage` | a **configured** `IUserDirectoryService` |
+| The directory-only tab | `users:manage` | a **configured** `IUserDirectoryService` |
 | Per-row audit history | `audit:read` | `ShowAuditLogButton="true"` |
+
+**You cannot delete your own account, whatever you hold.** The Delete action is disabled on the
+signed-in caller's own row and labelled *"Delete (this is you)"*. Deleting yourself drops your user
+record and, through `RemoveUserFromAllTeamsAsync`, your membership of every team — while your session
+continues holding claims that no longer correspond to anything. An administrator who genuinely should go
+needs another administrator to remove them, which also guarantees somebody is left holding
+`users:manage`. It is the same class of guard as refusing to demote a sitting owner, and it is the most
+likely way to strand a team with no owner at all: the sole owner of a team is very often the same person
+administering users.
 
 **`teams:read` is not required to delete a team, but without it there is usually nothing to delete.**
 The Delete action itself is gated on `teams:delete` alone. `teams:read` decides *which teams the grid

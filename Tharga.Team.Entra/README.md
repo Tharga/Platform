@@ -27,6 +27,34 @@ builder.Services.AddThargaEntraUserDirectory(builder.Configuration, o =>
 });
 ```
 
+## Incomplete configuration hides the directory
+
+Without complete credentials — no `TenantId`, `ClientId` or `ClientSecret`, and no explicit
+`Credential` — the directory reports `IsConfigured == false`, and every directory feature (verify
+actions, the Directory column, the directory-only tab, the delete-from-directory opt-in) stays hidden
+**exactly as if nothing were registered**. Offering a Verify button that throws on click is worse than
+not offering it.
+
+Calling the service directly still throws `InvalidOperationException` naming the three settings, so a
+host bypassing the UI gets a diagnosis rather than a silent failure.
+
+**Absent and half-set are treated differently, because only one of them is a mistake:**
+
+| Configuration | Directory features | Log |
+|---|---|---|
+| No credential field set at all | hidden | silent — reads as a deliberate opt-out |
+| Some set, some missing | hidden | **Warning** naming exactly which values are missing |
+| A `Credential` supplied | available | silent |
+| All three set | available | silent |
+
+Registering the directory in every environment and supplying secrets in only some is a normal shape, so
+that stays quiet. Half-filling a credential is not something anyone does on purpose, and the symptom —
+directory features quietly absent — gives no clue where to look, so it warns once at startup.
+
+> **Azure AD B2C has no `TenantId` key.** The tenant is embedded in `Authority`, so binding the
+> `AzureAd` section leaves `TenantId` null and the directory unusable. Set it explicitly in the
+> `configure` callback.
+
 ## Entra app-registration permissions
 
 Grant the app registration **application** (app-only) Graph permissions, with admin consent:
