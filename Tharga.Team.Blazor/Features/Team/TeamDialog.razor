@@ -3,7 +3,7 @@
 @typeparam TMember where TMember : class, Tharga.Team.ITeamMember
 @attribute [Authorize]
 @inject DialogService DialogService
-@inject ITeamService TeamService
+@inject ITeamManagementService TeamManagementService
 
 <RadzenTemplateForm TItem="TeamDialogModel" Data=@Model Submit=@OnSubmit Style="height: 100%;">
     <RadzenStack Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" Style="height: 100%;">
@@ -52,7 +52,7 @@
     {
         try
         {
-            await TeamService.RenameTeamAsync<TMember>(TeamKey, model.Name);
+            await TeamManagementService.RenameTeamAsync(TeamKey, model.Name);
 
             DialogService.Close(true);
         }
