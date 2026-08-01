@@ -391,6 +391,14 @@ public class AuditingTeamServiceDecorator : ITeamService
     }
 
     /// <remarks>
+    /// A read, and deliberately not audited — it runs when a delete dialog opens, so recording it would
+    /// log an entry for looking at a confirmation the operator may then cancel. The delete it precedes is
+    /// audited, which is the act worth recording.
+    /// </remarks>
+    public Task<IReadOnlyList<ITeam>> GetTeamsForUserWithAccessLevelAsync(string userKey, AccessLevel accessLevel)
+        => _inner.GetTeamsForUserWithAccessLevelAsync(userKey, accessLevel);
+
+    /// <remarks>
     /// Audited like any ownership change, and for a stronger reason: this one hands out <c>Owner</c>
     /// with no sitting owner's consent. A refusal is recorded too — an attempt to repair a team that is
     /// not broken is exactly what someone would try when taking one over.

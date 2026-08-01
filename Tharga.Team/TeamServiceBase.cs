@@ -278,6 +278,20 @@ public abstract class TeamServiceBase : ITeamService
     /// services keep compiling; the default throws rather than returning 0, since a silent no-op on a
     /// deletion path would hide the missing implementation. Storage-backed bases override it.
     /// </summary>
+    /// <summary>
+    /// Backs <see cref="GetTeamsForUserWithAccessLevelAsync"/>. Virtual-throw rather than returning an
+    /// empty list, because an empty list is indistinguishable from "this user owns nothing" — and the
+    /// caller uses that answer to decide whether deleting them is safe. A silent empty default would
+    /// suppress exactly the warning this exists to raise.
+    /// </summary>
+    protected virtual Task<IReadOnlyList<ITeam>> GetTeamsForUserWithAccessLevelInternalAsync(string userKey, AccessLevel accessLevel)
+        => throw new NotSupportedException(
+            $"'{GetType().Name}' does not implement {nameof(GetTeamsForUserWithAccessLevelInternalAsync)}. " +
+            "Implement it so user deletion can warn about teams the user owns.");
+
+    public Task<IReadOnlyList<ITeam>> GetTeamsForUserWithAccessLevelAsync(string userKey, AccessLevel accessLevel)
+        => GetTeamsForUserWithAccessLevelInternalAsync(userKey, accessLevel);
+
     protected virtual Task<int> RemoveUserFromAllTeamsInternalAsync(string userKey)
         => throw new NotSupportedException(
             $"'{GetType().Name}' does not implement {nameof(RemoveUserFromAllTeamsInternalAsync)}. " +

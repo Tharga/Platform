@@ -70,6 +70,29 @@ public interface ITeamService
     Task<int> RemoveUserFromAllTeamsAsync(string userKey);
 
     /// <summary>
+    /// The teams where this user holds exactly <paramref name="accessLevel"/>. Requires the
+    /// <see cref="SystemUserScopes.Manage"/> system scope.
+    /// </summary>
+    /// <remarks>
+    /// The driver is user deletion: asking for <see cref="AccessLevel.Owner"/> answers "which teams will
+    /// this delete strand?", so the admin can transfer ownership <i>before</i> deleting rather than
+    /// being told afterwards that something is now unrecoverable.
+    /// <para>
+    /// <b>Exact match, not minimum.</b> "Teams they own" is the question; a caller wanting a threshold
+    /// can ask more than once. A minimum-level overload would make the common case ambiguous at the call
+    /// site, where <c>Owner</c> would silently also mean every level above it — of which there are none,
+    /// making the parameter read as if it did something it does not.
+    /// </para>
+    /// <para>
+    /// Gated on <c>users:manage</c> rather than <c>teams:read</c>, deliberately. The caller of this
+    /// already holds the right to remove the user from every one of these teams, so learning which they
+    /// are is strictly less than they can already do — and gating it on a scope they may not hold would
+    /// hide the warning from exactly the person about to cause the damage.
+    /// </para>
+    /// </remarks>
+    Task<IReadOnlyList<ITeam>> GetTeamsForUserWithAccessLevelAsync(string userKey, AccessLevel accessLevel);
+
+    /// <summary>
     /// Sets the team's icon from raw image bytes: stores them via the registered <see cref="IIconStore"/>,
     /// persists the reference on the team, and deletes any previously-stored icon. Requires a registered
     /// icon store. Gated by <c>team:manage</c>.

@@ -92,15 +92,37 @@ loud, greppable and appears once; the strict reading is one option away for host
 - [x] Audited in `AuditingTeamServiceDecorator` as `assign-owner`, **including refusals** — an attempt to
       "repair" a team that is not broken is what taking one over would look like.
 
-### 4b. Report what was left ownerless
+### 4b. Warn before the damage, not after — DONE 2026-08-01 (service side)
 
-- [ ] `RemoveUserFromAllTeamsAsync` returns `Task<int>` today. **Changing that return type is breaking**
-      — `IUserManagementService.DeleteUserAsync` and any consumer calling it would stop compiling.
-      Add a new member returning the richer result, implement the old one in terms of it, and mark the
-      old one `[Obsolete]` pointing at the replacement.
-- [ ] Decide whether user deletion should *refuse* when the user is a sole owner, or proceed and report.
-      The request asks for "at least report"; refusing is the stronger guarantee but changes an existing
-      operation's behaviour.
+**The user redirected this, and the redirect is better than the plan.** The plan was to make
+`RemoveUserFromAllTeamsAsync` report which teams it stranded — telling the operator after the fact, and
+requiring a breaking return-type change to do it. Instead:
+
+- [x] `ITeamService.GetTeamsForUserWithAccessLevelAsync(userKey, accessLevel)` — a plain read. Asking for
+      `Owner` answers *"which teams will this delete strand?"* **before** the delete, so the operator can
+      transfer ownership rather than be told afterwards that something is unrecoverable.
+- [x] `RemoveUserFromAllTeamsAsync` is **untouched** — no breaking change, and nothing to obsolete.
+- [x] `TeamServiceRepositoryBase` override filters the cross-team enumeration. Bounded by team count and
+      runs once per delete confirmation, so a dedicated query would add a second place the membership
+      shape is interpreted for no gain.
+- [x] Enforced on `users:manage` in `AuthorizationTeamServiceDecorator`. **Not `teams:read`** — the
+      caller already holds the right to remove this user from every one of these teams, so learning which
+      they are is strictly less than they can do, and gating on a scope they may lack would hide the
+      warning from exactly the person about to cause the damage.
+- [x] Deliberately **not audited**: it runs when a dialog opens, so recording it would log an entry for
+      looking at a confirmation that may then be cancelled. The delete it precedes is audited.
+
+**Exact match, not minimum.** "Teams they own" is the question. A minimum-level parameter would read as
+if `Owner` also meant every level above it — of which there are none, making the parameter look like it
+does something it does not.
+
+**The internal hook throws rather than returning empty.** An empty list is indistinguishable from "owns
+nothing", and the caller uses that answer to decide whether deleting is safe — a silent default would
+suppress the exact warning this exists to raise. Same reasoning as
+`RemoveUserFromAllTeamsInternalAsync`.
+
+**Still open:** whether deletion should *refuse* for a sole owner or proceed with the warning shown.
+The read makes refusing possible; it does not decide it.
 
 ### 4c. UI
 
