@@ -44,20 +44,26 @@ PlutusWave's 404 on sight.
 
 **Acceptance criteria 1 and 2 met. PR #169 is verified.**
 
-## 3. A policy meaning "any valid API key"
+## 3. A policy meaning "any valid API key" — DONE 2026-08-01
 
-Covers acceptance criteria 3.
+- [x] `ApiKeyConstants.AnyKeyPolicyName` (`"AnyApiKeyPolicy"`) — authenticated against the API-key scheme,
+      **no assertion on `IsSystemKey` in either direction**. Registered beside the existing two.
+- [x] XML docs on all three now state the relationship: `PolicyName` **rejects system keys**,
+      `SystemPolicyName` **rejects team keys**, and they are **disjoint, not a hierarchy**.
+- [x] 14 end-to-end tests over four live endpoints.
 
-- [ ] `ApiKeyConstants.AnyKeyPolicyName` — authenticated against the API-key scheme, **no assertion on
-      `IsSystemKey` in either direction**.
-- [ ] Register it beside the existing two in `ApiKeyRegistration`.
-- [ ] Tests: a team key passes, a system key passes, anonymous fails. The first two are the point —
-      neither existing policy admits both.
-- [ ] Document all three together, stating plainly that **`ApiKeyPolicy` and `SystemApiKeyPolicy` are
-      disjoint, not a hierarchy.** `SystemApiKeyPolicy` is not "`ApiKeyPolicy` plus more", and the naming
-      implies it is. That misreading is what led a consumer to require both and admit nothing.
+**The trap is asserted, not just described.** The suite maps an endpoint per policy plus a `/both`
+endpoint requiring `PolicyName` **and** `SystemPolicyName`, then walks the full matrix. `/both` admits
+**neither** key kind — ASP.NET Core combines required policies, and these two are mutually exclusive.
+That is the behaviour that pushed a consumer into hand-writing a policy, and with it a whole code path
+out of test coverage. A comment saying so would have been forgotten; a red test cannot be.
 
----
+The interesting property is the shape of the table — exactly one column accepts both rows — which is why
+it is a `[Theory]` matrix rather than four separate facts.
+
+**Also worth noting for the docs:** `Tharga.Mcp`'s `RequireAuth` policy already behaves like
+`AnyKeyPolicyName` (it asserts nothing about `IsSystemKey`), so an **MCP** endpoint never needed a named
+policy for this. The gap was only ever on the controller side.
 
 ## 4. The `Tharga.Mcp` pairing hazard
 
