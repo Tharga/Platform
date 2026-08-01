@@ -348,6 +348,30 @@ public abstract class TeamServiceBase : ITeamService
         return count;
     }
 
+    public async Task AssignOwnerAsync<TMember>(string teamKey, string newOwnerUserKey) where TMember : ITeamMember
+    {
+        var team = await GetTeamAsync<TMember>(teamKey)
+            ?? throw new InvalidOperationException($"Team '{teamKey}' was not found.");
+
+        var members = team.Members?.Cast<ITeamMember>().ToArray() ?? [];
+
+        // Refusing loudly on a healthy team matters more than the happy path: this is the one operation
+        // that can hand out Owner without a sitting owner's consent.
+        if (!TeamOwnership.IsOwnerless(members))
+            throw new InvalidOperationException(
+                $"Team '{teamKey}' already has an owner. Assigning an owner repairs an ownerless team; " +
+                $"use {nameof(TransferOwnershipAsync)} to move ownership within a team that has one.");
+
+        if (!TeamOwnership.CanAssign(members, newOwnerUserKey))
+            throw new InvalidOperationException(
+                $"User '{newOwnerUserKey}' is not a member of team '{teamKey}'. An owner is chosen from " +
+                "the team's existing members, so repairing a team cannot introduce someone new to it.");
+
+        await SetTeamMemberRoleAsync(teamKey, newOwnerUserKey, AccessLevel.Owner);
+        _teamMemberCache.TryRemove($"{teamKey}.{newOwnerUserKey}", out _);
+        TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
+    }
+
     public async Task TransferOwnershipAsync<TMember>(string teamKey, string newOwnerUserKey) where TMember : ITeamMember
     {
         var user = await RequireCurrentUserAsync();

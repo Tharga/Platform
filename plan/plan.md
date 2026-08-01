@@ -74,25 +74,38 @@ loud, greppable and appears once; the strict reading is one option away for host
 
 ---
 
-## 4. Ownerless team — recovery and prevention
+## 4. Ownerless team — recovery and prevention  `[~]`
 
-Covers acceptance criteria 3 and 4.
+### 4a. The repair path — DONE 2026-08-01
 
-- [ ] `SystemTeamScopes.AssignOwner = "teams:assign-owner"`, auto-registered like `Delete` and `Read`.
-- [ ] Service operation: assign an owner, **only** when the team has no member at `AccessLevel.Owner`,
-      **only** from that team's existing members. Both constraints matter — with no sitting owner there
-      is nobody to escalate past, and restricting to members keeps this a repair rather than a way to
-      inject an outsider.
-- [ ] Enforce in `AuthorizationTeamServiceDecorator` with a **system** grant, resolved via
-      `TeamScopeGate.HasSystemScope` — never a bare `HasClaim`, so an in-team scope of the same name
-      cannot satisfy it.
-- [ ] **Audit it.** This is privilege escalation by construction even when legitimate.
-- [ ] `RemoveUserFromAllTeamsAsync` returns which teams were left ownerless, not just a count.
-      **Check whether this is a breaking signature change** and pick an additive shape if so.
-- [ ] UI on the Teams tab of `TeamsListView`, beside the existing `CanDeleteTeams` action, gated on the
-      new scope through a pure `UserAdminGate` function with tests.
+- [x] `SystemTeamScopes.AssignOwner = "teams:assign-owner"`, auto-registered beside `Delete` and
+      `users:manage`.
+- [x] `TeamOwnership` — pure, 10 tests. `IsOwnerless(members)` and `CanAssign(members, candidate)`.
+      **Both conditions are the whole safety argument**, so they live outside the service method where a
+      unit test can reach them: the team must currently have no `Owner` (nobody to escalate past) and the
+      candidate must already be a member (a repair cannot introduce an outsider).
+- [x] `ITeamService.AssignOwnerAsync<TMember>` + `TeamServiceBase` implementation, refusing loudly with
+      messages that name the alternative (`TransferOwnershipAsync` for a team that has an owner).
+- [x] Enforced in `AuthorizationTeamServiceDecorator` on a **system** grant via `HasSystemScopeAsync`,
+      with **no in-team fallback** — deliberately unlike `RequireDeleteAsync`, which has one. A member
+      could not have produced this state, so there is no in-team case to accommodate.
+- [x] Audited in `AuditingTeamServiceDecorator` as `assign-owner`, **including refusals** — an attempt to
+      "repair" a team that is not broken is what taking one over would look like.
 
----
+### 4b. Report what was left ownerless
+
+- [ ] `RemoveUserFromAllTeamsAsync` returns `Task<int>` today. **Changing that return type is breaking**
+      — `IUserManagementService.DeleteUserAsync` and any consumer calling it would stop compiling.
+      Add a new member returning the richer result, implement the old one in terms of it, and mark the
+      old one `[Obsolete]` pointing at the replacement.
+- [ ] Decide whether user deletion should *refuse* when the user is a sole owner, or proceed and report.
+      The request asks for "at least report"; refusing is the stronger guarantee but changes an existing
+      operation's behaviour.
+
+### 4c. UI
+
+- [ ] Assign-owner action on the Teams tab of `TeamsListView`, beside the existing delete, gated through
+      a pure `UserAdminGate` function with tests. Needs the members drill-down to pick a candidate.
 
 ## 5. Directory display-name write-back
 

@@ -98,6 +98,8 @@ public static class ThargaBlazorRegistration
                     scopes.Register(SystemTeamScopes.Delete, "Delete any team (cross-team), regardless of membership or the AllowTeamCreation option.");
                 if (scopes.All.All(s => s.Name != SystemUserScopes.Manage))
                     scopes.Register(SystemUserScopes.Manage, "Administer users (cross-team): verify against the external directory, list directory-only users, and delete users.");
+                if (scopes.All.All(s => s.Name != SystemTeamScopes.AssignOwner))
+                    scopes.Register(SystemTeamScopes.AssignOwner, "Give an ownerless team an owner, chosen from its existing members. Refused when the team already has one.");
             });
 
             services.AddScoped<IUserManagementService>(sp => new UserManagementService(

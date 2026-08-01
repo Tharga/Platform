@@ -43,6 +43,19 @@ public interface ITeamService
     Task SetInvitationResponseAsync(string teamKey, string userKey, string inviteCode, bool accept);
     Task SetMemberLastSeenAsync(string teamKey);
     Task TransferOwnershipAsync<TMember>(string teamKey, string newOwnerUserKey) where TMember : ITeamMember;
+
+    /// <summary>
+    /// Gives an <b>ownerless</b> team an owner, chosen from its existing members. The repair path for a
+    /// team whose owner was deleted; requires the <see cref="SystemTeamScopes.AssignOwner"/> system
+    /// scope.
+    /// </summary>
+    /// <remarks>
+    /// Refuses when the team already has an owner, and when the candidate is not already a member — see
+    /// <see cref="TeamOwnership"/> for why both conditions are load-bearing. Distinct from
+    /// <see cref="TransferOwnershipAsync{TMember}"/>, which requires the caller to <i>be</i> the owner
+    /// and so cannot help once the owner is gone.
+    /// </remarks>
+    Task AssignOwnerAsync<TMember>(string teamKey, string newOwnerUserKey) where TMember : ITeamMember;
     Task SetTeamConsentAsync(string teamKey, string[] consentedRoles, AccessLevel? accessLevel = null);
     IAsyncEnumerable<ITeam> GetConsentedTeamsAsync(string[] userRoles);
     Task<IReadOnlyList<TenantRoleDefinition>> GetTeamCustomRolesAsync(string teamKey);

@@ -80,6 +80,20 @@ public sealed class AuthorizationTeamServiceDecorator : ITeamService
     public Task SetInvitationResponseAsync(string teamKey, string userKey, string inviteCode, bool accept) => _inner.SetInvitationResponseAsync(teamKey, userKey, inviteCode, accept);
     public Task TransferOwnershipAsync<TMember>(string teamKey, string newOwnerUserKey) where TMember : ITeamMember => _inner.TransferOwnershipAsync<TMember>(teamKey, newOwnerUserKey);
 
+    /// <remarks>
+    /// A <b>system</b> grant only — there is no in-team fallback, deliberately. The caller is by
+    /// definition not a member of the team being repaired, and an in-team scope of the same name must not
+    /// satisfy it, which is why this asks <c>HasSystemScopeAsync</c> rather than checking a claim.
+    /// </remarks>
+    public async Task AssignOwnerAsync<TMember>(string teamKey, string newOwnerUserKey) where TMember : ITeamMember
+    {
+        if (!await _authorizer.HasSystemScopeAsync(SystemTeamScopes.AssignOwner))
+            throw new UnauthorizedAccessException(
+                $"Assigning an owner to team '{teamKey}' requires the '{SystemTeamScopes.AssignOwner}' system scope.");
+
+        await _inner.AssignOwnerAsync<TMember>(teamKey, newOwnerUserKey);
+    }
+
     // Lifecycle.
     public async Task<ITeam> CreateTeamAsync(string name)
     {
