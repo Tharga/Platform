@@ -1167,7 +1167,7 @@ inside a team are audited as usual.
 
 ### Overriding the "Create team" action
 
-By default the teamless **Create team** link (`TeamSelector`) navigates to `/team` and the **Create new Team** button (`TeamComponent`) calls `CreateTeamAsync()` directly. To route team creation through your own onboarding flow — instead of `AllowTeamCreation = false`, which hides the button *and* blocks the programmatic create API — use one of two override points, evaluated **callback → path → built-in**:
+By default the teamless **Create team** link (`TeamSelector`) navigates to `/team` and the **Create new Team** button (`TeamComponent`) calls `CreateTeamAsync()` directly. **Both entry points respect `AllowTeamCreation`** — setting it to `false` hides the link *and* the button, and blocks the programmatic create API at the service layer. (The `TeamSelector` link previously ignored the option and was offered even when creation was disabled, so following it reached an operation the service then refused.) To route team creation through your own onboarding flow instead of disabling it, use one of two override points, evaluated **callback → path → built-in**:
 
 ```csharp
 // 1. Global, declarative — both entry points navigate to your page (which runs the wizard + CreateTeamAsync):
