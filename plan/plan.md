@@ -11,7 +11,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ---
 
-## 2. Make the gated read path actually gate  `[~]`
+## 2. Make the gated read path actually gate  `[~]`  — enforcement DONE 2026-08-01
 
 ### The finding that comes before everything else
 
@@ -51,13 +51,29 @@ too generous.
 
 ### Work
 
-- [ ] **Decide how to enforce**: install `ScopeProxy` on the `ITeamManagementService` registration (via
-      `AddTeamService<,>`, the mechanism built for this), or enforce inline in `TeamManagementService`.
-      The proxy is the designed answer and would also cover future members; inline is narrower and
-      cannot fail closed on a method someone forgets to attribute.
-- [ ] **Check every member is attributed before installing the proxy** — it throws on an unattributed
-      method, which is the desired behaviour but will surface anything missed as a runtime failure.
-- [ ] Tests: a caller without `team:read` is refused each of the four reads; a Viewer-level member is not.
+- [x] **Decided (user, 2026-08-01): enforce inline.** The proxy was rejected on cost — `AddTeamService<,>`
+      is generic-only while the implementation is closed at runtime via `MakeGenericType`, and
+      `GetTeamAsync<TMember>` is a generic method through `DispatchProxy`. Neither risk is worth taking
+      for four method bodies.
+- [x] All four reads enforce `team:read` via `RequireTeamReadAsync`. 12 tests.
+- [x] **Also split the feature (user, 2026-08-01).** This PR makes the path real and is
+      **behaviour-neutral** — no first-level surface calls these reads yet. Moving the surfaces is a
+      separate PR where behaviour actually changes. `MAJOR_MINOR` stays at `3.9` here.
+
+**The check reads the caller's own membership, not the roster.** `GetTeamMemberAsync(teamKey, user.Key)`
+carries the access level, tenant roles and scope overrides the decision needs, at one lookup instead of
+loading every member on each read.
+
+**Two escapes, deliberately different:**
+- **No `IScopeRegistry` or no `IUserService`** → skip the check. The application does not use scopes at
+  all, and enforcing would refuse reads it never gated. This is the one-argument constructor path.
+- **A resolved caller who is null** → **refuse**. Identity could not be established, which is not a state
+  in which to serve team data. Same rule as the self-delete guard.
+
+**The class doc was actively misleading and is corrected.** It read *"Scope enforcement is handled by
+`ScopeProxy<T>` in Tharga.Team.Service"* — which is how four unenforced reads survived review. It now
+states where each half is enforced and that the `[RequireScope]` attributes are documentation, not
+mechanism.
 
 ### Then the five gaps in the surface
 

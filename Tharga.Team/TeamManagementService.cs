@@ -1,8 +1,20 @@
 ﻿namespace Tharga.Team;
 
 /// <summary>
-/// Delegates to <see cref="ITeamService"/> for all operations.
-/// Scope enforcement is handled by <c>ScopeProxy&lt;T&gt;</c> in Tharga.Team.Service.
+/// Delegates to <see cref="ITeamService"/> for all operations, enforcing <c>team:read</c> on the reads.
+///
+/// <para>
+/// <b>Mutations are enforced downstream</b>, by <c>AuthorizationTeamServiceDecorator</c> over
+/// <see cref="ITeamService"/>. <b>Reads are enforced here</b>, because that decorator deliberately does
+/// not gate reads: the claims pipeline reads team data while building the principal, so a gate there
+/// would be circular and break sign-in.
+/// </para>
+/// <para>
+/// The <c>[RequireScope]</c> attributes on <see cref="ITeamManagementService"/> are <b>documentation</b>.
+/// They would be enforced by <c>ScopeProxy&lt;T&gt;</c> if this were registered through
+/// <c>AddTeamService</c>, and it is not — so nothing derives from them at runtime. Do not add a read to
+/// this class and assume the attribute covers it.
+/// </para>
 /// Generic methods (GetTeamsAsync, DeleteTeamAsync, RenameTeamAsync) call non-generic
 /// internal versions since the proxy resolves the member type from the team data.
 /// </summary>
@@ -79,6 +91,11 @@ public class TeamManagementService<TMember> : ITeamManagementService, ITeamLifec
         if (members == null) return false;
 
         var member = members.Where(x => x.Key == user.Key).Select(x => (ITeamMember)x).FirstOrDefault();
+        return GrantsTeamRead(member);
+    }
+
+    private bool GrantsTeamRead(ITeamMember member)
+    {
         if (member == null) return false;
 
         return _scopeRegistry
@@ -86,8 +103,66 @@ public class TeamManagementService<TMember> : ITeamManagementService, ITeamLifec
             .Contains(TeamScopes.Read);
     }
 
-    public Task<ITeam<T>> GetTeamAsync<T>(string teamKey) where T : ITeamMember => _inner.GetTeamAsync<T>(teamKey);
-    public Task<ITeam> GetTeamByKeyAsync(string teamKey) => _inner.GetTeamByKeyAsync(teamKey);
-    public IAsyncEnumerable<ITeamMember> GetMembersAsync(string teamKey) => _inner.GetMembersAsync(teamKey);
-    public Task<ITeamMember> GetTeamMemberAsync(string teamKey, string userKey) => _inner.GetTeamMemberAsync(teamKey, userKey);
+    /// <summary>
+    /// Refuses the caller unless their membership of <paramref name="teamKey"/> grants
+    /// <see cref="TeamScopes.Read"/>.
+    /// </summary>
+    /// <remarks>
+    /// Reads the caller's <b>own membership</b> rather than the whole roster: it carries the access level,
+    /// tenant roles and scope overrides the decision needs, and costs one lookup instead of loading every
+    /// member of the team on each read.
+    /// <para>
+    /// <b>Two escapes, and they are not the same.</b> No <see cref="IScopeRegistry"/> or no
+    /// <see cref="IUserService"/> means the application does not use scopes at all — enforcing would
+    /// refuse reads it never gated, so the check is skipped. A <i>resolved</i> caller who is null is the
+    /// opposite: identity could not be established, and that fails closed.
+    /// </para>
+    /// <para>
+    /// Invisible for ordinary members: <c>team:read</c> sits at <see cref="AccessLevel.Viewer"/>, so every
+    /// level above inherits it. It bites <see cref="AccessLevel.Custom"/>, which is documented as carrying
+    /// only its explicit grants and until now read everything anyway.
+    /// </para>
+    /// </remarks>
+    private async Task RequireTeamReadAsync(string teamKey)
+    {
+        if (_scopeRegistry == null || _userService == null) return;
+
+        var user = await _userService.GetCurrentUserAsync();
+        if (user == null)
+            throw new UnauthorizedAccessException(
+                $"Reading team '{teamKey}' requires an authenticated caller holding '{TeamScopes.Read}'.");
+
+        var member = await _inner.GetTeamMemberAsync(teamKey, user.Key);
+        if (!GrantsTeamRead(member))
+            throw new UnauthorizedAccessException(
+                $"Reading team '{teamKey}' requires the '{TeamScopes.Read}' scope on that team.");
+    }
+
+    public async Task<ITeam<T>> GetTeamAsync<T>(string teamKey) where T : ITeamMember
+    {
+        await RequireTeamReadAsync(teamKey);
+        return await _inner.GetTeamAsync<T>(teamKey);
+    }
+
+    public async Task<ITeam> GetTeamByKeyAsync(string teamKey)
+    {
+        await RequireTeamReadAsync(teamKey);
+        return await _inner.GetTeamByKeyAsync(teamKey);
+    }
+
+    public async IAsyncEnumerable<ITeamMember> GetMembersAsync(string teamKey)
+    {
+        await RequireTeamReadAsync(teamKey);
+
+        await foreach (var member in _inner.GetMembersAsync(teamKey))
+        {
+            yield return member;
+        }
+    }
+
+    public async Task<ITeamMember> GetTeamMemberAsync(string teamKey, string userKey)
+    {
+        await RequireTeamReadAsync(teamKey);
+        return await _inner.GetTeamMemberAsync(teamKey, userKey);
+    }
 }
