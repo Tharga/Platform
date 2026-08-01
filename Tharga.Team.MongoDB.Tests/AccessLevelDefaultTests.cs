@@ -1,5 +1,6 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.Attributes;
 using Tharga.Team.MongoDB;
 
 namespace Tharga.Team.MongoDB.Tests;
@@ -84,22 +85,36 @@ public class AccessLevelDefaultTests
     }
 
     /// <summary>
-    /// Consent is not. It carries no <c>BsonRepresentation</c>, so the driver stores the ordinal — which
-    /// means renumbering the enum *would* silently re-grade every stored consent decision.
+    /// Consent is too, as of the enum-storage conversion. It previously carried no
+    /// <c>BsonRepresentation</c> and so stored the ordinal, which would have made any renumbering of
+    /// <see cref="AccessLevel"/> silently re-grade every stored consent decision.
     /// </summary>
-    /// <remarks>
-    /// This is what makes the sentinel fix cost more than it appears: the three persisted
-    /// <see cref="AccessLevel"/> fields do not agree on how they are written, and only one is safe to
-    /// renumber. Asserting the current representation here means a fix cannot change it unnoticed.
-    /// </remarks>
     [Fact]
-    public void AConsentLevel_IsStoredByNumber()
+    public void AConsentLevel_IsStoredByName()
     {
         var document = new TestTeam { Key = "team-1", Name = "B", ConsentAccessLevel = AccessLevel.Viewer }
             .ToBsonDocument();
 
-        Assert.Equal(BsonType.Int32, document["ConsentAccessLevel"].BsonType);
-        Assert.Equal((int)AccessLevel.Viewer, document["ConsentAccessLevel"].AsInt32);
+        Assert.Equal(BsonType.String, document["ConsentAccessLevel"].BsonType);
+        Assert.Equal("Viewer", document["ConsentAccessLevel"].AsString);
+    }
+
+    /// <summary>
+    /// The conversion does not strand consent decisions already written as numbers.
+    /// </summary>
+    [Fact]
+    public void AConsentLevelWrittenAsANumber_StillReads()
+    {
+        var legacy = new BsonDocument
+        {
+            { "Key", "team-1" },
+            { "Name", "B" },
+            { "ConsentAccessLevel", (int)AccessLevel.Viewer }
+        };
+
+        var team = BsonSerializer.Deserialize<TestTeam>(legacy);
+
+        Assert.Equal(AccessLevel.Viewer, team.ConsentAccessLevel);
     }
 
     private sealed record TestTeam : TeamEntityBase<TestMember>;
