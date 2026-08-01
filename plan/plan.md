@@ -155,27 +155,47 @@ upgrade' from the number here."*
 
 ---
 
-## 7. Documentation
+## 7. Documentation — DONE 2026-08-01 (`c22aa3f`)
 
-- [ ] `README.md` — review and update where this changes documented behaviour.
-- [ ] `docs/` — same review. **Both surfaces, not one:** step 5 changes what "configured" means for
-      the directory, and step 6 changes what uploading an icon produces.
-- [ ] Decide whether icon processing warrants its own `docs/articles/` page rather than an edit to an
-      existing section.
-- [ ] Land as a separate `docs:` commit before close-out.
+- [x] **Packaged READMEs** — `Tharga.Team.Images/README.md` rewritten around squaring (with the
+      source→output table and the "already-stored icons are not reprocessed" callout);
+      `Tharga.Team.Entra/README.md` gained an "Incomplete configuration hides the directory" section
+      including the B2C `TenantId` trap.
+- [x] **Docs site** — `docs/articles/icons.md` (squaring, the output table, the behaviour-change
+      callout, corrected dialog wording), `docs/articles/user-management.md` (half-configured directory
+      counts as none; the self-delete guard added to the scope matrix),
+      `docs/articles/implementation-guide.md` (both create-team entry points respect
+      `AllowTeamCreation`).
+- [x] **No new article needed.** `icons.md` already existed and is the one-file-per-area home for this;
+      a separate page would have split the topic. The directory content likewise belongs beside the
+      existing registration guidance, not in a new file.
 
 ---
 
 ## 8. Close-out (only when the user confirms the feature is done)
 
-- [ ] Re-run `dotnet outdated` — new updates may have published since step 1. Apply and include them
-      in this PR.
-- [ ] Full suite green.
-- [ ] Archive `plan/feature.md` to `$DOC_ROOT/Tharga/plans/Toolkit/Platform/done/plutuswave-defect-batch.md`
-- [ ] `git rm -r plan`
+- [x] **Re-ran `dotnet outdated` 2026-08-01.** Unchanged since step 1 — ImageSharp 4.0.0 is the only
+      update and stays held for the paid-licence reason. Nothing new published during the feature.
+- [x] Full suite green: **1180 tests**, 0 failures. Build clean.
+- [x] Archived to `$DOC_ROOT/Tharga/plans/Toolkit/Platform/done/plutuswave-defect-batch.md` — written
+      early because it is needed either way and is reversible.
+- [ ] `git rm -r plan` — **waiting on user testing** (see below)
 - [ ] Final commit: `fix: plutuswave-defect-batch complete`
-- [ ] Push, open the PR against `master`. PR description is the release note — write it for package
-      consumers, and **say that already-stored icons are not reprocessed**.
+- [ ] Open the PR against `master`. PR description is the release note — write it for package
+      consumers, lead with the icon behaviour change since the patch version number will not signal it,
+      and **say that already-stored icons are not reprocessed**.
+
+**Order chosen 2026-08-01 (user): push for testing before close-out.** The branch is pushed with
+`plan/` intact so the work stays resumable; the close-out commit lands after the user confirms, which
+keeps it the last commit before merge as the workflow requires.
+
+**What to look at when testing — #23 is the only visual change in the batch.** Upload a wide image, a
+tall one, and a small non-square one to both a team icon and a user icon. Expect: squared output,
+transparent padding (not black bars), nothing cropped, and small images padded at their own size rather
+than blown up. Existing avatars should be untouched. The other three items are guards — check that
+Delete is disabled and labelled *"Delete (this is you)"* on your own row, that the create-team link is
+gone when `AllowTeamCreation = false`, and that directory features vanish when Entra credentials are
+incomplete.
 
 ---
 
