@@ -82,6 +82,22 @@ public static class UserAdminGate
     /// <see cref="CanDeleteTeams(bool)"/>.
     /// </para>
     /// </remarks>
+    /// <summary>
+    /// Whether the Teams tab offers renaming a team or changing its icon. Requires the
+    /// <see cref="SystemTeamScopes.Manage"/> system scope.
+    /// </summary>
+    /// <remarks>
+    /// Presentational only. That scope deliberately does <b>not</b> reach consent or custom roles, so
+    /// this gate must not be reused to offer either — the service refuses them, and a control that
+    /// throws when clicked is the defect per-team action gating already had to fix once.
+    /// <para>
+    /// A <i>system</i> grant, resolved with <c>TeamScopeGate.HasSystemScope</c> — an in-team scope of the
+    /// same name must not satisfy it, exactly as for <see cref="CanDeleteTeams(bool)"/>.
+    /// </para>
+    /// </remarks>
+    public static bool CanManageTeams(bool hasTeamsManageScope)
+        => hasTeamsManageScope;
+
     public static bool CanAssignOwner(bool hasAssignOwnerScope, bool teamIsOwnerless)
         => hasAssignOwnerScope && teamIsOwnerless;
 

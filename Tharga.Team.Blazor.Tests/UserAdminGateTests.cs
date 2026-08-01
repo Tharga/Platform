@@ -29,6 +29,18 @@ public class UserAdminGateTests
         Assert.Equal(expected, UserAdminGate.ShowDirectoryFeatures(hasScope, directoryRegistered));
     }
 
+    /// <summary>
+    /// Presentational only. The same gate must never be reused to offer consent or custom-role editing —
+    /// the system scope does not reach them and the service refuses.
+    /// </summary>
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public void CanManageTeams_RequiresTheSystemScope(bool hasScope, bool expected)
+    {
+        Assert.Equal(expected, UserAdminGate.CanManageTeams(hasScope));
+    }
+
     /// <summary>The repair case: the scope, on a team that has actually lost its owner.</summary>
     [Fact]
     public void CanAssignOwner_ScopedCallerOnAnOwnerlessTeam_IsAllowed()

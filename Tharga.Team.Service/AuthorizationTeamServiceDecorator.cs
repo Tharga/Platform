@@ -121,10 +121,10 @@ public sealed class AuthorizationTeamServiceDecorator : ITeamService
         await _inner.DeleteTeamAsync<TMember>(teamKey);
     }
 
-    // Team administration (team:manage on the team).
+    // Team administration (team:manage on the team, or the teams:manage system grant).
     public async Task RenameTeamAsync<TMember>(string teamKey, string name) where TMember : ITeamMember
     {
-        await RequireTeamScopeAsync(TeamScopes.Manage, teamKey);
+        await RequirePresentationManageAsync(teamKey, nameof(RenameTeamAsync));
         await _inner.RenameTeamAsync<TMember>(teamKey, name);
     }
 
@@ -185,16 +185,16 @@ public sealed class AuthorizationTeamServiceDecorator : ITeamService
         return await _inner.RemoveUserFromAllTeamsAsync(userKey);
     }
 
-    // Team icon (team:manage on the team).
+    // Team icon (team:manage on the team, or the teams:manage system grant).
     public async Task SetTeamIconAsync(string teamKey, byte[] data, string contentType)
     {
-        await RequireTeamScopeAsync(TeamScopes.Manage, teamKey);
+        await RequirePresentationManageAsync(teamKey, nameof(SetTeamIconAsync));
         await _inner.SetTeamIconAsync(teamKey, data, contentType);
     }
 
     public async Task ClearTeamIconAsync(string teamKey)
     {
-        await RequireTeamScopeAsync(TeamScopes.Manage, teamKey);
+        await RequirePresentationManageAsync(teamKey, nameof(ClearTeamIconAsync));
         await _inner.ClearTeamIconAsync(teamKey);
     }
 
@@ -218,6 +218,25 @@ public sealed class AuthorizationTeamServiceDecorator : ITeamService
         if (await _authorizer.HasSystemScopeAsync(SystemUserScopes.Manage)) return;
         throw new UnauthorizedAccessException(
             $"Removing a user from all teams requires the '{SystemUserScopes.Manage}' system scope.");
+    }
+
+    /// <summary>
+    /// The two <b>presentational</b> team operations — rename and icon — accept either the in-team
+    /// <see cref="TeamScopes.Manage"/> or the cross-team <see cref="SystemTeamScopes.Manage"/>.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately not used by <c>SetTeamConsentAsync</c> or <c>SetTeamCustomRolesAsync</c>, which keep
+    /// requiring the in-team scope alone. Consent is a team's statement about what it exposes inbound and
+    /// custom roles decide what a member may do — both authorization, neither presentation. An oversight
+    /// role fixing a typo in a name is a different act from one granting itself reach into a tenant.
+    /// </remarks>
+    private async Task RequirePresentationManageAsync(string teamKey, string operation)
+    {
+        if (await _authorizer.HasSystemScopeAsync(SystemTeamScopes.Manage)) return;
+        if (await _authorizer.HasTeamScopeAsync(TeamScopes.Manage, teamKey)) return;
+        throw new UnauthorizedAccessException(
+            $"'{operation}' on team '{teamKey}' requires '{TeamScopes.Manage}' on that team, " +
+            $"or the '{SystemTeamScopes.Manage}' system scope.");
     }
 
     private async Task RequireDeleteAsync(string teamKey)

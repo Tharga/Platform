@@ -49,4 +49,22 @@ public static class SystemTeamScopes
     /// </para>
     /// </remarks>
     public const string AssignOwner = "teams:assign-owner";
+
+    /// <summary>
+    /// Authorizes renaming <b>any</b> team and setting or clearing its icon, regardless of membership.
+    /// The oversight equivalent of the in-team <c>team:manage</c>, for the two operations that are
+    /// presentational.
+    /// </summary>
+    /// <remarks>
+    /// <b>Deliberately narrower than in-team <c>team:manage</c>, which also covers consent and custom
+    /// roles.</b> Those are authorization: consent is a team's own statement about what it exposes
+    /// inbound, and an operator overriding it is a far larger claim than fixing a typo in a name. Rename
+    /// and icon change how a team looks; consent changes who can reach it.
+    /// <para>
+    /// Extending this scope to consent would need a deliberate decision and its own name. An
+    /// architecture-level rule cannot express "these two members of that scope but not those two", so a
+    /// test asserts the boundary instead.
+    /// </para>
+    /// </remarks>
+    public const string Manage = "teams:manage";
 }
