@@ -305,7 +305,11 @@ public static class ThargaBlazorRegistration
             else
                 throw new InvalidOperationException("Cannot resolve inner IUserService for authorization decoration.");
 
-            return new AuthorizationUserServiceDecorator(inner, sp.GetRequiredService<TeamAuthorizer>(), sp.GetRequiredService<ITeamService>);
+            // Cache invalidation sits closest to the store, so it runs on the write that actually
+            // happened — after authorization has already decided the call may proceed.
+            var cacheInvalidating = new CacheInvalidatingUserServiceDecorator(inner);
+
+            return new AuthorizationUserServiceDecorator(cacheInvalidating, sp.GetRequiredService<TeamAuthorizer>(), sp.GetRequiredService<ITeamService>);
         });
     }
 
