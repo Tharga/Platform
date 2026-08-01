@@ -105,7 +105,8 @@ public static class ThargaBlazorRegistration
             services.AddScoped<IUserManagementService>(sp => new UserManagementService(
                 sp.GetRequiredService<IUserService>(),
                 sp.GetRequiredService<ITeamService>(),
-                sp.GetService<IUserDirectoryService>()));
+                sp.GetService<IUserDirectoryService>(),
+                o.WriteNameToDirectory));
 
             // Server-side claims enrichment — always registered, reads selected_team_id cookie.
             // The membership/consent claim computation is shared with the in-circuit revalidator below.

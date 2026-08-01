@@ -100,6 +100,32 @@ public class AuditingUserManagementServiceDecorator : IUserManagementService
         }
     }
 
+    /// <remarks>
+    /// The directory outcome is recorded rather than just the local write: a rename that succeeded here
+    /// and failed there is the case someone will later need to explain, and it is invisible otherwise.
+    /// </remarks>
+    public async Task<UserNameChangeResult> SetUserNameAsync(string userKey, string name, CancellationToken cancellationToken = default)
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var result = await _inner.SetUserNameAsync(userKey, name, cancellationToken);
+            sw.Stop();
+            Log("set-user-name", nameof(SetUserNameAsync), sw.ElapsedMilliseconds, true, metadata: Meta(
+                (AuditMetadataKeys.UserKey, userKey),
+                (AuditMetadataKeys.UserNameNew, name),
+                (AuditMetadataKeys.DirectoryError, result?.DirectoryError)));
+            return result;
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            Log("set-user-name", nameof(SetUserNameAsync), sw.ElapsedMilliseconds, false, ex.Message,
+                metadata: Meta((AuditMetadataKeys.UserKey, userKey)));
+            throw;
+        }
+    }
+
     public IAsyncEnumerable<DirectoryUser> GetDirectoryOnlyUsersAsync(CancellationToken cancellationToken = default)
         => _inner.GetDirectoryOnlyUsersAsync(cancellationToken);
 

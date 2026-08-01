@@ -66,6 +66,28 @@ public class EntraUserDirectoryService : IUserDirectoryService
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
+    /// <remarks>
+    /// Graph <c>PATCH /users/{id}</c>. Needs no permission beyond the <c>User.ReadWrite.All</c> that
+    /// deletion already requires, so a tenant able to delete users can already do this.
+    /// </remarks>
+    public async Task SetUserNameAsync(string directoryId, string name, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(directoryId);
+        ArgumentException.ThrowIfNullOrEmpty(name);
+
+        using var request = new HttpRequestMessage(HttpMethod.Patch, $"users/{Uri.EscapeDataString(directoryId)}")
+        {
+            Content = JsonContent.Create(new { displayName = name })
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _tokenProvider.GetTokenAsync(cancellationToken));
+
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            throw new InvalidOperationException($"Directory user '{directoryId}' was not found.");
+
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
     public async IAsyncEnumerable<DirectoryUser> GetUsersAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var url = $"users?$select={SelectFields}&$top={PageSize}";

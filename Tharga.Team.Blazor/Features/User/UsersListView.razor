@@ -390,8 +390,18 @@ else
 
         try
         {
-            await UserService.SetUserNameAsync(user.Key, trimmed);
+            // Through the management service, not IUserService: this is the administrative rename, the
+            // only path that may also write the name back to the directory.
+            var result = await UserManagementService.SetUserNameAsync(user.Key, trimmed);
             await LoadDataAsync();
+
+            // The local write succeeded — a directory failure is reported, never presented as a failed
+            // rename, because the name in this application really did change.
+            if (result?.DirectoryError != null)
+            {
+                NotificationService.Notify(NotificationSeverity.Warning, "Renamed here, not in the directory",
+                    result.DirectoryError);
+            }
         }
         catch (Exception ex)
         {

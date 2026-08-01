@@ -42,6 +42,9 @@ public static class AuditMetadataKeys
     /// <summary>Per-team member display name after a change. Empty string means the override was cleared.</summary>
     public const string MemberNameNew = "member.name.new";
 
+    /// <summary>The display name a user was renamed to, on an administrative rename.</summary>
+    public const string UserNameNew = "user.name.new";
+
     /// <summary>Tenant roles assigned to a member, comma-separated.</summary>
     public const string MemberTenantRoles = "member.tenantroles";
 

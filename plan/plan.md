@@ -153,24 +153,33 @@ The read makes refusing possible; it does not decide it.
 - **The list is reloaded after a successful assign, not patched.** The roster drives both the Owner
   column and whether the action is offered, so a patch would leave "Assign owner" on a repaired team.
 
-## 5. Directory display-name write-back
+## 5. Directory display-name write-back — DONE 2026-08-01
 
-Covers acceptance criteria 5.
+- [x] `IUserDirectoryService.SetUserNameAsync` as a **default interface member that throws**, matching how
+      `IsConfigured` was added without breaking custom implementations. Throwing rather than no-opping: a
+      directory that cannot write must say so, which is the failure mode this codebase keeps fixing.
+- [x] `EntraUserDirectoryService` implements it via Graph `PATCH /users/{id}`. **No new permission** —
+      `User.ReadWrite.All` is already required for deletion.
+- [x] **Opt-in via `o.Blazor.WriteNameToDirectory`, default off**, threaded to `UserManagementService`
+      through its constructor. The option lives in Blazor options and the service takes a plain `bool`,
+      so `Tharga.Team.Service` gains no dependency on the Blazor package.
+- [x] New `IUserManagementService.SetUserNameAsync` + `UserNameChangeResult`. Audited as `set-user-name`
+      **including the directory outcome** — a rename that worked here and failed there is the case
+      someone will later have to explain, and it is invisible otherwise.
+- [x] `UsersListView` rename now goes through the management service and raises a **Warning**, not an
+      error, when the directory write fails: the local rename really did happen.
+- [x] 5 tests.
 
-- [ ] `IUserDirectoryService.SetUserNameAsync(directoryId, name, ct)` as a **default interface member**
-      that throws `NotSupportedException` — matching how `IsConfigured` was added without breaking
-      custom implementations.
-- [ ] Implement in `EntraUserDirectoryService` via Graph `PATCH /users/{id}`. No new Graph permission —
-      `User.ReadWrite.All` already covers it and is already required for delete.
-- [ ] **Opt-in, default off.** A host federating from a corporate directory wants the directory
-      authoritative and would be alarmed to find the application overwriting it. Never an automatic side
-      effect of the local rename.
-- [ ] **Report a directory-write failure without rolling back the local write.** They fail
-      independently; coupling them makes a Graph outage block renames.
-- [ ] Tests: the option off means no Graph call at all; on means one PATCH; a failed PATCH leaves the
-      local write intact and surfaces the error.
-
----
+**Three decisions:**
+- **Administrative rename only.** The self-service path (`IUserService.SetUserNameAsync`) stays local
+  whatever the option says — a user editing their own display name here should not silently rewrite the
+  organization's directory. The driver is the opposite case, where an admin corrects a placeholder.
+- **An unlinked user is not an error.** No directory account means nothing to write to; reporting that as
+  a failure would make every such rename look broken. `DirectoryUpdated: false` with no error is the
+  ordinary outcome and is documented as such on the result.
+- **The two writes fail independently and are never coupled.** The local write always happens first and
+  is never rolled back — coupling them would let a Graph outage block renaming a user in this
+  application. That is the case the test suite leads with.
 
 ## 6. Documentation
 

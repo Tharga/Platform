@@ -30,6 +30,23 @@ public interface IUserManagementService
     Task<UserDeleteResult> DeleteUserAsync(string userKey, bool deleteFromDirectory = false, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Set a user's display name, and — when <c>o.Blazor.WriteNameToDirectory</c> is enabled and the user
+    /// is linked to a directory account — write it back to the external directory too.
+    /// </summary>
+    /// <remarks>
+    /// The local write always happens; a failure there throws. The directory write is best-effort and its
+    /// outcome is reported on the result rather than rolled back into the local one: they fail
+    /// independently, and coupling them would let a directory outage block renaming a user here.
+    /// <para>
+    /// Administrative rename only. The self-service path (<c>IUserService.SetUserNameAsync</c>) stays
+    /// local deliberately — a user editing their own display name in this application should not silently
+    /// rewrite the organization's directory.
+    /// </para>
+    /// </remarks>
+    [RequireScope(SystemUserScopes.Manage)]
+    Task<UserNameChangeResult> SetUserNameAsync(string userKey, string name, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// The teams this user owns — the teams that deleting them would leave with no owner.
     /// </summary>
     /// <remarks>

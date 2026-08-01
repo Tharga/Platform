@@ -19,6 +19,12 @@ public sealed class AuthorizationUserManagementServiceDecorator : IUserManagemen
         _authorizer = authorizer;
     }
 
+    public async Task<UserNameChangeResult> SetUserNameAsync(string userKey, string name, CancellationToken cancellationToken = default)
+    {
+        await RequireUsersManageAsync(nameof(SetUserNameAsync));
+        return await _inner.SetUserNameAsync(userKey, name, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<ITeam>> GetOwnedTeamsAsync(string userKey, CancellationToken cancellationToken = default)
     {
         await RequireUsersManageAsync(nameof(GetOwnedTeamsAsync));

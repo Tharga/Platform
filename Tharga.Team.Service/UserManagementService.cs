@@ -14,12 +14,44 @@ public class UserManagementService : IUserManagementService
     private readonly IUserService _userService;
     private readonly ITeamService _teamService;
     private readonly IUserDirectoryService _directoryService;
+    private readonly bool _writeNameToDirectory;
 
-    public UserManagementService(IUserService userService, ITeamService teamService, IUserDirectoryService directoryService = null)
+    /// <param name="writeNameToDirectory">
+    /// Whether an administrative rename also writes the name back to the directory. Default off: which
+    /// side owns display names is a per-host decision, and a host federating from a corporate directory
+    /// wants the directory authoritative.
+    /// </param>
+    public UserManagementService(IUserService userService, ITeamService teamService, IUserDirectoryService directoryService = null, bool writeNameToDirectory = false)
     {
         _userService = userService;
         _teamService = teamService;
         _directoryService = directoryService;
+        _writeNameToDirectory = writeNameToDirectory;
+    }
+
+    public async Task<UserNameChangeResult> SetUserNameAsync(string userKey, string name, CancellationToken cancellationToken = default)
+    {
+        var user = await RequireUserAsync(userKey);
+
+        // Local first and unconditionally: this application is the system of record for the name, so a
+        // directory that cannot be reached must not stop it being corrected here.
+        await _userService.SetUserNameAsync(user.Key, name);
+
+        if (!_writeNameToDirectory || _directoryService == null) return new UserNameChangeResult();
+
+        // Not an error: an unlinked user has no directory account to write to. Reporting it as a failure
+        // would make the ordinary case look broken.
+        if (string.IsNullOrEmpty(user.DirectoryId)) return new UserNameChangeResult();
+
+        try
+        {
+            await _directoryService.SetUserNameAsync(user.DirectoryId, name, cancellationToken);
+            return new UserNameChangeResult(DirectoryUpdated: true);
+        }
+        catch (Exception ex)
+        {
+            return new UserNameChangeResult(DirectoryError: ex.Message);
+        }
     }
 
     public async Task<DirectoryVerificationResult> VerifyUserAsync(string userKey, CancellationToken cancellationToken = default)
