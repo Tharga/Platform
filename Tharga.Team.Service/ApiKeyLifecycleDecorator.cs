@@ -33,6 +33,11 @@ public class ApiKeyLifecycleDecorator : IApiKeyAdministrationService
 
     public Task LockKeyAsync(string teamKey, string key) => _inner.LockKeyAsync(teamKey, key);
     public Task LockSystemKeyAsync(string key) => _inner.LockSystemKeyAsync(key);
+
+    // No lifecycle signal: disabling neither mints nor destroys a secret, so a handler capturing tokens
+    // has nothing to capture and a handler cleaning up after deletion has nothing to clean up.
+    public Task SetKeyDisabledAsync(string teamKey, string key, bool disabled, string actor = null) => _inner.SetKeyDisabledAsync(teamKey, key, disabled, actor);
+    public Task SetSystemKeyDisabledAsync(string key, bool disabled, string actor = null) => _inner.SetSystemKeyDisabledAsync(key, disabled, actor);
     public Task SetScopeOverridesAsync(string teamKey, string key, string[] scopes) => _inner.SetScopeOverridesAsync(teamKey, key, scopes);
     public Task SetRolesAsync(string teamKey, string key, string[] roles) => _inner.SetRolesAsync(teamKey, key, roles);
 

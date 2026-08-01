@@ -83,6 +83,48 @@ public class AuditingApiKeyServiceDecorator : IApiKeyAdministrationService
         }
     }
 
+    /// <remarks>
+    /// Both directions are audited, and under distinct actions: <c>disable</c> is a containment and
+    /// <c>enable</c> is a decision to trust the key again. Rolling them into one entry keyed on a boolean
+    /// would make "who re-enabled this, and when" a query rather than a reading.
+    /// </remarks>
+    public async Task SetKeyDisabledAsync(string teamKey, string key, bool disabled, string actor = null)
+    {
+        var action = disabled ? "disable" : "enable";
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            await _inner.SetKeyDisabledAsync(teamKey, key, disabled, actor);
+            sw.Stop();
+            Log(action, nameof(SetKeyDisabledAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey);
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            Log(action, nameof(SetKeyDisabledAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey);
+            throw;
+        }
+    }
+
+    /// <inheritdoc cref="SetKeyDisabledAsync"/>
+    public async Task SetSystemKeyDisabledAsync(string key, bool disabled, string actor = null)
+    {
+        var action = disabled ? "disable-system" : "enable-system";
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            await _inner.SetSystemKeyDisabledAsync(key, disabled, actor);
+            sw.Stop();
+            Log(action, nameof(SetSystemKeyDisabledAsync), sw.ElapsedMilliseconds, true);
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            Log(action, nameof(SetSystemKeyDisabledAsync), sw.ElapsedMilliseconds, false, ex.Message);
+            throw;
+        }
+    }
+
     public async Task DeleteKeyAsync(string teamKey, string key)
     {
         var sw = Stopwatch.StartNew();

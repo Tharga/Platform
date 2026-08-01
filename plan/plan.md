@@ -35,25 +35,41 @@ types carry provenance precisely so an in-team scope cannot be spent cross-team.
 - **`TeamDialog` is the same** — already parameterised by team key. Both dialogs were reused as-is, so
   the Teams tab gained two actions without a new dialog between them.
 
-## 3. Disable and enable an API key
+## 3. Disable and enable an API key — service side DONE 2026-08-02
 
-- [ ] State on `IApiKey` / `ApiKeyEntity`: `DisabledAt` + `DisabledBy` rather than a bare flag. *When* and
-      *who* are what an operator needs after a security action, and a bool cannot answer either.
-- [ ] `ApiKeyAuthenticationHandler` refuses a disabled key and **records the refusal as an auth failure**,
-      so the attempt appears in the audit log rather than vanishing.
-- [ ] Enable/disable on `IApiKeyAdministrationService` for both team and system keys, mirroring the
-      existing `Lock`/`Delete` pairs.
-- [ ] **Refresh must not re-enable** — a key disabled because it might have leaked stays disabled until
-      someone says otherwise. Test this explicitly; it is the one that silently undoes a containment.
-- [ ] Scope: **reuse `apikey:manage`** (settled 2026-07-31). It already authorizes delete, which is
-      strictly more destructive, so a separate grant would protect the lesser act more carefully than the
-      greater one.
-- [ ] UI on `ApiKeyView` and `SystemApiKeyView`: disabled rows **visibly distinct**, not merely
-      annotated, and distinguishable from expired — both are unusable, for different reasons and with
-      different remedies.
-- [ ] Audit both directions with the actor.
+- [x] `DisabledAt` + `DisabledBy` on `IApiKey` and `ApiKeyEntity`, not a bool — *when* and *who* are what
+      an operator needs after a security action.
+- [x] `ApiKeyAuthenticationHandler` refuses a disabled key and **records the refusal as an auth failure**.
+      A disabled key still gets used — by a scheduled job nobody remembered, or by whoever the disabling
+      was aimed at — and those attempts are the point of the audit trail.
+- [x] `SetKeyDisabledAsync` / `SetSystemKeyDisabledAsync` on `IApiKeyAdministrationService`, reusing
+      `apikey:manage` (settled 2026-07-31).
+- [x] Audited under **distinct actions**: `disable` is a containment, `enable` is a decision to trust the
+      key again. One entry keyed on a boolean would make "who re-enabled this" a query rather than a
+      reading.
+- [x] `ApiKeyLifecycleDecorator` passes both through **without a lifecycle signal** — disabling neither
+      mints nor destroys a secret, so a handler capturing tokens has nothing to capture.
+- [x] 6 tests.
 
----
+### The trap was real, and it was already set
+
+`RefreshKeyAsync` rebuilds the entity through `BuildKey(...)` from a fixed list of fields. **`DisabledAt`
+was not on that list**, so the first working version silently re-enabled any disabled key the moment
+someone refreshed it — which is precisely the response to a suspected leak. The same defect existed in
+`BuildSystemKey`.
+
+Both now carry it forward, and `RefreshingADisabledKey_LeavesItDisabled` is the test that says so.
+**Verified by removing the carry-forward and watching it fail** — the other five stayed green, so nothing
+else would have caught it.
+
+**Worth remembering beyond this feature:** a rebuild-from-fields constructor silently drops any state
+added later. Every future field on `ApiKeyEntity` has this hazard, and the compiler will never mention
+it.
+
+### Remaining for step 3
+
+- [ ] UI on `ApiKeyView` and `SystemApiKeyView`: disabled rows visibly distinct, and distinguishable from
+      expired.
 
 ## 4. Disable and enable a user
 

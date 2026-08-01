@@ -27,6 +27,24 @@ public interface IApiKeyAdministrationService
     /// </remarks>
     Task LockKeyAsync(string teamKey, string key);
 
+    /// <summary>
+    /// Stops a team key being usable, or makes it usable again, without losing its name, scopes, roles,
+    /// tags or audit trail.
+    /// </summary>
+    /// <remarks>
+    /// The reversible alternative to deletion, for the ordinary operational cases: a key suspected of
+    /// leaking, a partner integration paused, a key parked while an incident is investigated.
+    /// <para>
+    /// <b>Not the same as locking.</b> Locking discards the stored secret so its raw value cannot be
+    /// retrieved again; a locked key still authenticates. Disabling stops it working.
+    /// </para>
+    /// <para>
+    /// <b>Refreshing does not enable a disabled key.</b> Minting a new secret is not a decision to trust
+    /// the key again.
+    /// </para>
+    /// </remarks>
+    Task SetKeyDisabledAsync(string teamKey, string key, bool disabled, string actor = null);
+
     /// <summary>Deletes an API key. Verifies team ownership.</summary>
     Task DeleteKeyAsync(string teamKey, string key);
 
@@ -60,6 +78,9 @@ public interface IApiKeyAdministrationService
     /// </summary>
     /// <remarks><b>This does not disable the key</b> — see <see cref="LockKeyAsync"/>.</remarks>
     Task LockSystemKeyAsync(string key);
+
+    /// <inheritdoc cref="SetKeyDisabledAsync"/>
+    Task SetSystemKeyDisabledAsync(string key, bool disabled, string actor = null);
 
     /// <summary>Deletes a system API key.</summary>
     Task DeleteSystemKeyAsync(string key);

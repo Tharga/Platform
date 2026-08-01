@@ -47,6 +47,8 @@ public class McpApiKeyAuthenticationTests
         public DateTime? ExpiryDate => null;
         public DateTime? CreatedAt => DateTime.UtcNow;
         public DateTime? LastUsedAt => null;
+        public DateTime? DisabledAt => null;
+        public string DisabledBy => null;
     }
 
     /// <summary>
@@ -78,6 +80,8 @@ public class McpApiKeyAuthenticationTests
         public Task<IApiKey> RefreshSystemKeyAsync(string key) => NotUsed<Task<IApiKey>>();
         public Task LockSystemKeyAsync(string key) => NotUsed<Task>();
         public Task DeleteSystemKeyAsync(string key) => NotUsed<Task>();
+        public Task SetKeyDisabledAsync(string teamKey, string key, bool disabled, string actor = null) => NotUsed<Task>();
+        public Task SetSystemKeyDisabledAsync(string key, bool disabled, string actor = null) => NotUsed<Task>();
     }
 
     private static async Task<IHost> StartHostAsync()

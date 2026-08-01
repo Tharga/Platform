@@ -22,6 +22,12 @@ public interface IApiKeyRepository : IRepository
     /// <summary>Marks the API key as locked so it cannot be used.</summary>
     Task LockKeyAsync(string key);
 
+    /// <summary>
+    /// Marks the key disabled, or clears the mark when <paramref name="disabledAtUtc"/> is null.
+    /// A disabled key is refused at authentication.
+    /// </summary>
+    Task SetDisabledAsync(string key, DateTime? disabledAtUtc, string disabledBy);
+
     /// <summary>Sets the "last used" timestamp for the key via a targeted field update (no full-document replace).</summary>
     Task SetLastUsedAsync(string key, DateTime lastUsedAtUtc);
 

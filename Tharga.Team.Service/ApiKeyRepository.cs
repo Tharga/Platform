@@ -38,6 +38,16 @@ internal class ApiKeyRepository : IApiKeyRepository
         return _collection.UpdateOneAsync(filter, update);
     }
 
+    public Task SetDisabledAsync(string key, DateTime? disabledAtUtc, string disabledBy)
+    {
+        var filter = new FilterDefinitionBuilder<ApiKeyEntity>()
+            .Eq(x => x.Key, key);
+        var update = new UpdateDefinitionBuilder<ApiKeyEntity>()
+            .Set(x => x.DisabledAt, disabledAtUtc)
+            .Set(x => x.DisabledBy, disabledBy);
+        return _collection.UpdateOneAsync(filter, update);
+    }
+
     public Task SetLastUsedAsync(string key, DateTime lastUsedAtUtc)
     {
         var filter = new FilterDefinitionBuilder<ApiKeyEntity>()
