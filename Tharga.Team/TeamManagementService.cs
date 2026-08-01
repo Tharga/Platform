@@ -6,7 +6,7 @@
 /// Generic methods (GetTeamsAsync, DeleteTeamAsync, RenameTeamAsync) call non-generic
 /// internal versions since the proxy resolves the member type from the team data.
 /// </summary>
-public class TeamManagementService<TMember> : ITeamManagementService, ITeamLifecycleService
+public class TeamManagementService<TMember> : ITeamManagementService, ITeamLifecycleService, ITeamDirectoryService
     where TMember : class, ITeamMember
 {
     private readonly ITeamService _inner;

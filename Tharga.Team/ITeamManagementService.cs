@@ -61,16 +61,6 @@ public interface ITeamManagementService
     [RequireScope(TeamScopes.Read)]
     Task SetInvitationResponseAsync(string teamKey, string userKey, string inviteCode, bool accept);
 
-    /// <summary>
-    /// The caller's own teams, filtered to those where their membership grants <c>team:read</c>.
-    /// </summary>
-    /// <remarks>
-    /// No <c>[RequireScope]</c>, because it names no team and a principal holds scope claims only for the
-    /// selected one. The scopes are recomputed per team from the caller's membership instead, so this is
-    /// scope-<i>filtered</i> rather than scope-gated.
-    /// </remarks>
-    IAsyncEnumerable<ITeam<TMember>> GetTeamsAsync<TMember>() where TMember : ITeamMember;
-
     /// <summary>One team and its members. Requires <c>team:read</c> on that team.</summary>
     [RequireScope(TeamScopes.Read)]
     Task<ITeam<TMember>> GetTeamAsync<TMember>(string teamKey) where TMember : ITeamMember;

@@ -26,8 +26,20 @@ Layers, and where each stands:
 
 ### Give first-level callers something correct to call
 
-- [ ] **Scope-checked reads on `ITeamManagementService`**, carrying `[RequireScope(TeamScopes.Read)]`:
-      team details, the roster, and a single member.
+- [x] **Scope-checked reads on `ITeamManagementService`**, carrying `[RequireScope(TeamScopes.Read)]`:
+      `GetTeamAsync<T>`, `GetTeamByKeyAsync`, `GetMembersAsync`, `GetTeamMemberAsync`.
+- [x] **`ITeamDirectoryService.GetTeamsAsync<T>()`** — the caller's own teams, scope-*filtered* per team
+      rather than gated. It names no team, so `ScopeProxy` cannot derive one, and a principal holds scope
+      claims only for the selected team; the scopes are recomputed per team from the membership instead.
+      A team is omitted whole rather than stripped of its roster, since `team:read` covers details and
+      members together. 8 tests, including the no-registry case (an app not using scopes must not start
+      refusing reads).
+      - **Its own interface because an existing architecture test demanded it.**
+        `ScopeBearingInterface_IsWhollyTeamBound_OrWhollySystemWide` failed the moment the method landed on
+        `ITeamManagementService`: that interface is wholly team-bound, every operation naming a team in its
+        first argument, which is what lets one registration authorize all of them. Its message said "Split
+        the interface." Worth recording — it is the same class of guard this feature is adding, and it
+        caught a design error unprompted.
 - [ ] **`GetInvitationAsync(inviteCode)`** — the invite entry point, authorized by the **code** rather than
       a scope, since an invitee is not yet a member. Replaces "read any team by key, then filter in memory".
 
