@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Tharga.Blazor.Framework;
 using Tharga.Team;
@@ -52,6 +53,14 @@ public static class ThargaBlazorRegistration
 
             services.AddScoped(o._userService);
             services.AddScoped(typeof(IUserService), sp => sp.GetRequiredService(o._userService));
+
+            // Runs at startup, once everything else is registered — reachability depends on whether an
+            // icon store and a directory are present, and those may be registered after this point.
+            var userServiceType = o._userService;
+            var throwOnIncomplete = o.ThrowOnIncompleteUserService;
+            services.AddSingleton<IHostedService>(sp => new UserServiceCompletenessCheck(
+                sp, userServiceType, throwOnIncomplete,
+                sp.GetService<ILogger<UserServiceCompletenessCheck>>()));
 
             if (o._memberType != null)
             {

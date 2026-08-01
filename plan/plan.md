@@ -45,24 +45,32 @@ hook makes this impossible to get wrong, and breaks every existing override — 
 
 ---
 
-## 3. Startup guard for un-overridden persistence extension points
+## 3. Startup guard for un-overridden persistence extension points — DONE 2026-08-01
 
-Covers acceptance criteria 2. **This is the item PlutusWave said they would take over any individual
-fix**, so it is worth more care than its size suggests.
+- [x] **Extension points enumerated from the code, not from the report.** `SetUserNameAsync`,
+      `SeedUserNameAsync`, `SetUserIconReferenceAsync`, `SetUserDirectoryIdAsync`. `DeleteUserAsync`
+      needs no guard — it already throws naming the type, which is the shape the others should have had.
+- [x] `UserServiceCompleteness.Find(type, iconStoreRegistered, directoryRegistered)` — pure and
+      testable, 8 tests.
+- [x] `UserServiceCompletenessCheck : IHostedService`, registered inside `AddThargaTeamBlazor`. Runs at
+      startup because reachability depends on registrations that may come after ours.
+- [x] Reports **every** gap in one message, each with what is silently lost.
 
-- [ ] Enumerate the extension points: `SetUserNameAsync`, `SetUserIconReferenceAsync`,
-      `SeedUserNameAsync`, `CreateTeamMember`, and whatever the sweep of `TeamServiceBase` turns up.
-      **List them before designing** — the request says "worth auditing the whole surface".
-- [ ] **The check must see `protected` members.** `SetUserIconReferenceAsync` is `protected virtual`, so
-      an interface-map guard cannot see it, and PlutusWave's own `UserServiceOverrideTests` could not
-      either. Reflect over the host's subclass and compare `DeclaringType` per member.
-- [ ] Report **every** missing override in one message. Reporting the first turns one startup into a
-      sequence of them.
-- [ ] Decide the failure mode: **throw or log?** A throw at startup is loudest and matches 3.8.0's icon
-      fix, but it would stop an app that is running fine today because it never uses the feature. Lean
-      **throw only when the feature is actually reachable** — i.e. the host registered the thing that
-      needs the override — otherwise warn. Settle this before coding.
-- [ ] Tests for both: a complete subclass passes silently; an incomplete one reports every gap.
+**Reflection over the concrete type, walking the base chain — not an interface map.**
+`SetUserIconReferenceAsync` is `protected`, so it never appears in an interface map. A guard built on
+one would have missed the very member that cost PlutusWave the most, while looking complete. Walking the
+chain also means a host's own intermediate base counts as the override — tested.
+
+**Reachability filtering.** An un-overridden member is only a defect if something can call it. No icon
+store registered means the icon path is unreachable, and reporting it would be exactly the noise that
+trains people to ignore startup output. Same rule as the Entra warning: report the mistake, not the
+deliberate absence.
+
+**Failure mode: logs an error, does not throw — with `o.Blazor.ThrowOnIncompleteUserService` to opt in.**
+The plan asked whether to gate a throw on reachability. Reachability turned out to be the wrong axis:
+the gap is **pre-existing** wherever it occurs, so a throw turns a routine upgrade into an outage over a
+feature the host may never use, and gates it on a condition the host did not change. An error log is
+loud, greppable and appears once; the strict reading is one option away for hosts that want it.
 
 ---
 
