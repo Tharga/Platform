@@ -31,7 +31,10 @@
 - [x] **Update the backlog** — the v4 sentinel entry now records that its storage prerequisite is done,
       and that the remaining constraint is timing (pre-conversion documents still hold numbers) rather than
       storage.
-- [~] **Release note** — external tooling querying the raw collection numerically must switch to names.
+- [x] **Release note** — added to `Tharga.Team.MongoDB/README.md` as a "How enums are stored" section: the
+      rule for new entities, that no migration is required, and the one consumer-visible caveat (external
+      tooling querying these two fields numerically). Deliberately not tied to a version number — no bump,
+      and the patch number is assigned by the release workflow.
 
 ## Notes
 
@@ -51,4 +54,4 @@ Feature complete. Both fields converted, 1125 tests pass, sample compiles, backl
 The change itself is two attributes; the durable part is the pair of assembly sweeps, which turn the new
 shared instruction into something enforced rather than remembered.
 
-Remaining: the release note wording, then close-out (remove `plan/`) and PR.
+Remaining: close-out (remove `plan/`) and PR.
