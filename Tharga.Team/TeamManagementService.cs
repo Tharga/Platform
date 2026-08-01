@@ -214,4 +214,10 @@ public class TeamManagementService<TMember> : ITeamManagementService, ITeamLifec
         await RequireTeamReadAsync(teamKey);
         return await _inner.GetTeamMemberAsync(teamKey, userKey);
     }
+
+    public async Task<IReadOnlyList<TenantRoleDefinition>> GetTeamCustomRolesAsync(string teamKey)
+    {
+        await RequireTeamReadAsync(teamKey);
+        return await _inner.GetTeamCustomRolesAsync(teamKey);
+    }
 }
