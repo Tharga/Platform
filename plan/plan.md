@@ -141,8 +141,17 @@ The read makes refusing possible; it does not decide it.
       the service refuses on a team that already has an owner, so offering it there would be a control
       that throws when clicked.
 
-- [ ] **Wire the action into `TeamsListView`** — a candidate picker over the team's existing members,
-      calling `AssignOwnerAsync`. The gate and the service are done; this is the remaining piece.
+- [x] **Wired into `TeamsListView`** — an "Assign owner" split-button item and a new
+      `AssignOwnerDialog` picking from the team's existing members.
+
+**Three decisions in the UI half:**
+- **`TeamViewModel.IsOwnerless` is its own property, not `OwnerName == null`.** `OwnerName` is also null
+  for an owner with no display name, so deriving it would offer to "repair" a team that has one — an
+  action the service refuses.
+- **The picker excludes invited members.** They have not accepted, so making one owner hands the team to
+  somebody who may never arrive. An empty candidate list says so rather than showing an empty dropdown.
+- **The list is reloaded after a successful assign, not patched.** The roster drives both the Owner
+  column and whether the action is offered, so a patch would leave "Assign owner" on a repaired team.
 
 ## 5. Directory display-name write-back
 

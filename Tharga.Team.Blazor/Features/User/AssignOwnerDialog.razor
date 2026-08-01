@@ -1,0 +1,59 @@
+@inject DialogService DialogService
+
+@*
+    Picks a new owner for a team that has lost its owner. The candidate list is the team's existing
+    members and nothing else — a repair restores a team, it does not introduce someone to it, and the
+    service enforces the same rule. Invited members are excluded: they have not accepted, so making one
+    an owner would hand the team to somebody who may never arrive.
+*@
+<RadzenStack Gap="1rem">
+    <RadzenText TextStyle="TextStyle.Body1">
+        <b>@TeamName</b> has no owner. Choose one of its members to take ownership.
+    </RadzenText>
+
+    @if (_candidates.Length == 0)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat" AllowClose="false">
+            This team has no accepted members, so there is nobody to make owner. Invite someone and have
+            them accept first, or delete the team.
+        </RadzenAlert>
+    }
+    else
+    {
+        <RadzenStack Gap="0.5rem">
+            <RadzenLabel Text="New owner" Component="newOwner" />
+            <RadzenDropDown @bind-Value="_selectedMemberKey" Data="@_candidates" TextProperty="Name" ValueProperty="Key"
+                            Name="newOwner" Style="width: 100%;" />
+        </RadzenStack>
+
+        <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" Variant="Variant.Flat" AllowClose="false">
+            The new owner gains full control of this team. The action is recorded in the audit log.
+        </RadzenAlert>
+    }
+
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+        <RadzenButton Text="OK" ButtonStyle="ButtonStyle.Primary" Disabled="@(_selectedMemberKey == null)"
+                      Click="@(() => DialogService.Close(_selectedMemberKey))" />
+        <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat"
+                      Click="@(() => DialogService.Close(null))" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    /// <summary>Display name of the team being repaired.</summary>
+    [Parameter] public string TeamName { get; set; }
+
+    /// <summary>Every member row of the team; invited members are filtered out here.</summary>
+    [Parameter] public TeamMemberInfo[] Members { get; set; }
+
+    private TeamMemberInfo[] _candidates = [];
+    private string _selectedMemberKey;
+
+    protected override void OnInitialized()
+    {
+        _candidates = (Members ?? [])
+            .Where(m => !string.IsNullOrEmpty(m.Key) && m.State == MembershipState.Member)
+            .OrderBy(m => m.Name)
+            .ToArray();
+    }
+}

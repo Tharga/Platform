@@ -95,6 +95,10 @@ else if (_loaded)
                                     <RadzenSplitButtonItem Text="Audit log" Value="@AuditAction" Icon="manage_search" />
                                 }
                                 @TeamActionItems
+                                @if (UserAdminGate.CanAssignOwner(_canAssignOwner, context.IsOwnerless))
+                                {
+                                    <RadzenSplitButtonItem Text="Assign owner" Value="@AssignOwnerAction" Icon="manage_accounts" />
+                                }
                                 @if (_canDeleteTeams)
                                 {
                                     <RadzenSplitButtonItem Text="Delete" Value="@DeleteAction" Icon="delete" />
@@ -217,6 +221,7 @@ else
     private bool _loaded;
     private bool _canAdminister = true;
     private bool _canDeleteTeams;
+    private bool _canAssignOwner;
     private IUser[] _users;
     private ITeam<TMember>[] _teams;
     private bool _canSeeAllTeams;
@@ -232,6 +237,8 @@ else
             TeamScopeGate.HasSystemScope(authState.User, SystemUserScopes.Manage));
         _canDeleteTeams = UserAdminGate.CanDeleteTeams(
             TeamScopeGate.HasSystemScope(authState.User, SystemTeamScopes.Delete));
+        // System grant only — an in-team scope of the same name must not satisfy it.
+        _canAssignOwner = TeamScopeGate.HasSystemScope(authState.User, SystemTeamScopes.AssignOwner);
 
         if (_canAdminister)
         {
@@ -295,6 +302,7 @@ else
                 ActiveMemberCount = active,
                 InvitedCount = invited,
                 OwnerName = TeamActivity.Owner(members)?.Name,
+                IsOwnerless = TeamActivity.Owner(members) == null,
                 LastUsed = TeamActivity.LastUsed(members),
                 Consent = TeamVisibility.Resolve(t.ConsentedRoles, t.ConsentAccessLevel, BlazorOptions.Value.Consent.AccessLevel),
                 Members = members
@@ -304,6 +312,7 @@ else
 
     private const string AuditAction = "audit";
     private const string DeleteAction = "delete";
+    private const string AssignOwnerAction = "assign-owner";
 
     /// <summary>
     /// Dispatches the team row's split button. A null item is the primary button — expand the row —
@@ -321,6 +330,9 @@ else
                 break;
             case DeleteAction:
                 await DeleteTeamAsync(team);
+                break;
+            case AssignOwnerAction:
+                await AssignOwnerAsync(team);
                 break;
             default:
                 await TeamActionInvoked.InvokeAsync(new TeamRowAction(item.Value, team));
@@ -345,6 +357,41 @@ else
         await DialogService.OpenAsync($"Audit log — {team.Name}", _ =>
             @<Tharga.Team.Blazor.Features.Audit.AuditLogView PinnedFilter="@pinned" />,
             new DialogOptions { Width = "90vw", Height = "85vh", Resizable = true, Draggable = true });
+    }
+
+    /// <summary>
+    /// Repairs a team that has lost its owner, authorized by the
+    /// <see cref="SystemTeamScopes.AssignOwner"/> system scope. Offered only when the team is actually
+    /// ownerless — the service refuses otherwise, and a control that throws when clicked is worse than
+    /// no control.
+    /// </summary>
+    private async Task AssignOwnerAsync(TeamViewModel team)
+    {
+        var newOwnerKey = await DialogService.OpenAsync<AssignOwnerDialog>($"Assign owner — {team.Name}",
+            new Dictionary<string, object>
+            {
+                { nameof(AssignOwnerDialog.TeamName), team.Name },
+                { nameof(AssignOwnerDialog.Members), team.Members }
+            });
+
+        if (newOwnerKey is not string ownerKey || string.IsNullOrEmpty(ownerKey)) return;
+
+        try
+        {
+            await TeamService.AssignOwnerAsync<TMember>(team.Key, ownerKey);
+
+            // The roster drives both the Owner column and whether this action is offered at all, so the
+            // list has to be rebuilt rather than patched — otherwise the action stays on a repaired team.
+            await LoadDataAsync();
+            _selectedTeam = _teamViewModels.FirstOrDefault(t => t.Key == team.Key);
+
+            NotificationService.Notify(NotificationSeverity.Success, "Owner assigned",
+                $"'{team.Name}' now has an owner.");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Could not assign owner", ex.Message);
+        }
     }
 
     /// <summary>
