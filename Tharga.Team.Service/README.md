@@ -99,6 +99,29 @@ app.UseThargaMcp().RequireAuthorization(ApiKeyConstants.SystemPolicyName);
 
 The two policies are mutually exclusive: `ApiKeyPolicy` rejects system keys, `SystemApiKeyPolicy` rejects team keys.
 
+## What a key can reach
+
+The boundary between the two kinds of key is a security guarantee, not a convention, and it is worth
+knowing precisely before handing either one out:
+
+| | Team key | System key |
+|---|---|---|
+| Claims issued | `TeamKey` + scopes as **team** grants | `IsSystemKey` + scopes as **system** grants |
+| Its own team | ✅ subject to access level | n/a — a system key has no team |
+| Another team | ❌ **always**, even when naming that team explicitly | consent-dependent |
+| System-wide | ❌ **always** | ✅ for the scopes granted at creation |
+
+Two properties follow, and both are covered by tests:
+
+- **The team a key acts for comes from the key record, never the request.** Knowing a team's key is not
+  authority over it — naming another team is futile rather than merely refused.
+- **A team grant never satisfies a system check.** The scope claim carries its provenance, so a team key
+  holding `audit:read` cannot use it to read across teams. This is why the two claim types exist.
+
+Access level still applies within the team. `audit:read` is registered at `AccessLevel.Administrator`, so a
+Viewer-level key holding a team's credential is refused its own team's audit log — holding a team's key is
+not the same as holding every grant inside it.
+
 ## Team API keys
 
 Protect endpoints with the built-in policy:
