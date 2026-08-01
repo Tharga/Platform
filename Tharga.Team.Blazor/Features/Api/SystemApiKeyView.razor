@@ -30,7 +30,18 @@
                             FilterMode="FilterMode.Simple"
                             FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
                 <Columns>
-                    <RadzenDataGridColumn Title="Name" Property="@nameof(SystemApiKeyModel.Name)" Width="180px" SortOrder="SortOrder.Ascending" />
+                    <RadzenDataGridColumn Title="Name" Property="@nameof(SystemApiKeyModel.Name)" Width="180px" SortOrder="SortOrder.Ascending">
+                        <Template>
+                            @context.Name
+                            @* A badge, not the red text used for expiry — disabled is a decision somebody
+                               made and can undo, expiry is a date passing. *@
+                            @if (context.IsDisabled)
+                            {
+                                <RadzenBadge Text="Disabled" BadgeStyle="BadgeStyle.Danger" class="rz-ml-2"
+                                             title="@GetDisabledText(context)" />
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
                     <RadzenDataGridColumn Title="Key" Property="@nameof(SystemApiKeyModel.VisibleKey)" Sortable="false" Filterable="false" />
                     <RadzenDataGridColumn Title="Scopes" Width="80px" Visible="@ShowScopeTooltip">
                         <Template>
@@ -189,6 +200,8 @@
                 CreatedAt = x.CreatedAt,
                 LastUsedAt = x.LastUsedAt,
                 CreatedBy = x.CreatedBy,
+                DisabledAt = x.DisabledAt,
+                DisabledBy = x.DisabledBy,
             }).ToArray();
 
         StateHasChanged();
@@ -248,6 +261,9 @@
         if (ShowAuditLogButton) items.Add(new ContextMenuItem { Text = "Audit log", Icon = "manage_search", Value = "audit" });
         if (hasValue) items.Add(new ContextMenuItem { Text = "Lock", Icon = "lock", Value = "lock" });
         items.Add(new ContextMenuItem { Text = "Refresh", Icon = "refresh", Value = "refresh" });
+        items.Add(context.IsDisabled
+            ? new ContextMenuItem { Text = "Enable", Icon = "play_circle", Value = "enable" }
+            : new ContextMenuItem { Text = "Disable", Icon = "block", IconColor = "var(--rz-danger)", Value = "disable" });
         items.Add(new ContextMenuItem { Text = "Delete", Icon = "delete", IconColor = "var(--rz-danger)", Value = "delete" });
 
         ContextMenuService.Open(args, items, async e =>
@@ -267,6 +283,8 @@
             case "audit": await OpenAuditLogAsync(context); break;
             case "lock": await LockKeyAsync(context); break;
             case "refresh": await RefreshAsync(context); break;
+            case "disable": await SetDisabledAsync(context, true); break;
+            case "enable": await SetDisabledAsync(context, false); break;
             case "delete": await DeleteAsync(context); break;
         }
         StateHasChanged();
@@ -280,6 +298,29 @@
         {
             Summary = $"The {context.Name} key has been copied to the clipboard."
         });
+    }
+
+    /// <inheritdoc cref="ApiKeyView.SetDisabledAsync"/>
+    private async Task SetDisabledAsync(SystemApiKeyModel context, bool disabled)
+    {
+        if (disabled)
+        {
+            var result = await DialogService.Confirm(
+                $"Disable API key '{context.Name}'? It stops working immediately, and keeps its name, scopes and history so it can be enabled again.",
+                "Confirm disable");
+            if (result != true) return;
+        }
+
+        await _apiKeyManagementService.SetSystemKeyDisabledAsync(context.Key, disabled);
+        await ReloadData();
+    }
+
+    private static string GetDisabledText(SystemApiKeyModel context)
+    {
+        var when = context.DisabledAt?.ToString("yyyy-MM-dd HH:mm");
+        return string.IsNullOrEmpty(context.DisabledBy)
+            ? $"Disabled {when}. This key is refused at authentication."
+            : $"Disabled {when} by {context.DisabledBy}. This key is refused at authentication.";
     }
 
     private async Task LockKeyAsync(SystemApiKeyModel context)

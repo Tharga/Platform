@@ -233,6 +233,16 @@ public abstract class UserServiceBase : IUserService, IUserCacheInvalidator
 
     private Task<IUser> GetCurrentUserAsync() => GetCurrentUserAsync(null);
 
+    /// <remarks>
+    /// Throws rather than no-opping when unimplemented, exactly as <see cref="DeleteUserAsync"/> does:
+    /// silently accepting a disable would report a containment that never happened.
+    /// </remarks>
+    public virtual Task SetUserDisabledAsync(string userKey, DateTime? disabledAt, string disabledBy)
+        => throw new NotSupportedException(
+            $"'{GetType().Name}' does not implement {nameof(SetUserDisabledAsync)}. Implement it, and " +
+            $"declare {nameof(IUser.DisabledAt)}/{nameof(IUser.DisabledBy)} on your user entity, to " +
+            $"support disabling users (the '{SystemUserScopes.Manage}' system scope).");
+
     public virtual Task DeleteUserAsync(string userKey)
         => throw new NotSupportedException(
             $"'{GetType().Name}' does not implement {nameof(DeleteUserAsync)}. Implement it to support " +

@@ -117,4 +117,44 @@ public class UserAdminGateTests
         Assert.Equal(text, DirectoryStatusBadge.Text(status));
         Assert.Equal(style, DirectoryStatusBadge.Style(status));
     }
+
+    /// <summary>
+    /// Disabling excludes the self-row for the same reason deleting does: an administrator who disables
+    /// themselves needs a second one to undo it. The service refuses it too — this only stops the row
+    /// offering an action that would throw.
+    /// </summary>
+    [Fact]
+    public void CanDisableUser_AnotherUser_IsAllowed()
+    {
+        Assert.True(UserAdminGate.CanDisableUser("user-1", "user-2"));
+    }
+
+    [Fact]
+    public void CanDisableUser_OwnRow_IsRefused()
+    {
+        Assert.False(UserAdminGate.CanDisableUser("user-1", "user-1"));
+    }
+
+    /// <summary>A differently-cased key is the same account; the guard is not side-steppable by casing.</summary>
+    [Theory]
+    [InlineData("USER-1", "user-1")]
+    [InlineData("user-1", "USER-1")]
+    public void CanDisableUser_OwnRowDifferingOnlyInCase_IsRefused(string rowUserKey, string currentUserKey)
+    {
+        Assert.False(UserAdminGate.CanDisableUser(rowUserKey, currentUserKey));
+    }
+
+    /// <summary>
+    /// An unknown identity is refused rather than allowed. Failing open here would offer the action on
+    /// every row the moment the current user could not be resolved — including the operator's own.
+    /// </summary>
+    [Theory]
+    [InlineData(null, "user-1")]
+    [InlineData("user-1", null)]
+    [InlineData("", "user-1")]
+    [InlineData("user-1", "")]
+    public void CanDisableUser_UnknownIdentity_IsRefused(string rowUserKey, string currentUserKey)
+    {
+        Assert.False(UserAdminGate.CanDisableUser(rowUserKey, currentUserKey));
+    }
 }

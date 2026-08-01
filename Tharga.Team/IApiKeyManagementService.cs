@@ -29,6 +29,18 @@ public interface IApiKeyManagementService
     [RequireScope(ApiKeyScopes.Manage)]
     Task LockKeyAsync(string teamKey, string key);
 
+    /// <summary>
+    /// Disables the key, or enables it again. A disabled key is refused at authentication but keeps its
+    /// name, scopes, roles, tags and history — the reversible alternative to <see cref="DeleteKeyAsync"/>.
+    /// </summary>
+    /// <remarks>
+    /// <b>Refreshing a disabled key does not enable it.</b> A refresh mints a new secret; it is not a
+    /// decision to trust the key again, and the usual reason to refresh is the same suspected leak that
+    /// prompted the disable.
+    /// </remarks>
+    [RequireScope(ApiKeyScopes.Manage)]
+    Task SetKeyDisabledAsync(string teamKey, string key, bool disabled);
+
     [RequireScope(ApiKeyScopes.Manage)]
     Task DeleteKeyAsync(string teamKey, string key);
 

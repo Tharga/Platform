@@ -30,6 +30,30 @@ public interface IUserManagementService
     Task<UserDeleteResult> DeleteUserAsync(string userKey, bool deleteFromDirectory = false, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Disables the user, or enables them again. A disabled user keeps their record, their memberships
+    /// and their history — the reversible alternative to <see cref="DeleteUserAsync"/>.
+    /// </summary>
+    /// <remarks>
+    /// <b>A caller cannot disable themselves.</b> Enforced here rather than only hidden in the UI: an
+    /// administrator who locks themselves out needs a second administrator to undo it, and refusing the
+    /// self-case also guarantees somebody is left holding <see cref="SystemUserScopes.Manage"/>.
+    /// <para>
+    /// <b>This is not <see cref="DirectoryUserStatus.Disabled"/></b>, which means disabled in the external
+    /// directory. This one blocks the user from this application only, and the two are shown separately.
+    /// </para>
+    /// <para>
+    /// <b>It does not cascade to the user's API keys.</b> A key is not a session — it is an independent
+    /// credential with its own lifecycle, and retiring a person's integrations is a separate deliberate
+    /// act (which is also what keeps each one reversible on its own).
+    /// </para>
+    /// A signed-in user is not evicted instantly; they are signed out within
+    /// <c>ClaimRevalidationOptions.Interval</c>.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The caller is the user being disabled.</exception>
+    [RequireScope(SystemUserScopes.Manage)]
+    Task SetUserDisabledAsync(string userKey, bool disabled, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Set a user's display name, and — when <c>o.Blazor.WriteNameToDirectory</c> is enabled and the user
     /// is linked to a directory account — write it back to the external directory too.
     /// </summary>

@@ -77,6 +77,12 @@ public class ApiKeyManagementService : IApiKeyManagementService
         await _inner.LockKeyAsync(teamKey, key);
     }
 
+    public async Task SetKeyDisabledAsync(string teamKey, string key, bool disabled)
+    {
+        await EnsureCanMutateAsync(teamKey, key);
+        await _inner.SetKeyDisabledAsync(teamKey, key, disabled, GetCurrentUserIdentity());
+    }
+
     public async Task DeleteKeyAsync(string teamKey, string key)
     {
         await EnsureCanMutateAsync(teamKey, key);

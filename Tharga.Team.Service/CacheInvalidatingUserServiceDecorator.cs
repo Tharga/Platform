@@ -87,6 +87,12 @@ public sealed class CacheInvalidatingUserServiceDecorator : IUserService
         Invalidate(userKey);
     }
 
+    public async Task SetUserDisabledAsync(string userKey, DateTime? disabledAt, string disabledBy)
+    {
+        await _inner.SetUserDisabledAsync(userKey, disabledAt, disabledBy);
+        Invalidate(userKey);
+    }
+
     public async Task DeleteUserAsync(string userKey)
     {
         await _inner.DeleteUserAsync(userKey);

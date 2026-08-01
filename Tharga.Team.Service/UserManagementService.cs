@@ -133,6 +133,28 @@ public class UserManagementService : IUserManagementService
         return new UserDeleteResult(directoryDeleted, directoryError, removedTeamCount);
     }
 
+    /// <remarks>
+    /// The self-disable refusal lives here, not only in <c>UserAdminGate</c>. A host can inject its own
+    /// entry through <c>ActionItems</c> and dispatch straight to this method, so a UI-only guard is one
+    /// the server never applies — the same lesson the delete guard learned.
+    /// </remarks>
+    public async Task SetUserDisabledAsync(string userKey, bool disabled, CancellationToken cancellationToken = default)
+    {
+        var user = await RequireUserAsync(userKey);
+        var caller = await _userService.GetCurrentUserAsync();
+
+        if (disabled && caller != null && string.Equals(caller.Key, user.Key, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "You cannot disable your own account. Ask another administrator to do it.");
+        }
+
+        await _userService.SetUserDisabledAsync(
+            user.Key,
+            disabled ? DateTime.UtcNow : null,
+            disabled ? caller?.Key : null);
+    }
+
     public Task<IReadOnlyList<ITeam>> GetOwnedTeamsAsync(string userKey, CancellationToken cancellationToken = default)
         => _teamService.GetTeamsForUserWithAccessLevelAsync(userKey, AccessLevel.Owner);
 

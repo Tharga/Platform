@@ -33,6 +33,9 @@ public class SystemApiKeyManagementService : ISystemApiKeyManagementService
 
     public Task LockSystemKeyAsync(string key) => _inner.LockSystemKeyAsync(key);
 
+    public Task SetSystemKeyDisabledAsync(string key, bool disabled)
+        => _inner.SetSystemKeyDisabledAsync(key, disabled, GetCurrentUserIdentity());
+
     public Task DeleteSystemKeyAsync(string key) => _inner.DeleteSystemKeyAsync(key);
 
     private string GetCurrentUserIdentity()

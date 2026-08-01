@@ -288,12 +288,10 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
         return StringExtension.GetRandomString(min, max);
     }
 
-    /// <param name="disabledAt">
-    /// Carried forward on a refresh. A refresh mints a new secret; it is not a decision to trust the key
-    /// again, so a disabled key stays disabled until someone explicitly enables it. Omitting this is how
-    /// the remedy for a compromise would silently undo the containment.
-    /// </param>
-    /// <param name="disabledBy"><inheritdoc cref="BuildKey" path="/param[@name='disabledAt']"/></param>
+    // disabledAt/disabledBy are carried forward on a refresh. A refresh mints a new secret; it is not a
+    // decision to trust the key again, so a disabled key stays disabled until someone explicitly enables
+    // it. Dropping them here is how the remedy for a compromise would silently undo the containment —
+    // and this builder rebuilds from a fixed field list, so any state not named is lost without a word.
     private ApiKeyEntity BuildKey(string teamKey, string name, IReadOnlyList<Tag> tags, AccessLevel accessLevel, string[] roles, string[] scopeOverrides, DateTime? expiryDate, string createdBy, string ownerMemberKey = null, DateTime? disabledAt = null, string disabledBy = null)
     {
         var apiKey = _apiKeyService.BuildApiKey(teamKey, GenerateSecret);

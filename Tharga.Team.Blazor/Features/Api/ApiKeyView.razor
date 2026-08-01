@@ -55,6 +55,13 @@ else
                         <RadzenBadge Text="Private" BadgeStyle="BadgeStyle.Info" class="rz-ml-2"
                                      title="Owner-scoped key — visible only to its owner (and Developer)." />
                     }
+                    @* A badge rather than the red text used for expiry: disabled is a decision somebody
+                       made and can undo, expiry is a date passing. Same colour would conflate them. *@
+                    @if (context.IsDisabled)
+                    {
+                        <RadzenBadge Text="Disabled" BadgeStyle="BadgeStyle.Danger" class="rz-ml-2"
+                                     title="@GetDisabledText(context)" />
+                    }
                 </Template>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn Title="Key" Property="@nameof(ApiKeyModel.VisibleKey)" Sortable="false" Filterable="false" />
@@ -354,6 +361,8 @@ else
                     OwnerMemberKey = x.OwnerMemberKey,
                     LastUsedAt = x.LastUsedAt,
                     Tags = x.Tags ?? Array.Empty<Tag>(),
+                    DisabledAt = x.DisabledAt,
+                    DisabledBy = x.DisabledBy,
                 };
             }).ToArray();
 
@@ -463,6 +472,9 @@ else
         if (ShowAuditLogButton) items.Add(new ContextMenuItem { Text = "Audit log", Icon = "manage_search", Value = "audit" });
         if (showEdit) items.Add(new ContextMenuItem { Text = "Edit roles & scopes", Icon = "tune", Value = "edit" });
         if (hasValue) items.Add(new ContextMenuItem { Text = "Lock", Icon = "lock", Value = "lock" });
+        items.Add(context.IsDisabled
+            ? new ContextMenuItem { Text = "Enable", Icon = "play_circle", Value = "enable" }
+            : new ContextMenuItem { Text = "Disable", Icon = "block", IconColor = "var(--rz-danger)", Value = "disable" });
         items.Add(new ContextMenuItem { Text = "Refresh", Icon = "refresh", Value = "refresh" });
         if (_options.AdvancedMode) items.Add(new ContextMenuItem { Text = "Delete", Icon = "delete", IconColor = "var(--rz-danger)", Value = "delete" });
 
@@ -484,6 +496,8 @@ else
             case "edit": await OpenEditAsync(context); break;
             case "lock": await LockKeyAsync(context); break;
             case "refresh": await RefreshAsync(context); break;
+            case "disable": await SetDisabledAsync(context, true); break;
+            case "enable": await SetDisabledAsync(context, false); break;
             case "delete": await DeleteAsync(context); break;
         }
         StateHasChanged();
@@ -506,6 +520,32 @@ else
 
         await _apiKeyManagementService.LockKeyAsync(_selectedTeam.Key, context.Key);
         await ReloadData();
+    }
+
+    /// <remarks>
+    /// Only disabling is confirmed. Enabling is the reversible direction and confirming it teaches
+    /// operators to click through the dialog that matters.
+    /// </remarks>
+    private async Task SetDisabledAsync(ApiKeyModel context, bool disabled)
+    {
+        if (disabled)
+        {
+            var result = await DialogService.Confirm(
+                $"Disable API key '{context.Name}'? It stops working immediately, and keeps its name, scopes, roles and history so it can be enabled again.",
+                "Confirm disable");
+            if (result != true) return;
+        }
+
+        await _apiKeyManagementService.SetKeyDisabledAsync(_selectedTeam.Key, context.Key, disabled);
+        await ReloadData();
+    }
+
+    private static string GetDisabledText(ApiKeyModel context)
+    {
+        var when = context.DisabledAt?.ToString("yyyy-MM-dd HH:mm");
+        return string.IsNullOrEmpty(context.DisabledBy)
+            ? $"Disabled {when}. This key is refused at authentication."
+            : $"Disabled {when} by {context.DisabledBy}. This key is refused at authentication.";
     }
 
     private async Task DeleteAsync(ApiKeyModel context)

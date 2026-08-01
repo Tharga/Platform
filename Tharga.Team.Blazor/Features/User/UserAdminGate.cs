@@ -106,4 +106,24 @@ public static class UserAdminGate
         if (string.IsNullOrEmpty(rowUserKey) || string.IsNullOrEmpty(currentUserKey)) return false;
         return !string.Equals(rowUserKey, currentUserKey, StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>
+    /// Whether the row offers disabling the user. Same self-exclusion as <see cref="CanDeleteUser"/>:
+    /// an administrator who disables themselves needs a second one to undo it.
+    /// </summary>
+    /// <remarks>
+    /// A separate gate rather than a call to <see cref="CanDeleteUser"/>, though the rule is identical
+    /// today — they answer different questions, and tying them together means a future change to one
+    /// silently moves the other. <b>Enabling is not gated</b>: the self-case cannot arise, since a
+    /// disabled user has no session from which to enable themselves.
+    /// <para>
+    /// The service refuses the self-case as well. This gate only stops the row offering an action that
+    /// would throw — a host can dispatch to the service directly through <c>ActionItems</c>.
+    /// </para>
+    /// </remarks>
+    public static bool CanDisableUser(string rowUserKey, string currentUserKey)
+    {
+        if (string.IsNullOrEmpty(rowUserKey) || string.IsNullOrEmpty(currentUserKey)) return false;
+        return !string.Equals(rowUserKey, currentUserKey, StringComparison.OrdinalIgnoreCase);
+    }
 }

@@ -66,10 +66,21 @@ else would have caught it.
 added later. Every future field on `ApiKeyEntity` has this hazard, and the compiler will never mention
 it.
 
-### Remaining for step 3
+### Step 3 UI — DONE 2026-08-02
 
-- [ ] UI on `ApiKeyView` and `SystemApiKeyView`: disabled rows visibly distinct, and distinguishable from
-      expired.
+- [x] A **Disabled badge** on the name column of both `ApiKeyView` and `SystemApiKeyView`, plus a
+      Disable/Enable row action that flips with the row's state.
+- [x] `SetKeyDisabledAsync` added to the *gated* `IApiKeyManagementService` and
+      `ISystemApiKeyManagementService` as well — the views inject those, not the administration service,
+      so the feature was unreachable from the UI without them. The team-facing one routes through
+      `EnsureCanMutateAsync`, so a private key still cannot be disabled by a non-owner.
+
+**Distinguishable from expired by device, not by colour.** Expiry is red text and a warning icon on the
+Last-used column; disabled is a filled badge beside the name. Two red things in one grid is how an
+operator concludes a contained key merely lapsed.
+
+Only disabling is confirmed. Enabling is the reversible direction, and a confirmation on it teaches
+operators to click through the dialog that matters.
 
 ## 4. Disable and enable a user
 
@@ -82,15 +93,43 @@ it.
   minted. Where a compromise means both must stop, that is two deliberate acts — which is also what makes
   each one reversible on its own.
 
-- [ ] State on the user entity: `DisabledAt` + `DisabledBy`, same shape as the key.
-- [ ] **Eviction, not just refusal.** A signed-in user holds a circuit with claims already issued;
-      `TeamClaimRevalidator` is the mechanism that already handles membership removal and access
-      downgrade. A disabled user must be evicted within `ClaimRevalidation.Interval`.
-- [ ] Enable/disable on `IUserManagementService`, audited both ways.
-- [ ] **Do not reuse `DirectoryUserStatus.Disabled`.** That means disabled *in Entra*. Application-level
-      disable is a different thing with a different blast radius, and the UI must show them separately or
-      an operator will read one as the other.
-- [ ] UI on `UsersListView`, distinct from the directory badge.
+- [x] State on the user entity: `DisabledAt` + `DisabledBy` on `IUser` as **default interface members
+      returning null** — the shape-based opt-in already used by `Icon`, `DirectoryId` and `LastSeen`. A
+      host declares the properties on its entity to persist them; declaring nothing keeps compiling.
+- [x] **Eviction, and not through `TeamClaimRevalidator` after all.** That class refreshes *team* claims
+      and returns early when no team is selected, so it can neither express "sign this person out" nor
+      even run for a user with no team. The mechanism is one level up:
+      `TeamRevalidatingAuthenticationStateProvider.ValidateAuthenticationStateAsync` returning **false**,
+      which is Blazor's own eviction. Checked *before* the claim refresh — there is no point bringing team
+      access up to date for someone being signed out.
+- [x] `SetUserDisabledAsync` on `IUserManagementService`, gated on `users:manage`, audited under
+      **distinct `disable`/`enable` actions** for the same reason the key is.
+- [x] **`DirectoryUserStatus.Disabled` untouched.** The two render as separate badges on the same row —
+      independent states that can disagree.
+- [x] **A user cannot disable themselves** (user, 2026-08-02), enforced in `UserManagementService`,
+      repeated in `UsersListView` to turn the throw into an explanation, and gated in `UserAdminGate`.
+- [x] UI on `UsersListView`: Disabled badge, Disable/Enable action, self-row disabled with the reason in
+      the label (`RadzenSplitButtonItem` carries no tooltip).
+- [x] 23 tests across three files.
+
+### Three things this step got wrong first
+
+**`TeamClaimRevalidator` was the wrong mechanism**, named in `feature.md` and in this plan. Reading it
+settled it: it is documented *fail-open* precisely so a transient error never signs anybody out, and it
+returns early when no team is selected. Both properties are correct for team claims and wrong for
+eviction. The provider above it returns a bool that Blazor acts on, which is the actual seam.
+
+**The authorization decorator would have swallowed the call.** `SetUserDisabledAsync` is a *default*
+interface member, so `AuthorizationUserServiceDecorator` — which does not override what it does not know
+about — compiled fine and would have dispatched into the throwing default instead of the host's store.
+Found by enumerating every `IUserService` implementer rather than following callers. The regression test
+calls through `IUserService`, not the concrete type: through the concrete type an omitted override is a
+compile error in the test itself, which proves nothing about what a host hits at runtime. **Verified by
+removing the override — two tests go red with the `NotSupportedException` a host would see.**
+
+**Nine new CS1573 warnings** from step 3's `<param>` block on `BuildKey`: documenting two parameters of an
+eleven-parameter private helper makes the compiler demand the other nine. Converted to a plain comment;
+warning baseline restored to 8 distinct.
 
 ---
 
@@ -126,4 +165,11 @@ it changes here rather than being a separate task.
 fallback**, so the server refuses an oversight role whatever the UI offers. Adding buttons alone would
 reproduce the defect PR #126 fixed — controls that throw when clicked.
 
-**Next:** confirm the plan and settle the #11 decisions, then step 2.
+**2026-08-02 (steps 3 and 4).** Key-disable UI and the whole of user disable/enable. **1331 tests green**,
+build clean at the 8-warning baseline.
+
+Fail-open is deliberate in the eviction check and tested as such: treating a store failure as "disabled"
+would sign out every signed-in user at once, turning a database blip into an outage. A genuinely disabled
+user is still evicted, one interval later.
+
+**Next:** step 5, documentation.
