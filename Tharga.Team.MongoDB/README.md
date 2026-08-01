@@ -52,6 +52,33 @@ builder.Services.AddThargaTeamRepository(o =>
 });
 ```
 
+## How enums are stored
+
+Every enum this package persists is stored **by name**, not by ordinal — `"Viewer"` rather than `3`. The
+name is the meaning; the ordinal is an accident of declaration order, and a stored ordinal silently comes
+to mean something else the moment a member is inserted or reordered.
+
+If you add your own entity, declare it:
+
+```csharp
+[BsonRepresentation(BsonType.String)]
+public MyEnum Kind { get; init; }
+```
+
+The driver's default is `Int32`, so **omitting the attribute selects the ordinal** without looking like a
+choice. A test in this package sweeps every persisted entity and fails if one is missing it.
+
+### Changed
+
+`TeamEntityBase.ConsentAccessLevel` and `ApiKeyEntity.AccessLevel` previously stored ordinals and now store
+names. **No migration is required** — the driver reads both, so existing documents keep working and convert
+the next time each is written.
+
+One thing to check: if you query these two fields directly against the collection — a script, a dashboard,
+a report — a numeric comparison such as `{ ConsentAccessLevel: 3 }` will match only the documents not yet
+rewritten. Match on the name instead, or on both while the conversion settles. Nothing inside the toolkit
+queries them, so this affects external tooling only.
+
 ## Dependencies
 
 - [Tharga.Team](https://www.nuget.org/packages/Tharga.Team) - Domain models and service abstractions.

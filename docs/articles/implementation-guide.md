@@ -499,6 +499,24 @@ public record TeamEntity : TeamEntityBase<TeamMember>;
 public record TeamMember : TeamMemberBase;
 ```
 
+##### Store enums by name
+
+If your entity has an enum property, declare how it is stored:
+
+```csharp
+[BsonRepresentation(BsonType.String)]
+public MyEnum Kind { get; init; }
+```
+
+The MongoDB driver's default for an enum is `Int32`, so **leaving the attribute off selects the ordinal**
+without looking like a choice. An ordinal is correct only while the enum's declaration order never changes
+— insert or reorder a member and every document already written silently means something else, with no
+error and nothing to notice.
+
+Storing the name costs nothing and removes the whole class of problem. A test in `Tharga.Team.MongoDB`
+sweeps every persisted entity and fails if one is missing the attribute, so the toolkit's own entities
+cannot drift; the same rule is worth applying to yours.
+
 #### UserService
 
 ```csharp

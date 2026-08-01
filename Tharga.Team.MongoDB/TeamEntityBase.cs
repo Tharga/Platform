@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 using Tharga.MongoDB;
 
 namespace Tharga.Team.MongoDB;
@@ -18,6 +19,7 @@ public abstract record TeamEntityBase<TTeamMemberModel> : EntityBase, ITeam<TTea
     public string[] ConsentedRoles { get; init; }
 
     [BsonIgnoreIfNull]
+    [BsonRepresentation(BsonType.String)]
     public AccessLevel? ConsentAccessLevel { get; init; }
 
     [BsonIgnoreIfNull]

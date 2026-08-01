@@ -1,3 +1,4 @@
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using Tharga.MongoDB;
 
@@ -48,6 +49,7 @@ public record ApiKeyEntity : EntityBase, IApiKey
 
     /// <summary>Access level for this API key. Null defaults to Administrator.</summary>
     [BsonIgnoreIfNull]
+    [BsonRepresentation(BsonType.String)]
     public AccessLevel? AccessLevel { get; init; }
 
     /// <summary>Tenant roles assigned to this API key.</summary>
