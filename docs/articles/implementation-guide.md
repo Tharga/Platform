@@ -897,6 +897,20 @@ builder.Services.AddSystemService<IMyAdminService, MyAdminService>();
 
 A component, controller or MCP provider should inject one of these — **never `ITeamService`**.
 
+> [!IMPORTANT]
+> **Behaviour change in 3.10.** `team:read` is now enforced on every first-level team read. A caller
+> lacking it is refused where it previously succeeded.
+>
+> **Almost certainly a no-op for you.** The scope is registered at `AccessLevel.Viewer`, so every
+> ordinary member already holds it. It bites **`AccessLevel.Custom`** — least-privilege machine keys
+> carrying only their explicit grants — which until now read team metadata, the full roster with access
+> levels and states, and API-key metadata regardless. Grant `team:read` to any `Custom` key that should
+> keep reading team data.
+>
+> An application with no `IScopeRegistry` registered is unaffected: it does not use scopes, and enforcing
+> would refuse reads it never gated.
+
+
 | Inject | For | Checked by |
 |---|---|---|
 | `ITeamManagementService` | One team: its details, roster, members, and every mutation | `team:read` on reads, `team:manage` / `member:manage` on mutations |
