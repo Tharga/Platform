@@ -30,11 +30,48 @@ Domain models, service abstractions, and authorization primitives for multi-tena
 - `ITenantRoleVisibilityProvider` - Optional per-team hook that decides whether a tenant role is offered in the role editor. Default (`AllRolesVisibleTenantRoleVisibilityProvider`) shows every role; register your own to hide feature-gated roles from teams where the feature is disabled. Hiding a role never prunes existing assignments and does not affect scope resolution.
 - `RequireAccessLevelAttribute` / `RequireScopeAttribute` - Declarative authorization on service methods.
 - `TeamScopes` / `ApiKeyScopes` / `AuditScopes` - Built-in scope constants (`audit:read` gates the audit log).
+- `SystemTeamScopes` - Cross-team system scopes: `teams:read` (enumerate any team), `teams:delete` (delete any team), `teams:assign-owner` (give an **ownerless** team an owner, chosen from its existing members; refused when the team already has one).
 - `ISystemScopeRegistry` / `ISystemRoleRegistry` - Global (system) scopes for system API keys, and a mapping of app/global roles (e.g. `Developer`) to those scopes for privileged users. Configured via `o.ConfigureSystemScopes` / `o.ConfigureSystemRoles`.
 
 ### Base classes
 - `TeamServiceBase` - Implement your own team service backend.
 - `UserServiceBase` - Implement your own user service backend.
+
+#### What you must override, and what happens if you do not
+
+`UserServiceBase` leaves persistence to you. Several members are `virtual` with a **do-nothing default**,
+so forgetting one produces a write that reports success and discards the data — no error, no log, and a
+feature that looks configured and is not.
+
+| Member | If you do not override it |
+|---|---|
+| `SetUserNameAsync` | Renaming a user reports success and changes nothing |
+| `SeedUserNameAsync` | An invited user's name is discarded when they accept |
+| `SetUserIconReferenceAsync` (`protected`) | An uploaded icon is stored, its reference discarded, and the blob orphaned |
+| `SetUserDirectoryIdAsync` | The directory link is never persisted, so verification falls back to matching by email |
+
+**You are told at startup.** `AddThargaTeamBlazor` reports every un-overridden member in one error,
+naming the type and what each silently loses. Set `o.Blazor.ThrowOnIncompleteUserService = true` to make
+it fatal instead. Members whose feature is unreachable — the icon one with no `IIconStore` registered —
+are not reported, so the message stays about real mistakes.
+
+> Deriving from `UserServiceRepositoryBase` (in **Tharga.Team.MongoDB**) implements all of these. The
+> gaps only apply to a service extending `UserServiceBase` directly.
+
+**One of them cannot be caught by an interface check.** `SetUserIconReferenceAsync` is `protected`, so it
+does not appear in an interface map — a test asserting "my service implements `IUserService`" cannot see
+it. The startup check reflects over the concrete type and walks the base chain instead, so an override on
+your own intermediate base counts.
+
+#### The user cache
+
+`UserServiceBase` caches resolved users. Overriding a persistence member replaces the path that
+invalidated it, so the toolkit invalidates through a decorator instead — you do not need to call
+`InvalidateUserCache` yourself.
+
+If you see a change that **survives every page reload and corrects only on process restart**, that is a
+stale-cache read. Nothing else looks like that; a write that never landed looks identical on screen and
+has the opposite fix.
 
 ## Related packages
 

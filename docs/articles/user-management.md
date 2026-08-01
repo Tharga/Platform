@@ -185,6 +185,7 @@ doing three different jobs. The complete picture:
 | See teams you are not a member of | `users:manage` + `teams:read` | — |
 | Delete a team | `users:manage` + `teams:delete` | `teams:read` in practice — see below |
 | Delete a user | `users:manage` | never your own row — see below |
+| Assign an owner to an ownerless team | `users:manage` + `teams:assign-owner` | the team must currently have **no** owner |
 | Verify a user against the directory | `users:manage` | a **configured** `IUserDirectoryService` |
 | The directory-only tab | `users:manage` | a **configured** `IUserDirectoryService` |
 | Per-row audit history | `audit:read` | `ShowAuditLogButton="true"` |
@@ -242,6 +243,51 @@ role granted `users:manage` purely to *view* the admin lists can also delete eve
 If that is wider than you intend, do not map `users:manage` to a broad support role — map it only to the
 role you would trust with user deletion.
 
+## Recovering a team that lost its owner
+
+The platform refuses to grant or revoke `Owner` through `SetMemberRoleAsync`, and `TransferOwnershipAsync`
+requires the caller to *be* the current owner. Deleting a user, however, removes them from every team —
+owner included. So deleting the wrong person could produce a team nobody could ever own again, and the
+only remedy was `teams:delete`.
+
+**Two halves close that: a warning before, and a repair after.**
+
+### Before — the delete dialog names the teams
+
+The confirmation lists the teams the user owns and states that ownership cannot be transferred once they
+are gone. Transfer ownership first if those teams are still in use. Available programmatically:
+
+```csharp
+var owned = await userManagementService.GetOwnedTeamsAsync(userKey);
+```
+
+Deletion is **not refused** for a sole owner. There are legitimate cases — winding up a one-person team —
+and the state is now repairable, so the warning is the right weight.
+
+### After — `teams:assign-owner`
+
+The **`teams:assign-owner`** system scope authorizes giving an ownerless team an owner, chosen from that
+team's existing members. It appears as **Assign owner** on the Teams tab of `<UsersView />`, and only on
+a team that actually has no owner.
+
+```csharp
+await teamService.AssignOwnerAsync<TMember>(teamKey, newOwnerUserKey);
+```
+
+Two conditions are enforced in the service, not just the UI:
+
+| Condition | Why |
+|---|---|
+| The team currently has **no** member at `Owner` | With no sitting owner there is nobody to escalate past, so the invariant `SetMemberRoleAsync` protects stays intact. On a healthy team the call is refused |
+| The new owner is **already a member** | Keeps this a repair. A caller holding this scope is not a member of the team, so without it they could install anyone — including themselves |
+
+It is a **system** scope with no in-team fallback, deliberately unlike `teams:delete`: a member could not
+have produced this state, so there is no in-team case to accommodate. Both the operation and its refusals
+are audited — an attempt to "repair" a team that is not broken is what taking one over would look like.
+
+Invited members are not offered as candidates. They have not accepted, so making one owner would hand the
+team to somebody who may never arrive.
+
 ## Where names are edited
 
 A user has one **root name** (`IUser.Name`), shared everywhere, and optionally a **per-team override**
@@ -252,6 +298,35 @@ A user has one **root name** (`IUser.Name`), shared everywhere, and optionally a
 | `<UserProfileView />` (profile page) | root name | the user, for themselves |
 | `<UsersView />` (users page) | root name | a holder of `users:manage` |
 | `<TeamComponent />` (team page) | per-team override only | a holder of `member:manage` **on the selected team** |
+
+### Writing the name back to the directory
+
+By default a rename stays in this application. Set **`o.Blazor.WriteNameToDirectory = true`** and an
+**administrative** rename also writes `displayName` to the external directory.
+
+```csharp
+var result = await userManagementService.SetUserNameAsync(userKey, "Real Name");
+// result.DirectoryUpdated, result.DirectoryError
+```
+
+| Situation | Result |
+|---|---|
+| Option off | Local write only. `DirectoryUpdated: false`, no error |
+| User not linked to a directory account | Local write only. **Not an error** — there is nothing to write to |
+| Directory write succeeded | `DirectoryUpdated: true` |
+| Directory write failed | `DirectoryError` set. **The local write is not rolled back** |
+
+**Self-service renaming is never pushed**, whatever the option says: a user editing their own display
+name here should not silently rewrite the organization's directory.
+
+The two writes fail independently on purpose. Coupling them would let a directory outage block renaming a
+user in this application, so the UI reports a directory failure as a warning rather than a failed rename
+— because the rename did happen.
+
+Which side owns display names is a per-host decision, which is why this is off by default. A host
+federating from a corporate directory wants the directory authoritative; an application that collects no
+attributes at sign-up is the opposite case, holding the real name while the directory holds a
+placeholder.
 
 The team surface never writes the root name. Submitting a member's displayed name unchanged stores *no*
 override, so the row keeps tracking that user's later renames rather than pinning a copy of the name.
