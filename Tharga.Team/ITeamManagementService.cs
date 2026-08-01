@@ -1,11 +1,16 @@
 ﻿namespace Tharga.Team;
 
 /// <summary>
-/// Team management mutations. Authorization is enforced in the service layer by
-/// <c>AuthorizationTeamServiceDecorator</c> (over <see cref="ITeamService"/>); the <c>[RequireScope]</c>
-/// attributes here document the scope each operation requires.
-/// Read operations use ITeamService directly.
+/// The scope-checked entry point for team operations — <b>the interface a component, controller or MCP
+/// provider should inject</b>. Every member carries a <c>[RequireScope]</c> attribute enforced by
+/// <c>ScopeProxy</c>, so a caller lacking the scope is refused before the operation runs.
 /// </summary>
+/// <remarks>
+/// <see cref="ITeamService"/> is the internal path beneath this one: it is the contract a host implements,
+/// and its reads are deliberately unchecked so that framework code — building claims, revalidating a
+/// circuit — can read without needing the very scopes it is in the middle of computing. Calling it from a
+/// first-level surface bypasses authorization entirely, which is why the read methods below exist.
+/// </remarks>
 public interface ITeamManagementService
 {
     [RequireScope(TeamScopes.Manage)]
@@ -55,4 +60,20 @@ public interface ITeamManagementService
 
     [RequireScope(TeamScopes.Read)]
     Task SetInvitationResponseAsync(string teamKey, string userKey, string inviteCode, bool accept);
+
+    /// <summary>One team and its members. Requires <c>team:read</c> on that team.</summary>
+    [RequireScope(TeamScopes.Read)]
+    Task<ITeam<TMember>> GetTeamAsync<TMember>(string teamKey) where TMember : ITeamMember;
+
+    /// <summary>Team metadata without the roster. Requires <c>team:read</c> on that team.</summary>
+    [RequireScope(TeamScopes.Read)]
+    Task<ITeam> GetTeamByKeyAsync(string teamKey);
+
+    /// <summary>The team's members. Requires <c>team:read</c> on that team.</summary>
+    [RequireScope(TeamScopes.Read)]
+    IAsyncEnumerable<ITeamMember> GetMembersAsync(string teamKey);
+
+    /// <summary>One member of a team. Requires <c>team:read</c> on that team.</summary>
+    [RequireScope(TeamScopes.Read)]
+    Task<ITeamMember> GetTeamMemberAsync(string teamKey, string userKey);
 }

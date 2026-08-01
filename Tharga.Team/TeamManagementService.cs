@@ -31,4 +31,9 @@ public class TeamManagementService<TMember> : ITeamManagementService, ITeamLifec
     public Task SetTeamCustomRolesAsync(string teamKey, IReadOnlyList<TenantRoleDefinition> customRoles) => _inner.SetTeamCustomRolesAsync(teamKey, customRoles);
     public Task SetMemberLastSeenAsync(string teamKey) => _inner.SetMemberLastSeenAsync(teamKey);
     public Task SetInvitationResponseAsync(string teamKey, string userKey, string inviteCode, bool accept) => _inner.SetInvitationResponseAsync(teamKey, userKey, inviteCode, accept);
+
+    public Task<ITeam<T>> GetTeamAsync<T>(string teamKey) where T : ITeamMember => _inner.GetTeamAsync<T>(teamKey);
+    public Task<ITeam> GetTeamByKeyAsync(string teamKey) => _inner.GetTeamByKeyAsync(teamKey);
+    public IAsyncEnumerable<ITeamMember> GetMembersAsync(string teamKey) => _inner.GetMembersAsync(teamKey);
+    public Task<ITeamMember> GetTeamMemberAsync(string teamKey, string userKey) => _inner.GetTeamMemberAsync(teamKey, userKey);
 }
