@@ -27,4 +27,37 @@ public static class UserAdminGate
     /// </remarks>
     public static bool CanDeleteTeams(bool hasTeamsDeleteScope)
         => hasTeamsDeleteScope;
+
+    /// <summary>
+    /// Whether the Users tab offers deleting the user on this row. False for the signed-in caller's own
+    /// row: deleting yourself drops your user record and, through
+    /// <c>ITeamService.RemoveUserFromAllTeamsAsync</c>, your membership of every team — while your session
+    /// continues holding claims that no longer correspond to anything.
+    /// </summary>
+    /// <remarks>
+    /// An administrator who genuinely should go needs another administrator to remove them, which also
+    /// guarantees somebody is left holding <c>users:manage</c>. This is the same class of guard as
+    /// refusing to demote a sitting owner, and it is the most likely route to the ownerless-team state
+    /// that <c>TeamServiceBase.SetMemberRoleAsync</c> exists to prevent — the sole owner of a team is
+    /// very often the same person administering users.
+    /// <para>
+    /// <b>Fails closed when identity is unknown.</b> A missing key on either side returns false rather
+    /// than true. The view already requires <c>users:manage</c>, so an authenticated caller always
+    /// resolves; a null key means the caller could not be established, and that is not a state in which
+    /// to offer an irreversible action on an account. The result is a visibly disabled control rather
+    /// than a silently permitted mistake.
+    /// </para>
+    /// <para>
+    /// Comparison is <see cref="StringComparison.OrdinalIgnoreCase"/>, deliberately unlike
+    /// <c>MemberHighlight.IsCurrentMember</c>, which is case-sensitive. That one drives a highlight, where
+    /// a false positive is cosmetic; this one guards a destructive action, where a false negative deletes
+    /// an account. Where the two disagree the guard should be the stricter, so a key differing only in
+    /// case is still treated as "you".
+    /// </para>
+    /// </remarks>
+    public static bool CanDeleteUser(string rowUserKey, string currentUserKey)
+    {
+        if (string.IsNullOrEmpty(rowUserKey) || string.IsNullOrEmpty(currentUserKey)) return false;
+        return !string.Equals(rowUserKey, currentUserKey, StringComparison.OrdinalIgnoreCase);
+    }
 }

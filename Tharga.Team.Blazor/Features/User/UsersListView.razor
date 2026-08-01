@@ -64,6 +64,9 @@ else if (_loaded)
             </RadzenDataGridColumn>
             <RadzenDataGridColumn Title="" Width="200px" Sortable="false" Filterable="false">
                 <Template>
+                    @{
+                        var canDeleteUser = UserAdminGate.CanDeleteUser(context.Key, _currentUserKey);
+                    }
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
                         @if (_showDirectory && context.DirectoryStatus != null)
                         {
@@ -87,7 +90,8 @@ else if (_loaded)
                                     <RadzenSplitButtonItem Text="Audit log" Value="@AuditAction" Icon="manage_search" />
                                 }
                                 @ActionItems
-                                <RadzenSplitButtonItem Text="Delete" Value="@DeleteAction" Icon="delete" />
+                                <RadzenSplitButtonItem Text="@(canDeleteUser ? DeleteText : DeleteSelfText)" Value="@DeleteAction"
+                                                       Icon="delete" Disabled="@(!canDeleteUser)" />
                             </ChildContent>
                         </RadzenSplitButton>
                         @if (ActionsTemplate != null)
@@ -208,6 +212,15 @@ else
     private const string SetIconAction = "set-icon";
     private const string RenameAction = "rename";
     private const string AuditAction = "audit";
+
+    private const string DeleteText = "Delete";
+
+    /// <summary>
+    /// Label on the caller's own row. The item is disabled there, and a disabled control with no stated
+    /// reason reads as a bug — <see cref="RadzenSplitButtonItem"/> carries no tooltip, so the reason has
+    /// to be the label.
+    /// </summary>
+    private const string DeleteSelfText = "Delete (this is you)";
 
     private string _currentUserKey;
     private bool _directoryIdStored;
@@ -449,6 +462,15 @@ else
 
     private async Task DeleteUserAsync(UserViewModel user)
     {
+        // Not redundant with the disabled item: ActionItems lets a host inject an item, and this handler
+        // dispatches on the value, so a host-supplied "delete" reaches here without passing the markup gate.
+        if (!UserAdminGate.CanDeleteUser(user.Key, _currentUserKey))
+        {
+            NotificationService.Notify(NotificationSeverity.Warning, "Cannot delete your own account",
+                "Another administrator has to remove you, so somebody is always left able to manage users.");
+            return;
+        }
+
         var dialogResult = await DialogService.OpenAsync<DeleteUserDialog>("Delete user",
             new Dictionary<string, object>
             {
