@@ -36,11 +36,17 @@ public class AuditSurfacesDelegateTests
     }
 
     /// <summary>The files that read audit and must not authorize it themselves.</summary>
+    /// <remarks>
+    /// Built with <see cref="Path.Combine(string[])"/> rather than written with separators in them. The
+    /// first version hard-coded backslashes, which are not separators on Linux, so every lookup missed on
+    /// CI — and the two scans below early-out on a missing file, so they <b>passed while checking
+    /// nothing</b>. Only the self-check caught it, which is the entire reason it exists.
+    /// </remarks>
     private static readonly string[] SurfacePaths =
     [
-        @"Tharga.Team.Service\Audit\AuditController.cs",
-        @"Tharga.Team.Mcp\TeamSystemResourceProvider.cs",
-        @"Tharga.Team.Blazor\Features\Audit\AuditLogView.razor.cs",
+        Path.Combine("Tharga.Team.Service", "Audit", "AuditController.cs"),
+        Path.Combine("Tharga.Team.Mcp", "TeamSystemResourceProvider.cs"),
+        Path.Combine("Tharga.Team.Blazor", "Features", "Audit", "AuditLogView.razor.cs"),
     ];
 
     public static TheoryData<string> Surfaces()
@@ -59,7 +65,7 @@ public class AuditSurfacesDelegateTests
     public void NoSurfaceCallsTheOldStaticGate(string relativePath)
     {
         var path = Path.Combine(RepoRoot().FullName, relativePath);
-        if (!File.Exists(path)) return;   // the view is optional in some layouts; absence is not a failure
+        Assert.True(File.Exists(path), $"Surface not found: {path}. A scan that cannot find its target is not a check.");
 
         // Comments stripped first. The naive version matched the comment *explaining* why the call was
         // removed, and failed on the very change it was written to verify -- a guard that cannot tell an
