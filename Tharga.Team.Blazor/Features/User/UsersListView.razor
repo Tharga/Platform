@@ -96,7 +96,7 @@ else if (_loaded)
                                 {
                                     <RadzenSplitButtonItem Text="Set icon" Value="@SetIconAction" Icon="image" />
                                 }
-                                @if (ShowAuditLogButton)
+                                @if (UserAdminGate.CanReadAudit(ShowAuditLogButton, _canReadAudit))
                                 {
                                     <RadzenSplitButtonItem Text="Audit log" Value="@AuditAction" Icon="manage_search" />
                                 }
@@ -252,6 +252,7 @@ else
     private bool _directoryIdStored;
     private bool _loaded;
     private bool _canAdminister = true;
+    private bool _canReadAudit;
     private bool _showDirectory;
     private bool _showAdminUpload;
     private bool _verifying;
@@ -266,6 +267,13 @@ else
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var hasUsersManage = TeamScopeGate.HasSystemScope(authState.User, SystemUserScopes.Manage);
+
+        // The audit action is cross-team from here -- this list spans every team -- so it needs the
+        // system grant. Without this the action appeared for anyone whenever the host set the flag, and
+        // the dialog it opened said "Access denied": shown-then-refused, the defect PR #126 fixed for
+        // per-team actions. TeamComponent already gated its equivalent; this surface did not.
+        _canReadAudit = TeamScopeGate.HasSystemScope(authState.User, AuditScopes.Read);
+
         var directoryRegistered = ServiceProvider.GetService<IUserDirectoryService>() is { IsConfigured: true };
         _canSeeAllTeams = TeamVisibility.CanSeeAllTeams(authState.User);
         _canAdminister = UserAdminGate.CanAdministerUsers(hasUsersManage);
