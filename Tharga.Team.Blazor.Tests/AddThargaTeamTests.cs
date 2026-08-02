@@ -331,4 +331,49 @@ public class AddThargaTeamTests
     {
         public TestNavigationManager() => Initialize("https://localhost/", "https://localhost/");
     }
+
+    /// <summary>
+    /// Consent policy is registered as <b>the same instance</b> the host configured, not a copy.
+    /// </summary>
+    /// <remarks>
+    /// This is what keeps one policy from becoming two. Consent decides what a caller may do in a team
+    /// they do not belong to, and more than one surface answers that: the Blazor claims builder and an
+    /// MCP call naming a team. When <c>ConsentOptions</c> lived in the Blazor package the MCP side could
+    /// not reach it and briefly carried its own copy of the default level — which is exactly the state
+    /// where the same caller reaches the same team at two different levels depending on the door.
+    /// <para>
+    /// Same instance rather than equal values, deliberately: a copy would pass an equality assertion on
+    /// the day it was written and drift silently afterwards.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void ConsentOptions_AreRegisteredAsTheSameInstanceEverySurfaceReads()
+    {
+        var builder = CreateBuilder();
+        ConsentOptions configured = null;
+        builder.AddThargaTeam(o =>
+        {
+            o.Blazor.Consent.AccessLevel = AccessLevel.User;
+            o.Blazor.Consent.Roles = ["Support"];
+            configured = o.Blazor.Consent;
+        });
+
+        var provider = builder.Services.BuildServiceProvider();
+        var resolved = provider.GetService<IOptions<ConsentOptions>>();
+
+        Assert.NotNull(resolved);
+        Assert.Same(configured, resolved.Value);
+        Assert.Equal(AccessLevel.User, resolved.Value.AccessLevel);
+    }
+
+    /// <summary>
+    /// And it lives in the core assembly, so packages below the Blazor one can read it at all. Moving it
+    /// back is the change that would silently reintroduce the duplicate.
+    /// </summary>
+    [Fact]
+    public void ConsentOptions_LiveInTheCoreAssembly()
+    {
+        Assert.Equal("Tharga.Team", typeof(ConsentOptions).Assembly.GetName().Name);
+        Assert.Equal("Tharga.Team", typeof(ConsentOptions).Namespace);
+    }
 }

@@ -35,6 +35,11 @@ public static class ThargaTeamRegistration
     /// </summary>
     internal static void AddThargaTeamCore(WebApplicationBuilder builder, ThargaTeamOptions options)
     {
+        // Consent policy, registered as the one instance every surface reads -- the Blazor claims builder
+        // and an MCP call naming a team both resolve IOptions<ConsentOptions> and therefore cannot
+        // disagree about which roles a team may consent to, or at what level.
+        builder.Services.AddSingleton(Options.Create(options.Blazor.Consent));
+
         // Auth (Azure AD + OIDC)
         builder.AddThargaAuth(o =>
         {

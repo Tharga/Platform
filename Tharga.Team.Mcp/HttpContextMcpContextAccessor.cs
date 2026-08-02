@@ -27,17 +27,25 @@ public sealed class HttpContextMcpContextAccessor : IMcpContextAccessor
     private readonly IScopeRegistry _scopeRegistry;
     private readonly ITenantRoleService _tenantRoleService;
     private readonly McpTeamOptions _options;
+    private readonly ConsentOptions _consent;
 
+    /// <remarks>
+    /// <paramref name="consent"/> is resolved rather than duplicated: it is the same instance the Blazor
+    /// claims builder reads, so a caller reaches a team at the same level over MCP as through the UI. It
+    /// is optional only so this package works without the Blazor registration, where the defaults apply.
+    /// </remarks>
     public HttpContextMcpContextAccessor(
         IHttpContextAccessor httpContextAccessor,
         IOptions<McpTeamOptions> options,
         IUserService userService = null,
         ITeamService teamService = null,
         IScopeRegistry scopeRegistry = null,
-        ITenantRoleService tenantRoleService = null)
+        ITenantRoleService tenantRoleService = null,
+        IOptions<ConsentOptions> consent = null)
     {
         _httpContextAccessor = httpContextAccessor;
         _options = options.Value;
+        _consent = consent?.Value ?? new ConsentOptions();
         _userService = userService;
         _teamService = teamService;
         _scopeRegistry = scopeRegistry;
@@ -119,6 +127,6 @@ public sealed class HttpContextMcpContextAccessor : IMcpContextAccessor
         var user = _userService == null ? null : await _userService.GetCurrentUserAsync(principal);
 
         var resolver = new TeamGrantResolver(_teamService, _scopeRegistry, _tenantRoleService);
-        return await resolver.ResolveAsync(principal, user?.Key, teamKey, _options.ConsentAccessLevel);
+        return await resolver.ResolveAsync(principal, user?.Key, teamKey, _consent.AccessLevel);
     }
 }

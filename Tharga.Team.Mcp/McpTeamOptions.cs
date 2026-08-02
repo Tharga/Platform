@@ -27,17 +27,6 @@ public sealed class McpTeamOptions
     public string TeamKeyHeader { get; set; } = "X-Team-Key";
 
     /// <summary>
-    /// Access level a team's consent grants when the consent itself carries no level. Default
-    /// <see cref="AccessLevel.Viewer"/>.
-    /// </summary>
-    /// <remarks>
-    /// Mirrors <c>ThargaBlazorOptions.Consent.AccessLevel</c>, which lives in the Blazor package and is
-    /// not reachable from here. <b>A host that changes one should change the other</b>, or the same
-    /// caller reaches the same team at different levels over MCP and over the UI.
-    /// </remarks>
-    public AccessLevel ConsentAccessLevel { get; set; } = AccessLevel.Viewer;
-
-    /// <summary>
     /// When true, registers read-only system-scope resource providers that expose cross-tenant
     /// team, API-key, role, and audit-log data for diagnostic use by Developers.
     /// Default false — opt in only if you want diagnostic data surfaced over MCP.
