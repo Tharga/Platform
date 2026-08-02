@@ -466,6 +466,62 @@ builder.Services.AddThargaTeamRepository(o =>
 });
 ```
 
+### The two `RegisterTeamService` overloads
+
+| Overload | Use when | Member type |
+|---|---|---|
+| `RegisterTeamService<TTeamService, TUserService>()` | The standard member is enough | Taken from the team service's own generic base |
+| `RegisterTeamService<TTeamService, TUserService, TMember>()` | Your member carries extra properties | Exactly what you name |
+
+The two-argument form reads the member type from the service you register — a service deriving from
+`TeamServiceRepositoryBase<TEntity, TMember>` carries it — so you do not name it twice. An explicit
+`TMember` always wins: that records a decision, and inference only fills a gap where none was expressed.
+
+> **If it can find neither**, the facets layered over the team store cannot be registered and
+> `TeamServiceCompletenessCheck` says so at startup, naming them. That happens when a service derives
+> straight from `TeamServiceBase`, which is generic in nothing — name the member type explicitly. Set
+> `ThrowOnIncompleteTeamService` to make it fatal rather than an error in the log.
+
+### Write no storage types at all
+
+`Tharga.Team.MongoDB` ships a standard implementation of every piece:
+
+| Type | Replaces |
+|---|---|
+| `DefaultTeamMember` | `record TeamMember : TeamMemberBase;` |
+| `DefaultTeamEntity` | `record TeamEntity : TeamEntityBase<TeamMember>;` |
+| `DefaultTeamService` | a service implementing the two factory methods |
+| `DefaultUserEntity` | `record UserEntity : EntityBase, IUser` with the optional properties |
+| `DefaultUserService` | a service implementing `CreateUserEntityAsync` |
+
+`DefaultUserEntity` declares **every** optional property — `DirectoryId`, `LastSeen` and `Icon` — so
+directory linking, activity tracking and icons all work. Those are opt-in *by shape*: the toolkit
+persists them only when the entity has somewhere to put them, so a smaller default would leave three
+documented features silently doing nothing.
+
+### Using your own entities
+
+The defaults are a complete set to use or replace, not a base to extend. Deriving from
+`DefaultUserEntity` compiles, but the store still reads and writes the base type, so your extra property
+would not round-trip.
+
+To add properties, declare the entity **and** its service — the factory has to construct your concrete
+type, which is the only reason those methods are abstract:
+
+```csharp
+public record MyMember : TeamMemberBase { public string Department { get; init; } }
+public record MyTeam : TeamEntityBase<MyMember>;
+
+public class MyTeamService : TeamServiceRepositoryBase<MyTeam, MyMember>
+{
+    protected override Task<MyTeam> CreateTeam(...)          // one object initializer
+    protected override Task<MyMember> CreateTeamMember(...)  // one object initializer
+}
+```
+
+Everything else stays inherited, and every member is virtual — derive from `DefaultTeamService` instead
+when you want the standard types but different behaviour.
+
 > **Custom collection names:** If you need to change the MongoDB collection names (e.g. when sharing a database with a legacy app), set `TeamCollectionName` and `UserCollectionName`:
 > ```csharp
 > builder.Services.AddThargaTeamRepository(o =>

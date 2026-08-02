@@ -55,6 +55,24 @@ app.UseThargaTeam();
 
 `RegisterTeamService<MyTeamService, MyUserService>()` needs your two service implementations. With the MongoDB package these derive from the provided base classes and entity types — see [Step 4: Team Management](implementation-guide.md#step-4-team-management) for the entities, `UserService`, and `TeamService`.
 
+**Or write none of them.** `Tharga.Team.MongoDB` ships a standard set, so the smallest working registration is:
+
+```csharp
+o.Blazor.RegisterTeamService<DefaultTeamService, DefaultUserService>();
+```
+
+```csharp
+builder.Services.AddThargaTeamRepository(o =>
+{
+    o.RegisterUserRepository<DefaultUserEntity>();
+    o.RegisterTeamRepository<DefaultTeamEntity, DefaultTeamMember>();
+});
+```
+
+Swap in your own type at any point: they are ordinary classes, and every member is virtual. Reach for
+your own when a team, member or user needs properties of your own — see
+[Using your own entities](implementation-guide.md#using-your-own-entities).
+
 ## Next
 
 - [Implementation guide](implementation-guide.md) — the full setup, option by option
