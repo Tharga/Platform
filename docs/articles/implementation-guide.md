@@ -999,11 +999,23 @@ not authorize writing to another.
 | Scope | Kind | Source | Gates |
 |-------|------|--------|-------|
 | `team:read` | team | `TeamScopes.Read` | View team details & members |
-| `team:manage` | team | `TeamScopes.Manage` | Rename, delete, transfer ownership |
-| `member:manage` | team | `TeamScopes.MemberManage` | Invite/remove members, change access level/roles/scope-overrides, edit display names |
+| `team:manage` | team | `TeamScopes.Manage` | Rename, delete, transfer ownership, consent, custom roles |
+| `member:manage` | team | `TeamScopes.MemberManage` | Invite/remove members, **suspend/restore a member**, change access level/roles/scope-overrides, edit display names |
 | `teams:delete` | **system** | `SystemTeamScopes.Delete` | Delete **any** team (cross-team) |
 | `teams:read` | **system** | `SystemTeamScopes.Read` | See **every** team (cross-team discovery) |
-| `apikey:manage` | team | `ApiKeyScopes.Manage` | Create/refresh/lock/delete API keys |
+| `teams:manage` | **system** | `SystemTeamScopes.Manage` | Rename and set the icon of **any** team — **not** consent or custom roles |
+| `apikey:manage` | team | `ApiKeyScopes.Manage` | Create/refresh/lock/**disable**/delete API keys |
+
+##### `teams:manage` stops short of consent
+
+The system scope covers **rename and icon only**. In-team `team:manage` also covers **consent** and
+**custom roles**, and those stay in-team: consent is a team's own statement about what it exposes
+inbound, and custom roles decide what a member may do. Both are authorization; a name and an icon are
+presentation. An operator fixing a typo across teams is a much smaller claim than one overriding what a
+team exposes.
+
+Nothing in the type system can express "these two members of that scope but not those two", so the
+erosion would be a one-line change that reads like consistency. Two tests assert the refusals instead.
 
 #### Team-operation authorization
 
@@ -1276,6 +1288,20 @@ Both default to unset, so behavior is unchanged unless you opt in. The override 
 Access to manage keys is gated on `apikey:manage`; the audit log on `audit:read`. (The former per-component
 `CrossTeamRoles` / `RequiredScopes` parameters were removed — grant cross-team access via the role→system-scope
 mapping instead.)
+
+### Disabling a key, and why refresh does not undo it
+
+`SetKeyDisabledAsync` stops a key authenticating while keeping its name, scopes, roles, tags and audit
+trail — the reversible alternative to deleting it. The refusal is **recorded as an authentication
+failure**, because a disabled key still gets used: by a scheduled job nobody remembers, or by whoever
+the disabling was aimed at, and those attempts are the point of the trail.
+
+> **Refreshing a disabled key leaves it disabled.** A refresh mints a new secret; it is not a decision to
+> trust the key again — and the usual reason to refresh is the same suspected leak that prompted the
+> disable. Re-enabling is always explicit.
+
+Disabled is shown as a **badge**, distinct from expiry's red text. Two red things in one grid is how an
+operator concludes a contained key merely lapsed.
 
 ---
 

@@ -189,11 +189,11 @@ Stating this rather than implying a full-page takeover the toolkit cannot delive
 
 ## 6. Documentation
 
-- [ ] Correct the `LockKeyAsync` remarks — *"there is no disable yet"* stops being true.
-- [ ] `docs/articles/user-management.md`: disabling a user, and the local-vs-directory distinction.
-- [ ] The scope matrix gains `teams:manage`, with the boundary stated: rename and icon, **not** consent.
-- [ ] Suspending a member: what it does, what it does not touch, and why it is not `MembershipState`.
-- [ ] Separate `docs:` commit before close-out.
+- [x] Correct the `LockKeyAsync` remarks — *"there is no disable yet"* stops being true.
+- [x] `docs/articles/user-management.md`: disabling a user, and the local-vs-directory distinction.
+- [x] The scope matrix gains `teams:manage`, with the boundary stated: rename and icon, **not** consent.
+- [x] Suspending a member: what it does, what it does not touch, and why it is not `MembershipState`.
+- [x] Separate `docs:` commit before close-out.
 
 ---
 
@@ -239,4 +239,12 @@ A drop-in `SuspendedTeamNotice` is provided for the host layout. The toolkit can
 takeover because the host owns routing; what it does guarantee is that no scopes are granted, so every
 `[RequireScope]` refuses whether or not the host places the notice.
 
-**Next:** step 6, documentation.
+**2026-08-02 (invited-member fix + step 6).** Field bug fixed and documented. **1352 green**, 8 warnings.
+
+**A correction made while documenting the trap.** The first version of the XML doc said
+`GetTeamMemberAsync` filters invited members out. It does not — *the host store does*. The test double
+returns them, the MongoDB store does not, and the pinning test failed for exactly that reason, which is
+how it was caught. The guidance is now the honest one: the answer is host-controlled, so nothing may
+depend on it either way, and code that must tell the states apart reads `GetMembersAsync`.
+
+**Next:** step 7, close-out.

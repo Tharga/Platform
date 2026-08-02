@@ -125,7 +125,27 @@ public interface ITeamManagementService
     [RequireScope(TeamScopes.Read)]
     Task<IReadOnlyList<TenantRoleDefinition>> GetTeamCustomRolesAsync(string teamKey);
 
-    /// <summary>One member of a team. Requires <c>team:read</c> on that team.</summary>
+    /// <summary>
+    /// One <b>active</b> member of a team. Requires <c>team:read</c> on that team.
+    /// </summary>
+    /// <remarks>
+    /// <b>Whether an invited or rejected member comes back here is up to the host's store, so do not
+    /// rely on either answer.</b> This resolves through the store's "teams this user belongs to" query.
+    /// The MongoDB store filters that query on <c>State == MembershipState.Member</c>, which makes a
+    /// pending invitee indistinguishable from somebody who was never in the team; a store written
+    /// differently may well return them.
+    /// <para>
+    /// So treat a non-null result as "has some membership" and null as "cannot act as a member" — never
+    /// as a reliable answer to <i>which</i> state they are in. Anything that must tell the states apart —
+    /// a message explaining a refusal, a roster count, an admin grid — has to use
+    /// <see cref="GetMembersAsync"/>, which reads the team directly and is the only portable way to see
+    /// every state.
+    /// </para>
+    /// <para>
+    /// Not hypothetical: suspending a member shipped with this bug, refusing an invitee with "is not a
+    /// member of team", which was both untrue and unhelpful.
+    /// </para>
+    /// </remarks>
     [RequireScope(TeamScopes.Read)]
     Task<ITeamMember> GetTeamMemberAsync(string teamKey, string userKey);
 }

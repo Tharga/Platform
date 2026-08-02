@@ -136,8 +136,13 @@ public abstract class TeamServiceBase : ITeamService
         TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
     }
 
+    /// <inheritdoc cref="ITeamManagementService.GetTeamMemberAsync"/>
     public async Task<ITeamMember> GetTeamMemberAsync(string teamKey, string userKey)
     {
+        // What comes back for an invited member depends on the host's GetTeamMembersAsync: the MongoDB
+        // store resolves through a State == Member query and so returns null, while a store written
+        // differently may return the invitee. Neither is wrong, but nothing may depend on which -- code
+        // that must tell the states apart reads the roster through GetMembersAsync instead.
         var key = $"{teamKey}.{userKey}";
         if (_teamMemberCache.TryGetValue(key, out var teamMember)) return teamMember;
 
@@ -148,6 +153,14 @@ public abstract class TeamServiceBase : ITeamService
         return teamMember;
     }
 
+    /// <summary>
+    /// Every member on the team's roster, <b>in any <see cref="MembershipState"/></b> — including
+    /// invited and rejected.
+    /// </summary>
+    /// <remarks>
+    /// The counterpart to <see cref="GetTeamMemberAsync"/>, which returns only an active membership and
+    /// cannot tell a pending invitee from a stranger. Reach for this one whenever the difference matters.
+    /// </remarks>
     public virtual async IAsyncEnumerable<ITeamMember> GetMembersAsync(string teamKey)
     {
         var team = await GetTeamAsync(teamKey);

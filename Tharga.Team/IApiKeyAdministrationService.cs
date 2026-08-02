@@ -23,7 +23,11 @@ public interface IApiKeyAdministrationService
     /// <remarks>
     /// <b>This does not disable the key.</b> A locked key still authenticates — locking only makes the
     /// value unrecoverable, which is why <c>ApiKeyOptions.AutoLockKeys</c> can lock every key at creation
-    /// without breaking anything. To stop a key working, delete it; there is no disable yet.
+    /// without breaking anything.
+    /// <para>
+    /// To stop a key working, use <see cref="SetKeyDisabledAsync"/>, which is reversible and keeps the
+    /// key's name, scopes, roles, tags and history. Delete only when the key should cease to exist.
+    /// </para>
     /// </remarks>
     Task LockKeyAsync(string teamKey, string key);
 

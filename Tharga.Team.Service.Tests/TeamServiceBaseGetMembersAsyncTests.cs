@@ -42,4 +42,37 @@ public class TeamServiceBaseGetMembersAsyncTests
 
         Assert.Empty(members);
     }
+
+    /// <summary>
+    /// <b>The distinction that caused a shipped bug.</b> <c>GetMembersAsync</c> returns the roster in
+    /// every <see cref="MembershipState"/> and is the only portable way to see one. What
+    /// <c>GetTeamMemberAsync</c> reports for an invitee is decided by the host's store — the MongoDB one
+    /// filters them out, this test double does not — so no caller may depend on it either way.
+    /// </summary>
+    /// <remarks>
+    /// Suspending a member shipped using the first when it needed the second, and against the MongoDB
+    /// store refused an invitee with "is not a member of team" — untrue, since they are on the roster,
+    /// and unhelpful, since it describes a different problem. That the two disagree is not the defect;
+    /// depending on the one whose answer the host controls is.
+    /// </remarks>
+    [Fact]
+    public async Task GetTeamMemberAsync_AndGetMembersAsync_DisagreeAboutAnInvitee_OnPurpose()
+    {
+        var sut = new TestTeamService(_userService);
+        sut.AddTeam("team-2", "Test Team",
+            new TestMember { Key = "active", AccessLevel = AccessLevel.User, State = MembershipState.Member },
+            new TestMember { Key = "invitee", AccessLevel = AccessLevel.User, State = MembershipState.Invited });
+
+        var roster = new List<ITeamMember>();
+        await foreach (var member in sut.GetMembersAsync("team-2")) roster.Add(member);
+
+        // Guaranteed by the toolkit: the roster carries every state.
+        Assert.Contains(roster, m => m.Key == "invitee");
+        Assert.Contains(roster, m => m.Key == "active");
+
+        // Not guaranteed: what GetTeamMemberAsync says about the invitee is the host store's business.
+        // This double does not filter, so it returns them; the MongoDB store filters, so it does not.
+        // The test asserts only the part that holds everywhere -- an active member always resolves.
+        Assert.NotNull(await sut.GetTeamMemberAsync("team-2", "active"));
+    }
 }
