@@ -33,9 +33,15 @@ public class TeamSystemResourceProviderTests
         await Task.CompletedTask;
     }
 
+    /// <remarks>
+    /// Renamed: it used to say "non-developer returns empty", which is no longer the whole truth — a
+    /// caller holding <c>audit:read</c> without the role now sees the audit resource, and a test whose
+    /// name overstates its scenario is how the next reader concludes the opposite.
+    /// </remarks>
     [Fact]
-    public async Task ListResourcesAsync_NonDeveloper_ReturnsEmpty()
+    public async Task ListResourcesAsync_NonDeveloperWhoCanReadNothing_ReturnsEmpty()
     {
+        // No oversight service, so audit is unreadable for anyone here.
         var sut = new TeamSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
 
         var result = await sut.ListResourcesAsync(MakeContext(isDeveloper: false), TestContext.Current.CancellationToken);
@@ -46,7 +52,10 @@ public class TeamSystemResourceProviderTests
     [Fact]
     public async Task ListResourcesAsync_Developer_ReturnsAllAvailableResources()
     {
-        var sut = new TeamSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
+        // Audit is listed only when the caller could read it, so the service that decides that has to be
+        // present. Registering the logger alone used to be enough, which was the defect: it says the
+        // feature exists, not that this caller may use it.
+        var sut = new TeamSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger, Readable());
 
         var result = await sut.ListResourcesAsync(MakeContext(isDeveloper: true), TestContext.Current.CancellationToken);
 
@@ -193,6 +202,53 @@ public class TeamSystemResourceProviderTests
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => sut.ReadResourceAsync(
             TeamSystemResourceProvider.RolesUri, MakeContext(isDeveloper: false), TestContext.Current.CancellationToken));
+    }
+
+    /// <summary>An oversight service that admits the caller.</summary>
+    private static IAuditOversightService Readable()
+    {
+        var service = Substitute.For<IAuditOversightService>();
+        service.QueryAllAsync(Arg.Any<AuditQuery>()).Returns(new AuditQueryResult());
+        return service;
+    }
+
+    /// <summary>One that refuses, exactly as ScopeProxy would for a caller without the grant.</summary>
+    private static IAuditOversightService Refusing()
+    {
+        var service = Substitute.For<IAuditOversightService>();
+        service.QueryAllAsync(Arg.Any<AuditQuery>())
+            .Returns<AuditQueryResult>(_ => throw new UnauthorizedAccessException("Missing required scope 'audit:read'."));
+        return service;
+    }
+
+    /// <summary>
+    /// <b>Discovery matches readability.</b> A caller who cannot read audit does not see it listed —
+    /// advertising a resource they may not have is its own class of bug, and the spec names it so.
+    /// </summary>
+    [Fact]
+    public async Task ListResourcesAsync_OmitsAudit_WhenTheCallerCannotReadIt()
+    {
+        var sut = new TeamSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger, Refusing());
+
+        var result = await sut.ListResourcesAsync(MakeContext(isDeveloper: true), TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain(result, r => r.Uri == TeamSystemResourceProvider.AuditUri);
+    }
+
+    /// <summary>
+    /// And the other direction, which was equally wrong: a caller holding <c>audit:read</c> without the
+    /// role could read audit but was shown nothing at all, because the whole listing was behind the role.
+    /// </summary>
+    [Fact]
+    public async Task ListResourcesAsync_ListsAudit_ForAScopeHolderWithoutTheRole()
+    {
+        var sut = new TeamSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger, Readable());
+
+        var result = await sut.ListResourcesAsync(MakeContext(isDeveloper: false), TestContext.Current.CancellationToken);
+
+        Assert.Contains(result, r => r.Uri == TeamSystemResourceProvider.AuditUri);
+        // ...and still nothing else: this narrowed one gate, not all of them.
+        Assert.Single(result);
     }
 
     [Fact]
