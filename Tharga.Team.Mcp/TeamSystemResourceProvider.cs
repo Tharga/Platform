@@ -25,14 +25,23 @@ public sealed class TeamSystemResourceProvider : IMcpResourceProvider
         WriteIndented = true,
     };
 
+    private readonly IAuditOversightService _auditOversightService;
+
+    /// <remarks>
+    /// <c>auditOversightService</c> reads audit across every team and carries the authorization with it.
+    /// It is injected instead of the logger so this provider performs no audit check of its own — see
+    /// <see cref="ReadAuditAsync"/>.
+    /// </remarks>
     public TeamSystemResourceProvider(
         IApiKeyAdministrationService apiKeyAdministrationService = null,
         ITenantRoleRegistry tenantRoleRegistry = null,
-        CompositeAuditLogger auditLogger = null)
+        CompositeAuditLogger auditLogger = null,
+        IAuditOversightService auditOversightService = null)
     {
         _apiKeyAdministrationService = apiKeyAdministrationService;
         _tenantRoleRegistry = tenantRoleRegistry;
         _auditLogger = auditLogger;
+        _auditOversightService = auditOversightService;
     }
 
     public McpScope Scope => McpScope.System;
@@ -82,6 +91,12 @@ public sealed class TeamSystemResourceProvider : IMcpResourceProvider
 
     public async Task<McpResourceContent> ReadResourceAsync(string uri, IMcpContext context, CancellationToken cancellationToken)
     {
+        // Audit is deliberately outside the role check: IAuditOversightService carries
+        // [RequireScope(audit:read)] and decides for itself, which is the whole point of moving the gate
+        // into the service. Leaving the role check in front of it would refuse a holder of the system
+        // scope who does not also hold the role -- exactly the divergence this set out to remove.
+        if (uri == AuditUri) return await ReadAuditAsync();
+
         if (context?.IsDeveloper != true)
             throw new UnauthorizedAccessException("System resources require the Developer role.");
 
@@ -89,7 +104,6 @@ public sealed class TeamSystemResourceProvider : IMcpResourceProvider
         {
             SystemKeysUri => await ReadSystemKeysAsync(cancellationToken),
             RolesUri => ReadRoles(),
-            AuditUri => await ReadAuditAsync(),
             _ => throw new InvalidOperationException($"Unknown resource URI '{uri}'."),
         };
     }
@@ -140,10 +154,21 @@ public sealed class TeamSystemResourceProvider : IMcpResourceProvider
         };
     }
 
+    /// <remarks>
+    /// Goes through <see cref="IAuditOversightService"/>, which carries <c>[RequireScope(audit:read)]</c>
+    /// as a system grant, rather than reading the logger directly behind an <c>IsDeveloper</c> check.
+    /// <para>
+    /// <b>That check was a third rule for the same question.</b> The UI and REST asked whether the caller
+    /// held <c>audit:read</c>; this asked whether they held a host-configurable role, so the same API key
+    /// got different answers from different surfaces. Behaviour changes accordingly: a holder of that
+    /// role without <c>audit:read</c> loses access here, and a holder of the system scope without the
+    /// role gains it.
+    /// </para>
+    /// </remarks>
     private async Task<McpResourceContent> ReadAuditAsync()
     {
-        if (_auditLogger == null)
-            throw new InvalidOperationException("CompositeAuditLogger is not registered.");
+        if (_auditOversightService == null)
+            throw new InvalidOperationException("IAuditOversightService is not registered.");
 
         var query = new AuditQuery
         {
@@ -152,7 +177,7 @@ public sealed class TeamSystemResourceProvider : IMcpResourceProvider
             SortDescending = true,
         };
 
-        var result = await _auditLogger.QueryAsync(query);
+        var result = await _auditOversightService.QueryAllAsync(query);
 
         return new McpResourceContent
         {

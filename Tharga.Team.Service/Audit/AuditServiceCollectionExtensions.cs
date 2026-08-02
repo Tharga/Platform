@@ -57,6 +57,14 @@ public static class AuditServiceCollectionExtensions
         // so registering it as IAuditLogger would create a circular resolution deadlock.
         services.AddSingleton<CompositeAuditLogger>();
 
+        // Registered twice, deliberately: the same implementation behind a team-bound interface and a
+        // system one, so ScopeProxy applies a different rule to each. Reading one team requires the grant
+        // on that team; reading across all of them requires the system grant, and no call on the
+        // team-bound interface can reach past the team it names.
+        services.AddScoped<AuditReadService>();
+        services.AddTeamService<IAuditReadService, AuditReadService>();
+        services.AddSystemService<IAuditOversightService, AuditReadService>();
+
         return services;
     }
 

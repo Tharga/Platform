@@ -70,7 +70,13 @@ public class CompositeAuditLogger : IAuditLogger
         return merged.Count == before ? entry : entry with { Metadata = merged };
     }
 
-    public Task<AuditQueryResult> QueryAsync(AuditQuery query)
+    /// <remarks>
+    /// Virtual so the query seam can be observed in a test. The composite only queries a
+    /// <see cref="MongoDbAuditLogger"/>, which is a concrete class with non-virtual members, so without
+    /// this there is no way to assert what query a caller actually issued — and the narrowing that keeps
+    /// a caller inside the team they were authorized for is exactly a property of the query.
+    /// </remarks>
+    public virtual Task<AuditQueryResult> QueryAsync(AuditQuery query)
     {
         return _queryLogger?.QueryAsync(query) ?? Task.FromResult(new AuditQueryResult());
     }
