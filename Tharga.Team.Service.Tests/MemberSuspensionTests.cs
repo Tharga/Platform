@@ -42,6 +42,9 @@ public class MemberSuspensionTests
     private static TestMember Member(string key, AccessLevel accessLevel = AccessLevel.User, DateTime? suspendedAt = null)
         => new() { Key = key, AccessLevel = accessLevel, State = MembershipState.Member, SuspendedAt = suspendedAt };
 
+    private static TestMember Invited(string key)
+        => new() { Key = key, AccessLevel = AccessLevel.User, State = MembershipState.Invited };
+
     [Fact]
     public async Task Suspending_RecordsWhenAndByWhom()
     {
@@ -178,5 +181,74 @@ public class MemberSuspensionTests
 
         await Assert.ThrowsAsync<NotSupportedException>(
             () => sut.SetMemberSuspendedAsync(TeamKey, "u1", suspended: true));
+    }
+
+    /// <summary>
+    /// An invitation that has not been accepted grants no access, so there is nothing to suspend — the
+    /// action there is to withdraw the invitation.
+    /// </summary>
+    /// <remarks>
+    /// <b>Reported from the field.</b> The first version offered this and then failed with "is not a
+    /// member of team", which is both wrong — they are on the roster — and useless, because it describes
+    /// a different problem. The cause was the lookup: <c>GetTeamMemberAsync</c> resolves through the
+    /// store's "teams I am a member of" query, which filters <c>State == Member</c>, so an invited person
+    /// comes back indistinguishable from a stranger. This reads the roster directly instead.
+    /// </remarks>
+    [Fact]
+    public async Task SuspendingAnInvitedMember_IsRefusedAndSaysWhy()
+    {
+        var (sut, _) = Build("admin", Member("admin", AccessLevel.Administrator), Invited("invitee"));
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.SetMemberSuspendedAsync(TeamKey, "invitee", suspended: true));
+
+        Assert.Contains("has not accepted the invitation", ex.Message);
+        Assert.DoesNotContain("is not a member", ex.Message);
+        Assert.Empty(sut.SuspendCalls);
+    }
+
+    /// <summary>A rejected invitation is the same case — no access was ever granted.</summary>
+    [Fact]
+    public async Task SuspendingARejectedInvitee_IsRefused()
+    {
+        var (sut, _) = Build("admin",
+            Member("admin", AccessLevel.Administrator),
+            new TestMember { Key = "nope", AccessLevel = AccessLevel.User, State = MembershipState.Rejected });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.SetMemberSuspendedAsync(TeamKey, "nope", suspended: true));
+
+        Assert.Empty(sut.SuspendCalls);
+    }
+
+    /// <summary>
+    /// Restoring is refused too. An invited member cannot be suspended, so a restore is meaningless
+    /// there — and silently accepting it would write a state the member never had.
+    /// </summary>
+    [Fact]
+    public async Task RestoringAnInvitedMember_IsAlsoRefused()
+    {
+        var (sut, _) = Build("admin", Member("admin", AccessLevel.Administrator), Invited("invitee"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.SetMemberSuspendedAsync(TeamKey, "invitee", suspended: false));
+
+        Assert.Empty(sut.SuspendCalls);
+    }
+
+    /// <summary>
+    /// A host that leaves <c>State</c> null is not thereby locked out — null has always meant an
+    /// ordinary member elsewhere in this codebase (<c>TeamActivity</c> counts <c>null or Member</c>).
+    /// </summary>
+    [Fact]
+    public async Task AMemberWithNoStateAtAll_CanStillBeSuspended()
+    {
+        var (sut, _) = Build("admin",
+            Member("admin", AccessLevel.Administrator),
+            new TestMember { Key = "u1", AccessLevel = AccessLevel.User, State = null });
+
+        await sut.SetMemberSuspendedAsync(TeamKey, "u1", suspended: true);
+
+        Assert.Single(sut.SuspendCalls);
     }
 }

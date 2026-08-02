@@ -791,11 +791,18 @@ else
         if (ShowAuditLogButton && CanReadMemberAudit(team)) actions.Add((MemberAuditAction, "Audit log", "manage_search"));
         if (CanManageMembers(team) && _user.Key != member.Key && member.AccessLevel != AccessLevel.Owner)
         {
-            // Same conditions as Remove, and for the same reasons: member:manage, never your own row,
-            // never the owner. The service refuses all three regardless of what this offers.
-            actions.Add(member.SuspendedAt != null
-                ? (RestoreMemberAction, "Restore access", "play_circle")
-                : (SuspendMemberAction, "Suspend access", "block"));
+            // Suspension needs access to take away, and an invitation that has not been accepted grants
+            // none -- the right action there is to withdraw the invitation, which Remove already does.
+            // Offering it anyway is how this shipped first, and the service could only report the person
+            // as not being in the team at all.
+            if (member.State is null or MembershipState.Member)
+            {
+                // Otherwise the same conditions as Remove, for the same reasons: member:manage, never
+                // your own row, never the owner. The service refuses all of them regardless.
+                actions.Add(member.SuspendedAt != null
+                    ? (RestoreMemberAction, "Restore access", "play_circle")
+                    : (SuspendMemberAction, "Suspend access", "block"));
+            }
             actions.Add((RemoveMemberAction, "Remove member", "remove"));
         }
         return actions;

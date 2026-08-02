@@ -232,9 +232,20 @@ public abstract class TeamServiceBase : ITeamService
     /// </remarks>
     public async Task SetMemberSuspendedAsync(string teamKey, string userKey, bool suspended)
     {
-        var member = await GetTeamMemberAsync(teamKey, userKey);
+        // The whole roster, not GetTeamMemberAsync. That path resolves through the store's
+        // "teams I am a member of" query, which filters on State == Member -- so an invited person comes
+        // back null and would be reported as not being in the team at all, which is both wrong and
+        // unhelpful. Reading the team directly is the only way to tell the two apart.
+        var member = await GetMembersAsync(teamKey).FirstOrDefaultAsync(x => x.Key == userKey);
         if (member == null)
             throw new InvalidOperationException($"User '{userKey}' is not a member of team '{teamKey}'.");
+
+        if (member.State != null && member.State != MembershipState.Member)
+        {
+            throw new InvalidOperationException(
+                $"'{userKey}' has not accepted the invitation to team '{teamKey}', so there is no access " +
+                $"to suspend. Withdraw the invitation instead.");
+        }
 
         if (suspended)
         {
