@@ -49,6 +49,9 @@ public class TeamManagementService<TMember> : ITeamManagementService, ITeamLifec
     public Task DeleteTeamAsync(string teamKey) => _inner.DeleteTeamAsync<TMember>(teamKey);
     public Task AddMemberAsync(string teamKey, InviteUserModel model) => _inner.AddMemberAsync(teamKey, model);
     public Task RemoveMemberAsync(string teamKey, string userKey) => _inner.RemoveMemberAsync(teamKey, userKey);
+    public Task SetMemberSuspendedAsync(string teamKey, string userKey, bool suspended)
+        => _inner.SetMemberSuspendedAsync(teamKey, userKey, suspended);
+
     public Task SetMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel) => _inner.SetMemberRoleAsync(teamKey, userKey, accessLevel);
     public Task SetMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles) => _inner.SetMemberTenantRolesAsync(teamKey, userKey, tenantRoles);
     public Task SetMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides) => _inner.SetMemberScopeOverridesAsync(teamKey, userKey, scopeOverrides);
@@ -103,6 +106,20 @@ public class TeamManagementService<TMember> : ITeamManagementService, ITeamLifec
         {
             yield return team;
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> IsSuspendedAsync(string teamKey)
+    {
+        if (_userService == null) return false;
+
+        var user = await _userService.GetCurrentUserAsync();
+        if (user == null) return false;
+
+        // Straight to the inner service, never through the gated read path: a suspended member holds no
+        // scopes, so a scope-checked lookup would throw on the one question they most need answered.
+        var member = await _inner.GetTeamMemberAsync(teamKey, user.Key);
+        return member?.SuspendedAt != null;
     }
 
     private bool GrantsTeamRead<T>(ITeam<T> team, IUser user) where T : ITeamMember

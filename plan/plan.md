@@ -131,18 +131,73 @@ removing the override — two tests go red with the `NotSupportedException` a ho
 eleven-parameter private helper makes the compiler demand the other nine. Converted to a plain comment;
 warning baseline restored to 8 distinct.
 
+## 5. Suspend a team member
+
+**Decisions settled 2026-08-02 (user):** a team Owner/Administrator can suspend a member. The member
+**still sees the team in the selector**, marked `Suspended`, and selecting it lands on an explanation
+rather than the team UI. Folded into this branch as the third sibling of key-disable and user-disable, so
+all three share one vocabulary.
+
+### `MembershipState.Suspended` is the wrong mechanism — and would have done the opposite
+
+The obvious move is a fourth `MembershipState`. It is actively wrong here. Host stores list a user's
+teams by filtering `State == MembershipState.Member` (`TeamRepository.GetTeamsByUserAsync`, and the
+sample does the same), so a suspended member's team would **disappear from the selector** — precisely the
+option the user rejected. Worse, the filter lives in *host* code, so the toolkit cannot fix it centrally.
+
+So suspension is `SuspendedAt` + `SuspendedBy` on `ITeamMember`, as **default interface members** — the
+same shape-based opt-in as `IUser.DisabledAt` and `IApiKey.DisabledAt`. The member's `State` stays
+`Member`, so every existing store query keeps returning the team and the selector keeps showing it with
+no host change at all.
+
+### The enforcement point is the claims builder, not the listing
+
+`TeamMembershipClaimsBuilder.BuildAsync` grants `Team{AccessLevel}` roles and the full effective scope
+set the moment `GetTeamMemberAsync` returns anything — **it does not look at `State` today**. So the
+listing is not, and never was, the enforcement point. A suspended member must be refused there.
+
+**And must not fall through to consent.** The method's non-member path grants access when the team has
+consented to one of the caller's global roles. Falling through would hand a suspended member access by
+another route; suspension is the more specific and more recent decision, so it wins. Test, not comment.
+
+### What the toolkit can and cannot guarantee
+
+The host owns routing — there is no toolkit-owned shell to take over, and `<TeamSelector />` is placed by
+the host in its own layout. So:
+
+- **Guaranteed everywhere:** no team scopes, so every `[RequireScope]` refuses. Security does not depend
+  on the host doing anything.
+- **Guaranteed on toolkit surfaces:** `TeamComponent` renders the notice instead of the team UI.
+- **Opt-in for the host:** a drop-in notice component for its own layout.
+
+Stating this rather than implying a full-page takeover the toolkit cannot deliver.
+
+- [ ] `SuspendedAt`/`SuspendedBy` on `ITeamMember`; persistence hook on the store with the throwing
+      default; member-cache invalidation on both directions.
+- [ ] `TeamMembershipClaimsBuilder` refuses a suspended member, and does not fall through to consent.
+- [ ] `SetMemberSuspendedAsync` gated on `member:manage` — it already authorizes *removing* a member,
+      which is strictly more destructive.
+- [ ] **An Owner cannot be suspended** (mirroring "the owner cannot leave the team"), and **a member
+      cannot suspend themselves**. Both in the service, not only the UI.
+- [ ] Selector: `Suspended` badge. Needs the caller's membership per listed team — `ITeam` carries no
+      members — via the `GetTeamMemberAsync` cache.
+- [ ] `TeamComponent`: Suspend/Resume row action, badge on the member grid, notice when the caller's own
+      membership is suspended.
+- [ ] Tests.
+
 ---
 
-## 5. Documentation
+## 6. Documentation
 
 - [ ] Correct the `LockKeyAsync` remarks — *"there is no disable yet"* stops being true.
 - [ ] `docs/articles/user-management.md`: disabling a user, and the local-vs-directory distinction.
 - [ ] The scope matrix gains `teams:manage`, with the boundary stated: rename and icon, **not** consent.
+- [ ] Suspending a member: what it does, what it does not touch, and why it is not `MembershipState`.
 - [ ] Separate `docs:` commit before close-out.
 
 ---
 
-## 6. Close-out (only when the user confirms the feature is done)
+## 7. Close-out (only when the user confirms the feature is done)
 
 - [ ] Re-run `dotnet outdated`.
 - [ ] Full suite green, no new warnings.
@@ -172,4 +227,4 @@ Fail-open is deliberate in the eviction check and tested as such: treating a sto
 would sign out every signed-in user at once, turning a database blip into an outage. A genuinely disabled
 user is still evicted, one interval later.
 
-**Next:** step 5, documentation.
+**Next:** step 5, suspend a team member.

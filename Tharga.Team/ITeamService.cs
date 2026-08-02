@@ -68,6 +68,11 @@ public interface ITeamService
     Task AddMemberAsync(string teamKey, InviteUserModel model);
     Task RemoveMemberAsync(string teamKey, string userKey);
     Task SetMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel);
+
+    /// <inheritdoc cref="ITeamManagementService.SetMemberSuspendedAsync"/>
+    Task SetMemberSuspendedAsync(string teamKey, string userKey, bool suspended)
+        => throw new NotSupportedException(
+            $"'{GetType().Name}' does not implement {nameof(SetMemberSuspendedAsync)}.");
     Task SetMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles);
     Task SetMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides);
     Task SetMemberNameAsync(string teamKey, string userKey, string name);

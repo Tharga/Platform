@@ -29,6 +29,27 @@ public interface ITeamManagementService
     [RequireScope(TeamScopes.MemberManage)]
     Task SetMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel);
 
+    /// <summary>
+    /// Suspends a member's access to the team, or restores it. The member keeps their membership, access
+    /// level, roles and history, and still sees the team in the selector — they are simply granted no
+    /// team scopes, so every scoped operation refuses.
+    /// </summary>
+    /// <remarks>
+    /// Reuses <see cref="TeamScopes.MemberManage"/>, which already authorizes <see cref="RemoveMemberAsync"/> —
+    /// strictly more destructive, so a separate grant would guard the lesser act more carefully than the
+    /// greater one.
+    /// <para>
+    /// The Owner cannot be suspended, and a member cannot suspend themselves. Both are refused by the
+    /// service, not merely hidden in the UI.
+    /// </para>
+    /// <para>
+    /// Distinct from <c>IUserManagementService.SetUserDisabledAsync</c>, which blocks a person from the
+    /// whole application. This one is bounded to a single team.
+    /// </para>
+    /// </remarks>
+    [RequireScope(TeamScopes.MemberManage)]
+    Task SetMemberSuspendedAsync(string teamKey, string userKey, bool suspended);
+
     [RequireScope(TeamScopes.MemberManage)]
     Task SetMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles);
 

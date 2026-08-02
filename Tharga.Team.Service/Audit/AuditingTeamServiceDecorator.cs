@@ -219,6 +219,31 @@ public class AuditingTeamServiceDecorator : ITeamService
         }
     }
 
+    /// <remarks>
+    /// Distinct actions in both directions, for the same reason the key and user equivalents use them:
+    /// <c>suspend</c> is a containment and <c>restore</c> is a decision to let the member back in. One
+    /// entry keyed on a boolean makes "who restored this" a query rather than a reading.
+    /// </remarks>
+    public async Task SetMemberSuspendedAsync(string teamKey, string userKey, bool suspended)
+    {
+        var action = suspended ? "suspend" : "restore";
+        var metadata = Meta((AuditMetadataKeys.MemberKey, userKey));
+
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            await _inner.SetMemberSuspendedAsync(teamKey, userKey, suspended);
+            sw.Stop();
+            Log(action, nameof(SetMemberSuspendedAsync), sw.ElapsedMilliseconds, true, teamKey: teamKey, metadata: metadata);
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            Log(action, nameof(SetMemberSuspendedAsync), sw.ElapsedMilliseconds, false, ex.Message, teamKey, metadata);
+            throw;
+        }
+    }
+
     public async Task SetMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel)
     {
         var previous = await TryGetMemberAsync(teamKey, userKey);

@@ -35,6 +35,19 @@ public abstract class TeamServiceBase : ITeamService
     protected abstract Task SetTeamMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles);
     protected abstract Task SetTeamMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides);
     protected abstract Task SetTeamMemberNameAsync(string teamKey, string userKey, string name);
+
+    /// <summary>Persists a member's suspended state. Override to support suspending members.</summary>
+    /// <remarks>
+    /// Virtual with a throwing body rather than abstract: adding an abstract member here would break
+    /// every host that already derives from this class. Throwing rather than no-opping for the same
+    /// reason the user and key equivalents do — a suspension silently skipped is a containment reported
+    /// but never applied.
+    /// </remarks>
+    protected virtual Task SetTeamMemberSuspendedAsync(string teamKey, string userKey, DateTime? suspendedAt, string suspendedBy)
+        => throw new NotSupportedException(
+            $"'{GetType().Name}' does not implement {nameof(SetTeamMemberSuspendedAsync)}. Implement it, " +
+            $"and declare {nameof(ITeamMember.SuspendedAt)}/{nameof(ITeamMember.SuspendedBy)} on your " +
+            $"member entity, to support suspending members.");
     protected abstract Task SetTeamConsentInternalAsync(string teamKey, string[] consentedRoles, AccessLevel? accessLevel);
     protected abstract IAsyncEnumerable<ITeam> GetConsentedTeamsInternalAsync(string[] userRoles);
     protected abstract Task SetTeamCustomRolesInternalAsync(string teamKey, IReadOnlyList<TenantRoleDefinition> customRoles);
@@ -202,6 +215,40 @@ public abstract class TeamServiceBase : ITeamService
             throw new InvalidOperationException("The owner's access level cannot be changed. Transfer ownership first.");
 
         await SetTeamMemberRoleAsync(teamKey, userKey, accessLevel);
+        _teamMemberCache.TryRemove($"{teamKey}.{userKey}", out _);
+        TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
+    }
+
+    /// <remarks>
+    /// Two refusals, both mirroring guards this class already applies elsewhere. <b>The Owner cannot be
+    /// suspended</b> — the same reason the owner cannot leave and cannot be demoted: it would leave a team
+    /// whose ownership nobody can transfer, since transfer requires the caller to be the owner. <b>A
+    /// member cannot suspend themselves</b>, so an administrator who does it needs a second one to undo
+    /// it, and somebody is always left holding <c>member:manage</c>.
+    /// <para>
+    /// The member cache is dropped on both directions, or the claims builder keeps reading the old state
+    /// and the suspension takes effect only after the entry ages out.
+    /// </para>
+    /// </remarks>
+    public async Task SetMemberSuspendedAsync(string teamKey, string userKey, bool suspended)
+    {
+        var member = await GetTeamMemberAsync(teamKey, userKey);
+        if (member == null)
+            throw new InvalidOperationException($"User '{userKey}' is not a member of team '{teamKey}'.");
+
+        if (suspended)
+        {
+            if (member.AccessLevel == AccessLevel.Owner)
+                throw new InvalidOperationException("The owner cannot be suspended. Transfer ownership first.");
+
+            var caller = await GetCurrentUserAsync();
+            if (caller != null && string.Equals(caller.Key, userKey, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("You cannot suspend your own membership. Ask another administrator to do it.");
+        }
+
+        var actor = suspended ? (await GetCurrentUserAsync())?.Key : null;
+        await SetTeamMemberSuspendedAsync(teamKey, userKey, suspended ? DateTime.UtcNow : null, actor);
+
         _teamMemberCache.TryRemove($"{teamKey}.{userKey}", out _);
         TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
     }
