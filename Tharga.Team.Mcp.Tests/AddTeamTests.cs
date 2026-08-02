@@ -191,4 +191,53 @@ public class AddTeamTests
 
         Assert.Equal("SuperAdmin", options.Value.DeveloperRole);
     }
+
+    /// <summary>
+    /// The MCP registrations survive container validation — no singleton captures a scoped service.
+    /// </summary>
+    /// <remarks>
+    /// <b>The guard that was missing, and it cost a broken release.</b> 3.10.1 gave the singleton
+    /// <c>HttpContextMcpContextAccessor</c> constructor dependencies on scoped services
+    /// (<c>IUserService</c>, <c>ITeamService</c>). Every unit test passed — none of them built a
+    /// validated container — while the application could not start at all:
+    /// <c>Cannot consume scoped service 'IUserService' from singleton 'IMcpContextAccessor'</c>.
+    /// <para>
+    /// This is exactly the failure mode a consuming host reported about a different defect the same day:
+    /// <c>ValidateOnBuild</c> is on by default only in Development, so a suite that never validates stays
+    /// green while startup is broken. Asserting it here is the cheap version of running the app.
+    /// </para>
+    /// <para>
+    /// Scoped services belong on <c>HttpContext.RequestServices</c> for a singleton like this one — the
+    /// request's own scope — not in its constructor.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void AddTeam_SurvivesContainerValidation()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddHttpContextAccessor();
+
+        // Registered as scoped, exactly as a host registers them -- and this is load-bearing. Without
+        // them the container reports "unable to resolve" instead of "cannot consume scoped", and the
+        // guard silently passes against the very bug it exists to catch. Verified by reintroducing that
+        // bug: the guard is green without these lines and red with them.
+        services.AddScoped(_ => Substitute.For<IUserService>());
+        services.AddScoped(_ => Substitute.For<ITeamService>());
+        services.AddScoped(_ => Substitute.For<ITeamManagementService>());
+
+        services.AddThargaMcp(mcp => mcp.AddTeam());
+
+        var exception = Record.Exception(() => services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateScopes = true,
+            ValidateOnBuild = true
+        }));
+
+        // Asserts the absence of one failure class, not of all failures. This bare collection has no
+        // host services in it, so validation legitimately complains about IHostApplicationLifetime and
+        // the like; making it complete would be re-registering the whole application to test one rule,
+        // and the test would then break for reasons that have nothing to do with lifetimes.
+        Assert.DoesNotContain("Cannot consume scoped service", exception?.ToString() ?? string.Empty);
+    }
 }
