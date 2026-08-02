@@ -128,19 +128,33 @@ session to hold a selection in — and over HTTP, per-request *is* per-call. The
 
 ### What naming a team grants
 
+**A person and a key are answered differently, because they are different things.**
+
 | Caller | Gets |
 |---|---|
-| A member of the named team | Their membership scopes in it |
-| Not a member, but holds a global role the team consented to | The team's consented level |
+| **A person**, member of the named team | Their membership scopes in it |
+| **A person**, not a member but holding a role the team consented to | The team's consented level |
+| **A system API key**, naming a team that has consented | The team's consented level |
+| **A team API key**, naming any team but its own | **Refused** — a contradiction, not a preference |
 | Neither, or the team does not exist | **Refused** |
 | A suspended member | **Refused** — suspension means no access, by any door |
+
+A person is matched against the team's *consented roles*; a key holds no roles at all, so for a key the
+question is simply whether the team consented, and the **consented level is the grant**.
+
+> A team enabling consent so its support staff can help thereby admits system keys at that same level.
+> Consent is one statement about who may enter, and it does not distinguish people from machines.
+
+**A team API key needs no header.** Its team cannot be anything other than its own, so there is nothing
+to name — and naming a different one is refused rather than ignored.
 
 **Selection replaces, it never accumulates.** Scopes are recomputed for the named team; the principal's
 own scope claims describe a *different* team and are never consulted, so naming a team can only narrow
 what a caller may do. System scopes are unaffected, being team-independent.
 
-The rule comes from the same resolver the Blazor claims builder uses, so a caller reaches a team at the
-same level over MCP as through the UI.
+**The same code answers this on REST.** `TeamContextResolver` is shared, and the header name is
+configured once on `TeamContextOptions.TeamKeyHeader` — not separately here, because two places to
+configure one name is one place for the surfaces to disagree.
 
 ### Refused, not empty
 
@@ -148,7 +162,8 @@ Naming a team you cannot reach throws rather than returning an empty result. Eve
 surface seeing nothing is the correct answer; here it would be a misleading one — the caller asked about
 a specific team, and an empty answer reads as *"that team is empty"* rather than *"you cannot see it"*.
 
-Change the header name with `o.TeamKeyHeader` if it collides with something in your stack.
+Change the header name with `TeamContextOptions.TeamKeyHeader` if it collides with something in your
+stack — one setting, both surfaces.
 
 ### Consent is configured in one place
 

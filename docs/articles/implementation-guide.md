@@ -367,14 +367,36 @@ The callback receives the same `OpenApiOptions` Tharga configures, so your trans
 `AddThargaControllers` ships one controller of its own, so audit data is reachable from a script or an
 agent rather than only from the Blazor view.
 
+### The caller never names the team
+
+**There is no `teamKey` parameter.** Which team a call is about comes from the credential:
+
+| Credential | Team | Reads |
+|---|---|---|
+| **Team API key** | the key itself — it can be nothing else | that team |
+| **System API key**, no header | none to imply | **system audit**: every team, narrowed by filters |
+| **System API key** + `X-Team-Key` | the header | that team, **if the team has consented** |
+
+A parameter beside a team-bound credential is two sources of truth for one question. They can disagree,
+and an API shaped to allow that is wrong even when the disagreement is refused — which it is. A team key
+presenting a header for a *different* team is refused rather than ignored: the request has said two
+incompatible things, and answering as though one of them were absent leaves the caller believing they got
+what they asked for.
+
 ```
-GET /api/audit?teamKey=ABC123&from=2026-01-01&take=100
-X-API-KEY: <key>
+GET /api/audit?from=2026-01-01&take=100
+X-API-KEY: <team key>
+```
+
+```
+GET /api/audit?from=2026-01-01&take=100
+X-API-KEY: <system key>
+X-Team-Key: ABC123
 ```
 
 | Parameter | Meaning |
 |---|---|
-| `teamKey` | Restrict to one team. **Omit to read across all teams** — that requires a *system* `audit:read` grant |
+| `team` | **A filter, not an authorization input.** Narrows a system-audit read to one team; refused if it contradicts the team the caller is already bound to |
 | `from`, `to` | Time window |
 | `feature`, `action` | Filter by what was done |
 | `success` | `true`/`false` |
@@ -404,10 +426,11 @@ audit* is a property of the shape rather than a check somebody remembered to wri
 | Caller | Result |
 |---|---|
 | No credential | `401` |
-| Holds team `audit:read` for that team | `200` |
-| Holds team `audit:read` for a *different* team | `403` |
-| Omits `teamKey` without a **system** `audit:read` grant | `403` |
-| Holds system `audit:read` | `200`, any team or all teams |
+| Team key holding `audit:read` | `200` for its own team |
+| Team key presenting `X-Team-Key` for another team | `403` — a contradiction, not a preference |
+| System key without a **system** `audit:read` grant | `403` |
+| System key holding system `audit:read` | `200`, across every team |
+| System key naming a team that has not consented | `403`, indistinguishable from naming one that does not exist |
 
 A system grant reads one named team by *filtering* the oversight read. `ScopeProxy`'s team check does not
 accept a system grant — that provenance split is deliberate, so an in-team scope can never be spent
@@ -415,6 +438,16 @@ cross-team — so the two are separate calls, and the REST endpoint tries both o
 
 `audit:read` is registered at `AccessLevel.Administrator`, so a Viewer- or User-level caller is refused
 even for its own team.
+
+### `X-Team-Key` is a platform mechanism, not an audit one
+
+The header is resolved **before** any endpoint runs, and a resolved team is added to the caller's claims.
+So every `[RequireScope]` check works unchanged — including in **your own controllers**, which need no
+knowledge that the header exists. MCP resolves the same header through the same code, so a system key
+gets the same answer whichever surface it arrives on.
+
+Configure the name once, on `TeamContextOptions.TeamKeyHeader`. It is deliberately not also an MCP
+option: two places to configure one name is one place for the surfaces to disagree.
 
 ### Consent reaches audit, and stops where the level does
 
@@ -431,10 +464,13 @@ exactly the consented level, never above it. Since `audit:read` sits at `Adminis
 Consent is therefore necessary but not sufficient: a team can grant cross-team access and grant no audit
 access by the same act.
 
-> **This does not currently apply to API keys.** Consent matches a caller's *roles*, and an API-key
-> principal carries no role claims — neither a team key nor a system key. A key reaches another team only
-> through an explicit **system** grant. Giving keys roles is an open design question, not an oversight to
-> work around.
+**A person and a key are answered differently, because they are different things.** A user naming a team
+is resolved by membership first, then by the consent their *roles* carry. A key holds no roles at all, so
+for a key the question is whether the team consented — and the **consented level is the grant**.
+
+> **Worth being deliberate about:** a team that enables consent so its support staff can help thereby
+> admits system keys at that same level. Consent is a single statement about who may enter, and it does
+> not distinguish people from machines.
 
 Denials are `403`, never `404` — a `404` would confirm whether a team exists to a caller not allowed to
 know that.
