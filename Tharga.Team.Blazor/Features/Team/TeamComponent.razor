@@ -671,8 +671,8 @@ else
                                 TextProperty="Display"
                                 ValueProperty="Key" />
                 <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" Gap="0.5rem">
-                    <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(_ => ds.Close(false))" />
                     <RadzenButton Text="Transfer" ButtonStyle="ButtonStyle.Warning" Click="@(_ => ds.Close(true))" />
+                    <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(_ => ds.Close(false))" />
                 </RadzenStack>
             </RadzenStack>,
             new DialogOptions { Width = "400px" });

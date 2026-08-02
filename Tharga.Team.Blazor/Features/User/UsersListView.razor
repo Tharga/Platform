@@ -411,8 +411,8 @@ else
                 </RadzenText>
                 <RadzenTextBox Value="@editedName" ValueChanged="@(v => editedName = v)" Placeholder="Name" Style="width: 100%;" />
                 <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" Gap="0.5rem">
-                    <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(_ => ds.Close(false))" />
                     <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Click="@(_ => ds.Close(true))" />
+                    <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(_ => ds.Close(false))" />
                 </RadzenStack>
             </RadzenStack>,
             new DialogOptions { Width = "480px" });

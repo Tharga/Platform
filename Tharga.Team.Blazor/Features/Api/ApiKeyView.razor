@@ -611,9 +611,9 @@ else
                                          Style="width: 100%;" />
                 }
                 <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
-                    <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(() => ds.Close())" />
                     <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary"
                                   Click="@(async () => { await SaveEditAsync(context, showRoles ? selectedRoles.ToArray() : null, showScopes ? selectedScopes.ToArray() : null); ds.Close(); })" />
+                    <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(() => ds.Close())" />
                 </RadzenStack>
             </RadzenStack>,
             new DialogOptions { ShowClose = false });
