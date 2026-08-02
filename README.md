@@ -13,6 +13,7 @@ A suite of NuGet packages for building multi-tenant Blazor applications with tea
 | [Tharga.Team.Service](https://www.nuget.org/packages/Tharga.Team.Service) | Server-side API key auth, Swagger, audit logging | No |
 | [Tharga.Team.Entra](https://www.nuget.org/packages/Tharga.Team.Entra) | Microsoft Entra ID user directory (verify / list / delete users via Graph) | No |
 | [Tharga.Team.Images](https://www.nuget.org/packages/Tharga.Team.Images) | Automatic downscaling of uploaded team/user icons (ImageSharp) | No |
+| [Tharga.Team.Support](https://www.nuget.org/packages/Tharga.Team.Support) | Support module — Slack notifications for audited events, routed per event | No |
 | [Tharga.Team.Mcp](https://www.nuget.org/packages/Tharga.Team.Mcp) | MCP (Model Context Protocol) bridge — auth, scopes, audit for MCP tools. Renamed from `Tharga.Platform.Mcp`, which is deprecated and frozen at 3.5.x | No |
 
 ## Dependency graph
@@ -28,8 +29,10 @@ Tharga.Team ── plain .NET, no external dependencies
 │   └── + Tharga.MongoDB, ASP.NET Core
 ├── Tharga.Team.Entra ── Entra ID user directory (optional)
 │   └── + Azure.Identity, Microsoft Graph REST
-└── Tharga.Team.Images ── icon downscaling (optional)
-    └── + SixLabors.ImageSharp
+├── Tharga.Team.Images ── icon downscaling (optional)
+│   └── + SixLabors.ImageSharp
+└── Tharga.Team.Support ── support module, Slack notifications (optional)
+    └── + Tharga.Team.Service
 ```
 
 ## Quick Start
