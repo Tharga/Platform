@@ -75,6 +75,17 @@ public record ThargaBlazorOptions : BlazorOptions
     public bool ThrowOnIncompleteUserService { get; set; }
 
     /// <summary>
+    /// Throw at startup when a team-service facet cannot be resolved, instead of logging an error.
+    /// Default false.
+    /// </summary>
+    /// <remarks>
+    /// Off by default for the same reason <see cref="ThrowOnIncompleteUserService"/> is: the gap is
+    /// pre-existing in every case that matters, and turning a routine upgrade into a boot failure is a
+    /// worse trade than making it unmissable in the log.
+    /// </remarks>
+    public bool ThrowOnIncompleteTeamService { get; set; }
+
+    /// <summary>
     /// Write a display name back to the external directory when an administrator renames a user.
     /// Default <c>false</c>.
     /// </summary>
@@ -151,14 +162,38 @@ public record ThargaBlazorOptions : BlazorOptions
     /// </summary>
     /// <typeparam name="TServiceBase"></typeparam>
     /// <typeparam name="TUserService"></typeparam>
+    /// <summary>
+    /// Registers the host's team and user services, using the <b>standard member type</b>.
+    /// </summary>
+    /// <remarks>
+    /// Use this when a team member needs no properties of your own. The member type is taken from
+    /// <typeparamref name="TServiceBase"/> when it declares one — a service deriving from
+    /// <c>TeamServiceRepositoryBase&lt;TEntity, TMember&gt;</c> does — so a host with its own member type
+    /// gets that type here without naming it twice.
+    /// <para>
+    /// <b>This used to register far less than its three-argument sibling.</b> Everything a component
+    /// injects is built from <c>TeamManagementService&lt;TMember&gt;</c>, so with no member type none of
+    /// it was registered, and the first sign was a failure while rendering a page. It now resolves one,
+    /// and <c>TeamServiceCompletenessCheck</c> says so at startup if it still cannot.
+    /// </para>
+    /// </remarks>
     public void RegisterTeamService<TServiceBase, TUserService>()
         where TServiceBase : TeamServiceBase
         where TUserService : UserServiceBase
     {
         _teamService = typeof(TServiceBase);
         _userService = typeof(TUserService);
+        _memberType = TeamMemberTypeResolver.Resolve(typeof(TServiceBase));
     }
 
+    /// <summary>
+    /// Registers the host's team and user services with an <b>explicit member type</b> — use this when
+    /// your member carries properties of your own.
+    /// </summary>
+    /// <remarks>
+    /// An explicit <typeparamref name="TMember"/> always wins over what the two-argument overload would
+    /// infer: this records a decision, and inference only fills a gap where none was expressed.
+    /// </remarks>
     public void RegisterTeamService<TServiceBase, TUserService, TMember>()
         where TServiceBase : TeamServiceBase
         where TUserService : UserServiceBase

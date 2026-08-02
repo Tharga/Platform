@@ -66,12 +66,23 @@ public static class ThargaBlazorRegistration
             {
                 var managementServiceType = typeof(TeamManagementService<>).MakeGenericType(o._memberType);
                 services.AddScoped(managementServiceType);
-                services.AddScoped(typeof(ITeamManagementService), sp => sp.GetRequiredService(managementServiceType));
-                services.AddScoped(typeof(ITeamLifecycleService), sp => sp.GetRequiredService(managementServiceType));
-                services.AddScoped(typeof(ITeamDirectoryService), sp => sp.GetRequiredService(managementServiceType));
-                services.AddScoped(typeof(ITeamOversightService), sp => sp.GetRequiredService(managementServiceType));
-                services.AddScoped(typeof(ITeamInvitationService), sp => sp.GetRequiredService(managementServiceType));
+
+                // TryAdd, so a host substituting or decorating one facet keeps its own. That is the one
+                // legitimate reason this was ever left to the host, and it is answered here rather than
+                // by making every host wire all five. Registering facets a host never resolves costs
+                // nothing -- they are scoped and simply never constructed.
+                foreach (var facet in TeamServiceFacets.All)
+                    services.TryAddScoped(facet, sp => sp.GetRequiredService(managementServiceType));
             }
+
+            // Reports at startup if any facet is still unresolvable, naming it. Without this the first
+            // sign is a component failing to render -- which for a page nobody opens until production is
+            // the worst place to find out.
+            var teamServiceType = o._teamService;
+            var throwOnIncompleteTeam = o.ThrowOnIncompleteTeamService;
+            services.AddSingleton<IHostedService>(sp => new TeamServiceCompletenessCheck(
+                sp, teamServiceType, throwOnIncompleteTeam,
+                sp.GetService<ILogger<TeamServiceCompletenessCheck>>()));
 
             if (o._apiKeyService != null)
             {

@@ -19,8 +19,24 @@ public class SimplifyRegistrationTests
         Assert.Contains(services, d => d.ServiceType == typeof(ITeamManagementService));
     }
 
+    /// <summary>
+    /// The two-argument overload registers nothing injectable <b>only when no member type can be
+    /// inferred</b> — as here, where <c>StubTeamService</c> derives straight from <c>TeamServiceBase</c>
+    /// and so carries none.
+    /// </summary>
+    /// <remarks>
+    /// <b>This test used to say something stronger, and it was wrong.</b> It asserted the two-argument
+    /// overload never registers <c>ITeamManagementService</c>, which pinned a gap as intended behaviour
+    /// and broke a consuming host's startup twice — at 3.5.2 and again at 3.10.0 — because any fix would
+    /// have failed this test and read as a regression.
+    /// <para>
+    /// It now records the narrow truth that remains: with nothing to infer from, the facets cannot be
+    /// registered. <c>TeamServiceCompletenessCheck</c> reports that at startup instead of leaving it to
+    /// surface when a component renders.
+    /// </para>
+    /// </remarks>
     [Fact]
-    public void RegisterTeamService_TwoParams_DoesNotRegisterITeamManagementService()
+    public void RegisterTeamService_TwoParams_WithNoInferableMemberType_RegistersNoManagementService()
     {
         var services = new ServiceCollection();
 
@@ -29,6 +45,7 @@ public class SimplifyRegistrationTests
             o.RegisterTeamService<StubTeamService, StubUserService>();
         });
 
+        Assert.Null(TeamMemberTypeResolver.Resolve(typeof(StubTeamService)));
         Assert.DoesNotContain(services, d => d.ServiceType == typeof(ITeamManagementService));
     }
 
