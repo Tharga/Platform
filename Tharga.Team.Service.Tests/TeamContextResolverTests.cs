@@ -24,8 +24,15 @@ public class TeamContextResolverTests
         public string Icon => null;
     }
 
+    /// <remarks>
+    /// Carries <c>ApiKeyId</c>, which is what makes it a <i>team key</i> rather than a user who has
+    /// selected a team. Only a key is bound; a person naming another team they belong to is re-selecting,
+    /// not contradicting themselves. The first version of these tests omitted it and asserted a user
+    /// would be refused — which would have broken team selection for people.
+    /// </remarks>
     private static ClaimsPrincipal TeamKeyCaller(string teamKey)
-        => new(new ClaimsIdentity([new Claim(TeamClaimTypes.TeamKey, teamKey)], "Test"));
+        => new(new ClaimsIdentity(
+            [new Claim(TeamClaimTypes.TeamKey, teamKey), new Claim(TeamClaimTypes.ApiKeyId, "key-1")], "Test"));
 
     private static ClaimsPrincipal SystemKeyCaller()
         => new(new ClaimsIdentity([new Claim(TeamClaimTypes.IsSystemKey, "true")], "Test"));
@@ -161,5 +168,74 @@ public class TeamContextResolverTests
         await new TeamContextResolver(teamService, registry).ResolveAsync(SystemKeyCaller(), OtherTeam);
 
         registry.Received(1).GetEffectiveScopes(level, Arg.Any<IEnumerable<string>>(), Arg.Any<IEnumerable<string>>());
+    }
+
+    // ---------------- a person, who is not bound ----------------
+
+    /// <summary>
+    /// A user with a team selected may name a different team they belong to. Only a <i>key</i> is bound —
+    /// a person re-selecting is not contradicting themselves.
+    /// </summary>
+    /// <remarks>
+    /// This distinction was found by the resolver tests failing after the two paths were unified: the
+    /// fixture had represented a team key as "a principal with a TeamKey claim", which is also what a
+    /// signed-in user looks like. Had it stayed that way, selecting another team in the UI would have
+    /// started being refused as a contradiction.
+    /// </remarks>
+    [Fact]
+    public async Task AUserWithASelectedTeam_MayNameAnotherTeamTheyBelongTo()
+    {
+        var member = Substitute.For<ITeamMember>();
+        member.Key.Returns("user-1");
+        member.AccessLevel.Returns(AccessLevel.Administrator);
+
+        var teamService = Substitute.For<ITeamService>();
+        teamService.GetTeamMemberAsync(OtherTeam, "user-1").Returns(member);
+
+        var userService = Substitute.For<IUserService>();
+        var user = Substitute.For<IUser>();
+        user.Key.Returns("user-1");
+        userService.GetCurrentUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
+
+        var registry = Substitute.For<IScopeRegistry>();
+        registry.GetEffectiveScopes(Arg.Any<AccessLevel>(), Arg.Any<IEnumerable<string>>(), Arg.Any<IEnumerable<string>>())
+            .Returns(["team:read"]);
+
+        // A selected team, and no ApiKeyId -- a person, not a credential bound to one team.
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(TeamClaimTypes.TeamKey, OwnTeam)], "Test"));
+
+        var context = await new TeamContextResolver(teamService, registry, null, userService)
+            .ResolveAsync(principal, OtherTeam);
+
+        Assert.False(context.IsRefused);
+        Assert.Equal(OtherTeam, context.TeamKey);
+    }
+
+    /// <summary>A person naming a team they neither belong to nor are consented into is still refused.</summary>
+    [Fact]
+    public async Task AUser_NamingATeamTheyCannotReach_IsRefused()
+    {
+        var teamService = Substitute.For<ITeamService>();
+        teamService.GetTeamMemberAsync(Arg.Any<string>(), Arg.Any<string>()).Returns((ITeamMember)null);
+        teamService.GetConsentedTeamsAsync(Arg.Any<string[]>()).Returns(_ => Empty());
+
+        var userService = Substitute.For<IUserService>();
+        var user = Substitute.For<IUser>();
+        user.Key.Returns("user-1");
+        userService.GetCurrentUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(TeamClaimTypes.TeamKey, OwnTeam)], "Test"));
+
+        var context = await new TeamContextResolver(teamService, Substitute.For<IScopeRegistry>(), null, userService)
+            .ResolveAsync(principal, OtherTeam);
+
+        Assert.True(context.IsRefused);
+    }
+
+    private static async IAsyncEnumerable<ITeam> Empty()
+    {
+        yield break;
     }
 }

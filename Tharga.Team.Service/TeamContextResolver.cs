@@ -52,17 +52,23 @@ public sealed record TeamContext(string TeamKey, IReadOnlyList<string> Scopes, T
 public sealed class TeamContextResolver
 {
     private readonly ITeamService _teamService;
+    private readonly IUserService _userService;
     private readonly IScopeRegistry _scopeRegistry;
     private readonly ITenantRoleService _tenantRoleService;
+    private readonly AccessLevel _defaultConsentLevel;
 
     public TeamContextResolver(
         ITeamService teamService,
         IScopeRegistry scopeRegistry = null,
-        ITenantRoleService tenantRoleService = null)
+        ITenantRoleService tenantRoleService = null,
+        IUserService userService = null,
+        AccessLevel defaultConsentLevel = AccessLevel.Viewer)
     {
         _teamService = teamService;
         _scopeRegistry = scopeRegistry;
         _tenantRoleService = tenantRoleService;
+        _userService = userService;
+        _defaultConsentLevel = defaultConsentLevel;
     }
 
     /// <summary>
@@ -82,7 +88,14 @@ public sealed class TeamContextResolver
     /// </remarks>
     public async Task<TeamContext> ResolveAsync(ClaimsPrincipal principal, string headerTeamKey)
     {
-        var boundTeamKey = principal?.FindFirst(TeamClaimTypes.TeamKey)?.Value;
+        // Bound means "issued for one team and can be nothing else" -- a team API key. A *user* also
+        // carries a TeamKey claim for the team they selected, but that is a choice, not a binding:
+        // naming another team they belong to is re-selection, not a contradiction. Treating the two
+        // alike would refuse something MCP has always allowed.
+        var isApiKey = principal?.FindFirst(TeamClaimTypes.ApiKeyId) != null
+                       || principal?.HasClaim(TeamClaimTypes.IsSystemKey, "true") == true;
+
+        var boundTeamKey = isApiKey ? principal?.FindFirst(TeamClaimTypes.TeamKey)?.Value : null;
 
         if (!string.IsNullOrEmpty(boundTeamKey))
         {
@@ -97,6 +110,20 @@ public sealed class TeamContextResolver
         }
 
         if (string.IsNullOrEmpty(headerTeamKey)) return TeamContext.None;
+
+        // A person naming a team is answered by membership first, then by the consent their roles carry
+        // -- TeamGrantResolver, the copy of that rule the claims builder already uses. Only a key, which
+        // has neither membership nor roles, falls through to the team-level consent below.
+        if (!isApiKey)
+        {
+            var user = _userService == null ? null : await _userService.GetCurrentUserAsync(principal);
+            var grant = await new TeamGrantResolver(_teamService, _scopeRegistry, _tenantRoleService)
+                .ResolveAsync(principal, user?.Key, headerTeamKey, _defaultConsentLevel);
+
+            return grant == null
+                ? TeamContext.Refused(TeamContextRefusal.NotConsented)
+                : new TeamContext(headerTeamKey, grant.Scopes, TeamContextRefusal.None);
+        }
 
         var team = await _teamService.GetTeamByKeyAsync(headerTeamKey);
         if (team == null) return TeamContext.Refused(TeamContextRefusal.NotConsented);

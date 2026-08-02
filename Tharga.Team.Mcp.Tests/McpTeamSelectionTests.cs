@@ -101,6 +101,12 @@ public class McpTeamSelectionTests
         teamService.GetConsentedTeamsAsync(Arg.Any<string[]>())
             .Returns(_ => Teams(consentedTeam == null ? [] : [consentedTeam]));
 
+        // A key is now resolved by the team's own consent rather than by matching its roles, so the
+        // team-level read has to be stubbed too. That is the behaviour change: a system key is admitted
+        // by the consented *level*, and previously could never be admitted at all, having no roles.
+        teamService.GetTeamByKeyAsync(Arg.Any<string>()).Returns((ITeam)null);
+        if (consentedTeam != null) teamService.GetTeamByKeyAsync(consentedTeam.Key).Returns(consentedTeam);
+
         var registry = Substitute.For<IScopeRegistry>();
         registry.GetEffectiveScopes(Arg.Any<AccessLevel>(), Arg.Any<IEnumerable<string>>(), Arg.Any<IEnumerable<string>>())
             .Returns(scopesAtLevel ?? ["team:read"]);

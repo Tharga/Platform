@@ -82,19 +82,20 @@ public sealed class HttpContextMcpContextAccessor : IMcpContextAccessor
             // is an async seam through every provider signature, which is the same cost the header was
             // chosen to avoid; the common path reads the member cache, and a selecting call has already
             // paid for an HTTP round trip.
-            var grant = ResolveGrantAsync(ctx, user, selectedTeamKey).GetAwaiter().GetResult();
+            var resolved = ResolveContextAsync(ctx, user, selectedTeamKey).GetAwaiter().GetResult();
 
             // Refused, not silently empty. The caller named a specific team, and an empty answer would
             // read as "that team has nothing in it" rather than "you cannot see it". Everywhere else in
             // this surface seeing nothing is the correct answer; here it would be a misleading one.
-            if (grant == null)
+            if (resolved == null || resolved.IsRefused)
             {
-                throw new UnauthorizedAccessException(
-                    $"Team '{selectedTeamKey}' is not available to this caller. Either it does not exist, " +
-                    "or the caller is neither a member of it nor holds a role it has consented to.");
+                throw new UnauthorizedAccessException(resolved?.Refusal == TeamContextRefusal.Contradiction
+                    ? $"This credential is bound to one team; '{_options.TeamKeyHeader}' named a different one."
+                    : $"Team '{selectedTeamKey}' is not available to this caller. Either it does not exist, " +
+                      "or the caller has neither membership nor consent for it.");
             }
 
-            return new TeamMcpContext(user, scope, _options.DeveloperRole, selectedTeamKey, grant.Scopes);
+            return new TeamMcpContext(user, scope, _options.DeveloperRole, selectedTeamKey, resolved.Scopes);
         }
         set
         {
@@ -112,25 +113,27 @@ public sealed class HttpContextMcpContextAccessor : IMcpContextAccessor
     }
 
     /// <remarks>
-    /// Goes through <see cref="TeamGrantResolver"/> — the same rule the Blazor claims builder uses — so a
-    /// caller reaches a team at the same level over MCP as through the UI. A team store is optional in
-    /// this package's registration; a host that registered none cannot select, and refusing is right
-    /// there rather than falling back to whatever team the caller was anchored to.
+    /// Goes through <see cref="TeamContextResolver"/> — the one place that answers which team a request
+    /// acts on — so REST and MCP cannot drift. It resolves a person by membership then consent, and a key
+    /// by the team's consented level; this class no longer knows the difference.
+    /// <para>
+    /// Resolved from the request's own scope, never a captured field: those services are scoped and this
+    /// class is a singleton.
+    /// </para>
     /// </remarks>
-    private async Task<TeamGrant> ResolveGrantAsync(HttpContext ctx, System.Security.Claims.ClaimsPrincipal principal, string teamKey)
+    private async Task<TeamContext> ResolveContextAsync(HttpContext ctx, System.Security.Claims.ClaimsPrincipal principal, string teamKey)
     {
-        // From the request's own scope, never from a captured field: these are scoped services and this
-        // class is a singleton.
         var services = ctx.RequestServices;
         var teamService = services?.GetService<ITeamService>();
         if (teamService == null) return null;
 
-        var userService = services.GetService<IUserService>();
-        var user = userService == null ? null : await userService.GetCurrentUserAsync(principal);
+        var resolver = new TeamContextResolver(
+            teamService,
+            services.GetService<IScopeRegistry>(),
+            services.GetService<ITenantRoleService>(),
+            services.GetService<IUserService>(),
+            _consent.AccessLevel);
 
-        var resolver = new TeamGrantResolver(
-            teamService, services.GetService<IScopeRegistry>(), services.GetService<ITenantRoleService>());
-
-        return await resolver.ResolveAsync(principal, user?.Key, teamKey, _consent.AccessLevel);
+        return await resolver.ResolveAsync(principal, teamKey);
     }
 }
