@@ -20,45 +20,45 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## 3. Confirm the two open decisions — **before any code**
 
-- [ ] **Header name** (`X-Team-Key` proposed). Consumer-visible the moment it ships.
-- [ ] **Unreachable team: refuse or see nothing?** Proposed **refuse**, so it reads differently from an
+- [x] **Header name** `X-Team-Key` (user, 2026-08-02). Consumer-visible the moment it ships.
+- [x] **Unreachable team: refuse** (user, 2026-08-02), so it reads differently from an
       empty team.
 
 ---
 
 ## 4. Carry the selection
 
-- [ ] Read the header in `HttpContextMcpContextAccessor`, where `IMcpContext` is already assembled from
+- [x] Read the header in `HttpContextMcpContextAccessor`, where `IMcpContext` is already assembled from
       `HttpContext`. One place, so no provider signature changes and no provider can forget it.
-- [ ] `TeamMcpContext.TeamId` becomes *the selected team* rather than the claim, falling back to the
+- [x] `TeamMcpContext.TeamId` becomes *the selected team* rather than the claim, falling back to the
       claim when nothing is selected.
-- [ ] The `McpScope` derivation must not regress: a system caller stays `System` whether or not they
+- [x] The `McpScope` derivation does not regress: a system caller stays `System` whether or not they
       select, and a selecting user must not be promoted past `Team`.
 
 ## 5. Resolve what the selection grants — the load-bearing half
 
-- [ ] Membership first: if the caller is a member of the named team, their membership scopes.
-- [ ] Consent second: if not a member, the team's consented level for a global role the caller holds.
+- [x] Membership first: if the caller is a member of the named team, their membership scopes.
+- [x] Consent second: if not a member, the team's consented level for a global role the caller holds.
       This is the case that is unimplementable today and the reason the feature exists.
-- [ ] **Intersect with what the caller already holds.** Selection narrows, never widens.
-- [ ] Reuse the existing rule rather than restating it — `TeamMembershipClaimsBuilder` computes exactly
+- [x] **Narrowing, sharpened: the selected team *replaces* the anchored one.** Selection narrows, never widens.
+- [x] Reused via `TeamGrantResolver`, extracted to `Tharga.Team.Service` — `TeamMembershipClaimsBuilder` computes exactly
       this for Blazor, and a second copy is how the two enforcement paths would drift. If it cannot be
       shared as-is, extract the shared part rather than duplicating.
 
 ## 6. Refuse what cannot be reached
 
-- [ ] Unknown team key, and a team the caller has neither membership nor consent for: refused,
+- [x] Unknown team key, and a team the caller has neither membership nor consent for: refused,
       distinguishably from an empty team.
-- [ ] No selection at all: unchanged behaviour. The feature is additive.
+- [x] No selection at all: unchanged behaviour. The feature is additive.
 
 ## 7. Tests
 
-- [ ] The four grant cases: member, system key, consented non-member, neither.
-- [ ] **The narrowing property**, attacked directly: a caller naming a team must not gain a scope they
+- [x] The four grant cases: member, system key, consented non-member, neither.
+- [x] **The narrowing property**, attacked directly: a caller naming a team must not gain a scope they
       did not already hold. Worth several tests from different directions — it is the security claim.
-- [ ] Refusal distinguishable from empty.
-- [ ] A no-selection call is byte-for-byte what it is today.
-- [ ] Mutation-check each guard by removing it.
+- [x] Refusal distinguishable from empty.
+- [x] A no-selection call is byte-for-byte what it is today.
+- [x] Mutation-checked: removing the narrowing guard reds 1 test, removing the refusal reds 3.
 
 ## 8. Documentation
 
@@ -87,4 +87,20 @@ the first commit. Package check unchanged.
 `HttpContextMcpContextAccessor` derives `McpScope` from it. So the selection has to land in the accessor,
 which is the one place all three already agree on.
 
-**Next:** confirm the two decisions in §3, then §4.
+**2026-08-02 (§3-§7).** Both decisions confirmed; selection implemented and tested. **1416 green**, 8 warnings.
+
+**The narrowing rule was vaguer in `feature.md` than it needed to be.** "Intersected with what the caller
+holds" is really *replace, do not accumulate*: team scopes are always recomputed for the named team, and
+the principal's own Scope claims — which describe a **different** team — are never consulted. System
+grants are untouched, being team-independent. `Selecting_DoesNotCarryTheAnchoredTeamsScopesAcross` is
+the test that says so.
+
+**Extracted rather than duplicated.** `TeamGrantResolver` now lives in `Tharga.Team.Service`, which both
+Blazor and MCP reference; the Blazor claims builder delegates to it. Behaviour-neutral, verified by the
+full suite before any MCP code was written.
+
+**One wrinkle worth knowing:** the default consent level is configured in two places — `ConsentOptions`
+(Blazor) and `McpTeamOptions.ConsentAccessLevel` — because the former lives above this package. A host
+changing one must change the other, and the XML doc says so.
+
+**Next:** §8 documentation, then close-out.
