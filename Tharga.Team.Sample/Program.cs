@@ -15,6 +15,7 @@ using Tharga.Team.Images;
 using Tharga.Team.MongoDB;
 using Tharga.Team.Service;
 using Tharga.Team.Service.Audit;
+using Tharga.Team.Support;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -169,6 +170,16 @@ builder.Services.AddScoped<AppUserAdminService>();
 
 // Auto-downscale uploaded icons larger than IconOptions.MaxDimension (256px) instead of rejecting them.
 builder.Services.AddThargaImageProcessing();
+
+// Slack notifications for audited events. Registered with no secrets checked in, so it stays dormant
+// unless Slack:BotToken and Slack:Channel are supplied — the point here is that the wiring resolves
+// inside the real application graph. The container-validation test builds a bare collection, and a bare
+// collection is exactly what missed the captive dependency that stopped this sample from starting.
+builder.Services.AddThargaSupport(o =>
+{
+    o.Slack.BotToken = builder.Configuration["Slack:BotToken"];
+    o.Notifications.DefaultChannel = builder.Configuration["Slack:Channel"];
+});
 
 builder.Services.AddThargaTeamRepository(o =>
 {
