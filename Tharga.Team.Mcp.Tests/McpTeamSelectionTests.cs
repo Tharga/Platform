@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Tharga.Mcp;
 using Tharga.Team;
@@ -50,6 +51,25 @@ public class McpTeamSelectionTests
         await Task.CompletedTask;
     }
 
+
+    /// <summary>
+    /// Puts the scoped team services on the request scope, which is where the accessor reads them.
+    /// </summary>
+    /// <remarks>
+    /// It cannot take them in its constructor: it is registered as a singleton, and capturing a scoped
+    /// service in one is what <c>ValidateOnBuild</c> refuses — it stopped the sample starting at all.
+    /// Wiring them through <c>RequestServices</c> here exercises the same path the application uses.
+    /// </remarks>
+    private static void WithRequestServices(
+        DefaultHttpContext httpContext, IUserService userService, ITeamService teamService, IScopeRegistry registry)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(userService);
+        services.AddSingleton(teamService);
+        services.AddSingleton(registry);
+        httpContext.RequestServices = services.BuildServiceProvider();
+    }
+
     private static (HttpContextMcpContextAccessor Sut, ITeamService TeamService) Build(
         string selectedTeam,
         ITeamMember memberOfTarget = null,
@@ -85,8 +105,8 @@ public class McpTeamSelectionTests
         registry.GetEffectiveScopes(Arg.Any<AccessLevel>(), Arg.Any<IEnumerable<string>>(), Arg.Any<IEnumerable<string>>())
             .Returns(scopesAtLevel ?? ["team:read"]);
 
-        var sut = new HttpContextMcpContextAccessor(
-            httpAccessor, Options.Create(new McpTeamOptions()), userService, teamService, registry);
+        WithRequestServices(httpContext, userService, teamService, registry);
+        var sut = new HttpContextMcpContextAccessor(httpAccessor, Options.Create(new McpTeamOptions()));
 
         return (sut, teamService);
     }
@@ -194,8 +214,8 @@ public class McpTeamSelectionTests
         registry.GetEffectiveScopes(AccessLevel.Viewer, Arg.Any<IEnumerable<string>>(), Arg.Any<IEnumerable<string>>())
             .Returns(["team:read"]);
 
-        var accessor = new HttpContextMcpContextAccessor(
-            httpAccessor, Options.Create(new McpTeamOptions()), userService, teamService, registry);
+        WithRequestServices(httpContext, userService, teamService, registry);
+        var accessor = new HttpContextMcpContextAccessor(httpAccessor, Options.Create(new McpTeamOptions()));
 
         var checker = new McpScopeChecker(httpAccessor, accessor);
 
@@ -255,8 +275,8 @@ public class McpTeamSelectionTests
         registry.GetEffectiveScopes(Arg.Any<AccessLevel>(), Arg.Any<IEnumerable<string>>(), Arg.Any<IEnumerable<string>>())
             .Returns(["team:read"]);
 
-        var sut = new HttpContextMcpContextAccessor(
-            httpAccessor, Options.Create(new McpTeamOptions()), userService, teamService, registry);
+        WithRequestServices(httpContext, userService, teamService, registry);
+        var sut = new HttpContextMcpContextAccessor(httpAccessor, Options.Create(new McpTeamOptions()));
 
         Assert.Equal(McpScope.Team, sut.Current.Scope);
     }

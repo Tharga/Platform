@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Tharga.Mcp;
 using Tharga.Team;
@@ -22,34 +23,30 @@ namespace Tharga.Team.Mcp;
 public sealed class HttpContextMcpContextAccessor : IMcpContextAccessor
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IUserService _userService;
-    private readonly ITeamService _teamService;
-    private readonly IScopeRegistry _scopeRegistry;
-    private readonly ITenantRoleService _tenantRoleService;
     private readonly McpTeamOptions _options;
     private readonly ConsentOptions _consent;
 
     /// <remarks>
-    /// <paramref name="consent"/> is resolved rather than duplicated: it is the same instance the Blazor
+    /// <b>Only singletons may be injected here.</b> This type is registered as a singleton, so taking
+    /// <c>IUserService</c> or <c>ITeamService</c> in the constructor captures a scoped service inside a
+    /// singleton — which <c>ValidateOnBuild</c> refuses, stopping the application from starting at all.
+    /// The team services are resolved per call from <c>HttpContext.RequestServices</c> instead: that is
+    /// the request's own scope, and the only correct source for them here.
+    /// <para>
+    /// <paramref name="consent"/> is resolved rather than duplicated — it is the same instance the Blazor
     /// claims builder reads, so a caller reaches a team at the same level over MCP as through the UI. It
-    /// is optional only so this package works without the Blazor registration, where the defaults apply.
+    /// is optional only so this package works without the Blazor registration, and it is safe to hold in
+    /// a field because options are singletons.
+    /// </para>
     /// </remarks>
     public HttpContextMcpContextAccessor(
         IHttpContextAccessor httpContextAccessor,
         IOptions<McpTeamOptions> options,
-        IUserService userService = null,
-        ITeamService teamService = null,
-        IScopeRegistry scopeRegistry = null,
-        ITenantRoleService tenantRoleService = null,
         IOptions<ConsentOptions> consent = null)
     {
         _httpContextAccessor = httpContextAccessor;
         _options = options.Value;
         _consent = consent?.Value ?? new ConsentOptions();
-        _userService = userService;
-        _teamService = teamService;
-        _scopeRegistry = scopeRegistry;
-        _tenantRoleService = tenantRoleService;
     }
 
     public IMcpContext Current
@@ -85,7 +82,7 @@ public sealed class HttpContextMcpContextAccessor : IMcpContextAccessor
             // is an async seam through every provider signature, which is the same cost the header was
             // chosen to avoid; the common path reads the member cache, and a selecting call has already
             // paid for an HTTP round trip.
-            var grant = ResolveGrantAsync(user, selectedTeamKey).GetAwaiter().GetResult();
+            var grant = ResolveGrantAsync(ctx, user, selectedTeamKey).GetAwaiter().GetResult();
 
             // Refused, not silently empty. The caller named a specific team, and an empty answer would
             // read as "that team has nothing in it" rather than "you cannot see it". Everywhere else in
@@ -120,13 +117,20 @@ public sealed class HttpContextMcpContextAccessor : IMcpContextAccessor
     /// this package's registration; a host that registered none cannot select, and refusing is right
     /// there rather than falling back to whatever team the caller was anchored to.
     /// </remarks>
-    private async Task<TeamGrant> ResolveGrantAsync(System.Security.Claims.ClaimsPrincipal principal, string teamKey)
+    private async Task<TeamGrant> ResolveGrantAsync(HttpContext ctx, System.Security.Claims.ClaimsPrincipal principal, string teamKey)
     {
-        if (_teamService == null) return null;
+        // From the request's own scope, never from a captured field: these are scoped services and this
+        // class is a singleton.
+        var services = ctx.RequestServices;
+        var teamService = services?.GetService<ITeamService>();
+        if (teamService == null) return null;
 
-        var user = _userService == null ? null : await _userService.GetCurrentUserAsync(principal);
+        var userService = services.GetService<IUserService>();
+        var user = userService == null ? null : await userService.GetCurrentUserAsync(principal);
 
-        var resolver = new TeamGrantResolver(_teamService, _scopeRegistry, _tenantRoleService);
+        var resolver = new TeamGrantResolver(
+            teamService, services.GetService<IScopeRegistry>(), services.GetService<ITenantRoleService>());
+
         return await resolver.ResolveAsync(principal, user?.Key, teamKey, _consent.AccessLevel);
     }
 }

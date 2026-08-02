@@ -50,6 +50,8 @@ builder.AddThargaTeam(o =>
 {
     o.Blazor.Title = "My App";
     o.Blazor.RegisterTeamService<MyTeamService, MyUserService>();
+    // or, writing no storage types of your own:
+    // o.Blazor.RegisterTeamService<DefaultTeamService, DefaultUserService>();
 });
 
 // MongoDB persistence (requires consumer-specific entity types)
