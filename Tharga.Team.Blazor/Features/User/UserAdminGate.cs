@@ -101,6 +101,23 @@ public static class UserAdminGate
     public static bool CanAssignOwner(bool hasAssignOwnerScope, bool teamIsOwnerless)
         => hasAssignOwnerScope && teamIsOwnerless;
 
+    /// <summary>
+    /// Whether the users list offers the per-row audit action. Requires the <b>system</b>
+    /// <c>audit:read</c> grant.
+    /// </summary>
+    /// <remarks>
+    /// System, not team: this list spans every team, so the audit it opens is cross-team and a grant on
+    /// one team does not cover it.
+    /// <para>
+    /// <b>The action used to appear whenever the host set <c>ShowAuditLogButton</c></b>, and the dialog it
+    /// opened answered "Access denied" — shown-then-refused, the defect PR #126 fixed for per-team
+    /// actions. <c>TeamComponent</c> already gated its equivalent through
+    /// <c>TeamActionGate.CanReadMemberAudit</c>; this surface was simply never given the same treatment.
+    /// </para>
+    /// </remarks>
+    public static bool CanReadAudit(bool showAuditLogButton, bool hasSystemAuditRead)
+        => showAuditLogButton && hasSystemAuditRead;
+
     public static bool CanDeleteUser(string rowUserKey, string currentUserKey)
     {
         if (string.IsNullOrEmpty(rowUserKey) || string.IsNullOrEmpty(currentUserKey)) return false;

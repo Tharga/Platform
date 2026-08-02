@@ -46,14 +46,23 @@ public sealed class TeamSystemResourceProvider : IMcpResourceProvider
 
     public McpScope Scope => McpScope.System;
 
-    public Task<IReadOnlyList<McpResourceDescriptor>> ListResourcesAsync(IMcpContext context, CancellationToken cancellationToken)
+    /// <remarks>
+    /// <b>A resource is listed only if this caller could read it.</b> Listing something they cannot read
+    /// advertises data they may not have; omitting something they can read hides a capability they hold.
+    /// Both were true here at once — the read moved onto <c>audit:read</c> while the list one method above
+    /// still asked for the Developer role, so a scope-holder without the role was refused the listing and
+    /// granted the read, and a role-holder without the scope got the reverse.
+    /// <para>
+    /// Each entry therefore asks the same question its read asks, rather than one check standing in for
+    /// all of them.
+    /// </para>
+    /// </remarks>
+    public async Task<IReadOnlyList<McpResourceDescriptor>> ListResourcesAsync(IMcpContext context, CancellationToken cancellationToken)
     {
-        if (context?.IsDeveloper != true)
-            return Task.FromResult<IReadOnlyList<McpResourceDescriptor>>(Array.Empty<McpResourceDescriptor>());
-
         var list = new List<McpResourceDescriptor>();
+        var isDeveloper = context?.IsDeveloper == true;
 
-        if (_apiKeyAdministrationService != null)
+        if (isDeveloper && _apiKeyAdministrationService != null)
         {
             list.Add(new McpResourceDescriptor
             {
@@ -64,7 +73,7 @@ public sealed class TeamSystemResourceProvider : IMcpResourceProvider
             });
         }
 
-        if (_tenantRoleRegistry != null)
+        if (isDeveloper && _tenantRoleRegistry != null)
         {
             list.Add(new McpResourceDescriptor
             {
@@ -75,7 +84,9 @@ public sealed class TeamSystemResourceProvider : IMcpResourceProvider
             });
         }
 
-        if (_auditLogger != null)
+        // Asked of the service, which is what the read is gated on -- a registered logger says the feature
+        // exists, not that this caller may use it.
+        if (await CanReadAuditAsync())
         {
             list.Add(new McpResourceDescriptor
             {
@@ -86,7 +97,31 @@ public sealed class TeamSystemResourceProvider : IMcpResourceProvider
             });
         }
 
-        return Task.FromResult<IReadOnlyList<McpResourceDescriptor>>(list);
+        return list;
+    }
+
+    /// <summary>
+    /// Whether this caller could read audit, answered by attempting the smallest possible read through
+    /// the gated service.
+    /// </summary>
+    /// <remarks>
+    /// Asking the service rather than re-deriving its rule is the point: a second copy of "may this caller
+    /// read audit" is exactly what left the list and the read disagreeing. The cost is one bounded query
+    /// during discovery, which is a listing operation already.
+    /// </remarks>
+    private async Task<bool> CanReadAuditAsync()
+    {
+        if (_auditOversightService == null) return false;
+
+        try
+        {
+            await _auditOversightService.QueryAllAsync(new AuditQuery { Take = 1 });
+            return true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     public async Task<McpResourceContent> ReadResourceAsync(string uri, IMcpContext context, CancellationToken cancellationToken)

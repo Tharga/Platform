@@ -104,8 +104,15 @@ public static class ControllersRegistration
     }
 
     /// <summary>
-    /// Maps controllers, OpenAPI endpoint, and Swagger UI.
+    /// Maps controllers, OpenAPI endpoint, and Swagger UI, and resolves the team a request acts on.
     /// </summary>
+    /// <remarks>
+    /// <b>Call this after <c>UseAuthorization()</c>.</b> An API key is authenticated by the policy that
+    /// names its scheme, and that happens during authorization — so the team-context middleware placed
+    /// before it would see an unauthenticated caller and silently do nothing, leaving the header ignored
+    /// rather than refused. Found by an end-to-end test; no unit test of the middleware could show it,
+    /// because the ordering is the whole defect.
+    /// </remarks>
     public static WebApplication UseThargaControllers(this WebApplication app)
     {
         var options = app.Services.GetService<ThargaControllerOptions>() ?? new ThargaControllerOptions();

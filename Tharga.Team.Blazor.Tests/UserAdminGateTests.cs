@@ -157,4 +157,19 @@ public class UserAdminGateTests
     {
         Assert.False(UserAdminGate.CanDisableUser(rowUserKey, currentUserKey));
     }
+
+    /// <summary>
+    /// The audit action is offered only to a caller who can actually read audit — hidden, not shown and
+    /// then refused. The host flag alone is permission to <i>offer</i> the feature, not evidence this
+    /// caller may use it.
+    /// </summary>
+    [Theory]
+    [InlineData(true, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(false, false, false)]
+    public void CanReadAudit_NeedsBothTheHostFlagAndTheGrant(bool showButton, bool hasGrant, bool expected)
+    {
+        Assert.Equal(expected, UserAdminGate.CanReadAudit(showButton, hasGrant));
+    }
 }
