@@ -10,6 +10,19 @@ Team management infrastructure: Tharga.Team, Tharga.Team.Service, Tharga.Team.Mo
 
 - The PR description is used for **release notes** — write it at a level suitable for package consumers (what changed, why, how to use it). Avoid internal implementation details.
 
+## Priority — which case to pick next
+
+When choosing what to work on, in this order:
+
+1. **Security and authorization.** Anything where the toolkit grants access it should not, or refuses
+   access it should, comes first regardless of who asked. It is the one class of defect a consumer cannot
+   work around and may not notice.
+2. **Eplicta and FortDocs.** Their asks before other consumers'.
+3. **Everything else** — other projects' requests, then internal work.
+
+Within a tier, a request someone actually filed outranks internal work. Say which tier a suggestion comes
+from when proposing what to do next, so the ordering is visible rather than implied.
+
 ## Design Direction
 
 The **target architecture** is defined in `$DOC_ROOT/Tharga/plans/Toolkit/Platform/architecture-v4.md`
@@ -20,6 +33,10 @@ by, **not a scheduled rewrite** — nothing in it is planned work.
 any change to authorization or persistence. Then:
 
 - **Every change must move towards it or be neutral to it.** Never away from it.
+- **Build towards it, but not ahead of consumers.** Work that only moves towards the target waits behind
+  blockers other projects are actually waiting on. The exception is a rebuild the target genuinely
+  requires: if reaching v4 would mean tearing out something we are about to build anyway, do that part
+  now rather than twice — and say which of the two it is when proposing it.
 - **Do not build on spec.** Adding structure that only serves the target — a port with one implementation, a
   client with no endpoints to call — repeats the mistake the target exists to correct. Take changes that are
   correct on their own terms today and happen to point the right way.
