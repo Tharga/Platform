@@ -45,6 +45,8 @@ public partial class AuditLogView : ComponentBase
     /// </summary>
     private bool _accessResolved;
     private CompositeAuditLogger _auditLogger;
+    private IAuditReadService _auditReadService;
+    private IAuditOversightService _auditOversightService;
     private bool _auditLoggerMissing;
     private bool? _mongoAvailable;
     private IReadOnlyList<AuditEntry> _entries = Array.Empty<AuditEntry>();
@@ -75,33 +77,71 @@ public partial class AuditLogView : ComponentBase
     internal static readonly int[] PageSizeOptionsValues = [8, 16, 32, 64];
     internal static readonly AuditEventType[] EventTypeOptions = Enum.GetValues<AuditEventType>();
 
+    /// <summary>
+    /// Routes a read to the service that can authorize it: the team-bound one when a team is named, the
+    /// oversight one otherwise. Both carry <c>[RequireScope]</c>, so this method decides nothing.
+    /// </summary>
+    private async Task<AuditQueryResult> QueryAsync(AuditQuery query)
+    {
+        var teamKey = query.TeamKey ?? PinnedFilter?.TeamKey;
+
+        if (!string.IsNullOrEmpty(teamKey) && _auditReadService != null)
+        {
+            try
+            {
+                return await _auditReadService.QueryAsync(teamKey, query);
+            }
+            catch (UnauthorizedAccessException) when (_auditOversightService != null)
+            {
+                // No grant on that team; a system grant may still cover it, narrowed by the filter.
+            }
+        }
+
+        if (_auditOversightService == null) throw new UnauthorizedAccessException("No audit service is registered.");
+
+        return await _auditOversightService.QueryAllAsync(query with { TeamKey = teamKey });
+    }
+
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
 
-        // Shared with the REST endpoint rather than restated here: the rule decided in two places is the
-        // rule that drifts, and the surface that drifts is the one nobody tested.
-        _hasAccess = AuditAccess.CanRead(user, PinnedFilter?.TeamKey);
-        _accessResolved = true;
-        if (!_hasAccess) return;
-
+        _auditReadService = ServiceProvider.GetService<IAuditReadService>();
+        _auditOversightService = ServiceProvider.GetService<IAuditOversightService>();
         _auditLogger = ServiceProvider.GetService<CompositeAuditLogger>();
-        if (_auditLogger == null)
+
+        if (_auditLogger == null || (_auditReadService == null && _auditOversightService == null))
         {
             _auditLoggerMissing = true;
+            _accessResolved = true;
             return;
         }
 
+        // Access is decided by asking the service, not by restating its rule here. The view used to call
+        // AuditAccess.CanRead -- correct at the time, but a second place holding the rule, and the MCP
+        // surface proved how that ends: it grew a third rule and nothing noticed. Whether to *show* the
+        // view is still a UI decision, so it is answered before rendering rather than by letting a
+        // control appear and then throw.
         try
         {
-            await _auditLogger.QueryAsync(new AuditQuery { Take = 1 });
+            await QueryAsync(new AuditQuery { Take = 1 });
+            _hasAccess = true;
             _mongoAvailable = true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            _hasAccess = false;
         }
         catch
         {
+            // Reached the gate, so access is fine; the store is not.
+            _hasAccess = true;
             _mongoAvailable = false;
         }
+
+        _accessResolved = true;
+        if (!_hasAccess) return;
 
         if (_mongoAvailable != true) return;
 
@@ -124,7 +164,7 @@ public partial class AuditLogView : ComponentBase
             Take = ChartQueryLimit
         });
 
-        var recentResult = await _auditLogger.QueryAsync(optionQuery);
+        var recentResult = await QueryAsync(optionQuery);
         _features = recentResult.Items.Where(e => e.Feature != null).Select(e => e.Feature).Distinct().OrderBy(f => f).ToList();
         _actions = recentResult.Items.Where(e => e.Action != null).Select(e => e.Action).Distinct().OrderBy(a => a).ToList();
         _sources = recentResult.Items.Select(e => e.CallerSource.ToString()).Distinct().OrderBy(s => s).ToList();
@@ -188,7 +228,7 @@ public partial class AuditLogView : ComponentBase
         try
         {
             var query = BuildQuery(args.Skip ?? 0, args.Top ?? _pageSize, args.OrderBy, args.Filters);
-            var result = await _auditLogger.QueryAsync(query);
+            var result = await QueryAsync(query);
             _entries = result.Items;
             _totalCount = result.TotalCount;
 
@@ -334,7 +374,7 @@ public partial class AuditLogView : ComponentBase
     {
         try
         {
-            var result = await _auditLogger.QueryAsync(BuildQuery(take: ChartQueryLimit));
+            var result = await QueryAsync(BuildQuery(take: ChartQueryLimit));
             _chartEntries = result.Items;
         }
         catch (Exception ex)
@@ -389,7 +429,7 @@ public partial class AuditLogView : ComponentBase
     {
         try
         {
-            var result = await _auditLogger.QueryAsync(BuildQuery(take: 100_000));
+            var result = await QueryAsync(BuildQuery(take: 100_000));
             var exportEntries = result.Items;
 
             if (!exportEntries.Any())

@@ -27,10 +27,11 @@ public sealed class TeamSystemResourceProvider : IMcpResourceProvider
 
     private readonly IAuditOversightService _auditOversightService;
 
-    /// <param name="auditOversightService">
-    /// Reads audit across every team, and carries the authorization with it. Injected instead of the
-    /// logger so this provider performs no audit check of its own — see <see cref="ReadAuditAsync"/>.
-    /// </param>
+    /// <remarks>
+    /// <c>auditOversightService</c> reads audit across every team and carries the authorization with it.
+    /// It is injected instead of the logger so this provider performs no audit check of its own — see
+    /// <see cref="ReadAuditAsync"/>.
+    /// </remarks>
     public TeamSystemResourceProvider(
         IApiKeyAdministrationService apiKeyAdministrationService = null,
         ITenantRoleRegistry tenantRoleRegistry = null,
@@ -90,6 +91,12 @@ public sealed class TeamSystemResourceProvider : IMcpResourceProvider
 
     public async Task<McpResourceContent> ReadResourceAsync(string uri, IMcpContext context, CancellationToken cancellationToken)
     {
+        // Audit is deliberately outside the role check: IAuditOversightService carries
+        // [RequireScope(audit:read)] and decides for itself, which is the whole point of moving the gate
+        // into the service. Leaving the role check in front of it would refuse a holder of the system
+        // scope who does not also hold the role -- exactly the divergence this set out to remove.
+        if (uri == AuditUri) return await ReadAuditAsync();
+
         if (context?.IsDeveloper != true)
             throw new UnauthorizedAccessException("System resources require the Developer role.");
 
@@ -97,7 +104,6 @@ public sealed class TeamSystemResourceProvider : IMcpResourceProvider
         {
             SystemKeysUri => await ReadSystemKeysAsync(cancellationToken),
             RolesUri => ReadRoles(),
-            AuditUri => await ReadAuditAsync(),
             _ => throw new InvalidOperationException($"Unknown resource URI '{uri}'."),
         };
     }

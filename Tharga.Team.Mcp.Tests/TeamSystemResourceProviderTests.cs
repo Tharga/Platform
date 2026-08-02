@@ -157,6 +157,44 @@ public class TeamSystemResourceProviderTests
             sut.ReadResourceAsync(TeamSystemResourceProvider.AuditUri, MakeContext(isDeveloper: true), TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// Audit is readable <b>without</b> the role, because the service decides it.
+    /// </summary>
+    /// <remarks>
+    /// Replaces a source scan that tried to prove the same thing by looking for the word
+    /// <c>IsDeveloper</c> in the file. That was brittle in both directions — it matched the XML docs and
+    /// the checks that still legitimately guard the *other* system resources — so the claim is asserted
+    /// by behaviour instead.
+    /// <para>
+    /// It also catches the real bug the scan found: the role check ran before the switch, so a holder of
+    /// system <c>audit:read</c> without the role was still refused, which is precisely the divergence
+    /// moving the gate into the service was meant to end.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task ReadResourceAsync_Audit_DoesNotRequireTheRole()
+    {
+        var oversight = Substitute.For<IAuditOversightService>();
+        oversight.QueryAllAsync(Arg.Any<AuditQuery>()).Returns(new AuditQueryResult());
+
+        var sut = new TeamSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger, oversight);
+
+        var content = await sut.ReadResourceAsync(
+            TeamSystemResourceProvider.AuditUri, MakeContext(isDeveloper: false), TestContext.Current.CancellationToken);
+
+        Assert.NotNull(content.Text);
+    }
+
+    /// <summary>The other system resources still do require it — this narrowed one gate, not all of them.</summary>
+    [Fact]
+    public async Task ReadResourceAsync_OtherSystemResources_StillRequireTheRole()
+    {
+        var sut = new TeamSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => sut.ReadResourceAsync(
+            TeamSystemResourceProvider.RolesUri, MakeContext(isDeveloper: false), TestContext.Current.CancellationToken));
+    }
+
     [Fact]
     public void Scope_IsSystem()
     {
