@@ -12,21 +12,6 @@ public sealed class McpTeamOptions
     public string DeveloperRole { get; set; } = "Developer";
 
     /// <summary>
-    /// Header a caller names the target team in, per call. Default <c>X-Team-Key</c>.
-    /// </summary>
-    /// <remarks>
-    /// <b>Per call, not per session.</b> <c>ModelContextProtocol</c> 2.0.0 is stateless by default, so
-    /// there is no session to hold a selection in — and over HTTP, per-request is per-call.
-    /// <para>
-    /// A header rather than a tool argument: an argument would have to be threaded through every
-    /// <c>IMcpResourceProvider</c> and <c>IMcpToolProvider</c> signature, including the host's own, and a
-    /// provider that forgot it would silently address the wrong team. Here the selection is resolved once,
-    /// and every provider keeps reading <c>context.TeamId</c> exactly as before.
-    /// </para>
-    /// </remarks>
-    public string TeamKeyHeader { get; set; } = "X-Team-Key";
-
-    /// <summary>
     /// When true, registers read-only system-scope resource providers that expose cross-tenant
     /// team, API-key, role, and audit-log data for diagnostic use by Developers.
     /// Default false — opt in only if you want diagnostic data surfaced over MCP.

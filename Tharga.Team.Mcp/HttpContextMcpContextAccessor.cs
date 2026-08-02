@@ -25,6 +25,7 @@ public sealed class HttpContextMcpContextAccessor : IMcpContextAccessor
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly McpTeamOptions _options;
     private readonly ConsentOptions _consent;
+    private readonly TeamContextOptions _teamContext;
 
     /// <remarks>
     /// <b>Only singletons may be injected here.</b> This type is registered as a singleton, so taking
@@ -42,11 +43,13 @@ public sealed class HttpContextMcpContextAccessor : IMcpContextAccessor
     public HttpContextMcpContextAccessor(
         IHttpContextAccessor httpContextAccessor,
         IOptions<McpTeamOptions> options,
-        IOptions<ConsentOptions> consent = null)
+        IOptions<ConsentOptions> consent = null,
+        IOptions<TeamContextOptions> teamContext = null)
     {
         _httpContextAccessor = httpContextAccessor;
         _options = options.Value;
         _consent = consent?.Value ?? new ConsentOptions();
+        _teamContext = teamContext?.Value ?? new TeamContextOptions();
     }
 
     public IMcpContext Current
@@ -90,7 +93,7 @@ public sealed class HttpContextMcpContextAccessor : IMcpContextAccessor
             if (resolved == null || resolved.IsRefused)
             {
                 throw new UnauthorizedAccessException(resolved?.Refusal == TeamContextRefusal.Contradiction
-                    ? $"This credential is bound to one team; '{_options.TeamKeyHeader}' named a different one."
+                    ? $"This credential is bound to one team; '{_teamContext.TeamKeyHeader}' named a different one."
                     : $"Team '{selectedTeamKey}' is not available to this caller. Either it does not exist, " +
                       "or the caller has neither membership nor consent for it.");
             }
@@ -105,8 +108,8 @@ public sealed class HttpContextMcpContextAccessor : IMcpContextAccessor
 
     private string ReadSelectedTeamKey(HttpContext ctx)
     {
-        if (string.IsNullOrEmpty(_options.TeamKeyHeader)) return null;
-        if (!ctx.Request.Headers.TryGetValue(_options.TeamKeyHeader, out var values)) return null;
+        if (string.IsNullOrEmpty(_teamContext.TeamKeyHeader)) return null;
+        if (!ctx.Request.Headers.TryGetValue(_teamContext.TeamKeyHeader, out var values)) return null;
 
         var value = values.ToString();
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();

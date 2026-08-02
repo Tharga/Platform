@@ -65,9 +65,14 @@ public sealed class TeamContextOptions
     /// Header a system API key names the target team in. Default <c>X-Team-Key</c>.
     /// </summary>
     /// <remarks>
-    /// The same name MCP uses, deliberately: one way to say which team, whichever surface the call
-    /// arrives on. A team API key needs no header — its team cannot be anything other than its own, and
-    /// naming a different one is refused rather than ignored.
+    /// <b>The one place this name is configured.</b> MCP reads it from here too — it briefly had its own
+    /// copy, which a host could have set on one surface and not the other, leaving the same call named
+    /// differently depending on the door. That is the shape <c>ConsentOptions</c> had to be rescued from,
+    /// and it is not worth repeating for a string.
+    /// <para>
+    /// A team API key needs no header at all: its team cannot be anything other than its own, and naming
+    /// a different one is refused rather than ignored.
+    /// </para>
     /// </remarks>
     public string TeamKeyHeader { get; set; } = "X-Team-Key";
 }
