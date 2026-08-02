@@ -172,18 +172,18 @@ the host in its own layout. So:
 
 Stating this rather than implying a full-page takeover the toolkit cannot deliver.
 
-- [ ] `SuspendedAt`/`SuspendedBy` on `ITeamMember`; persistence hook on the store with the throwing
+- [x] `SuspendedAt`/`SuspendedBy` on `ITeamMember`; persistence hook on the store with the throwing
       default; member-cache invalidation on both directions.
-- [ ] `TeamMembershipClaimsBuilder` refuses a suspended member, and does not fall through to consent.
-- [ ] `SetMemberSuspendedAsync` gated on `member:manage` — it already authorizes *removing* a member,
+- [x] `TeamMembershipClaimsBuilder` refuses a suspended member, and does not fall through to consent.
+- [x] `SetMemberSuspendedAsync` gated on `member:manage` — it already authorizes *removing* a member,
       which is strictly more destructive.
-- [ ] **An Owner cannot be suspended** (mirroring "the owner cannot leave the team"), and **a member
+- [x] **An Owner cannot be suspended** (mirroring "the owner cannot leave the team"), and **a member
       cannot suspend themselves**. Both in the service, not only the UI.
-- [ ] Selector: `Suspended` badge. Needs the caller's membership per listed team — `ITeam` carries no
+- [x] Selector: `Suspended` badge. Needs the caller's membership per listed team — `ITeam` carries no
       members — via the `GetTeamMemberAsync` cache.
-- [ ] `TeamComponent`: Suspend/Resume row action, badge on the member grid, notice when the caller's own
+- [x] `TeamComponent`: Suspend/Restore row action, badge on the member grid, notice when the caller's own
       membership is suspended.
-- [ ] Tests.
+- [x] 16 tests (5 claims-builder, 10 service, plus the architecture guard picking up the new component).
 
 ---
 
@@ -227,4 +227,16 @@ Fail-open is deliberate in the eviction check and tested as such: treating a sto
 would sign out every signed-in user at once, turning a database blip into an outage. A genuinely disabled
 user is still evicted, one interval later.
 
-**Next:** step 5, suspend a team member.
+**2026-08-02 (step 5).** Suspend a team member, end to end. **1347 tests green**, 8-warning baseline.
+
+Two mechanisms that looked obvious were rejected after reading the code, both because they would have
+produced the opposite of the chosen design: a fourth `MembershipState` (host stores filter on it, so the
+team would vanish from the selector) and gating visibility in `ITeamDirectoryService` (its `team:read`
+filter recomputes scopes from access level and roles, which suspension deliberately does not touch — so
+the team stays listed with no special case at all).
+
+A drop-in `SuspendedTeamNotice` is provided for the host layout. The toolkit cannot impose a full-page
+takeover because the host owns routing; what it does guarantee is that no scopes are granted, so every
+`[RequireScope]` refuses whether or not the host places the notice.
+
+**Next:** step 6, documentation.

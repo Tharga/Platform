@@ -21,4 +21,10 @@ public abstract record TeamMemberBase : ITeamMember
 
     [BsonIgnoreIfNull]
     public string[] ScopeOverrides { get; init; }
+
+    [BsonIgnoreIfNull]
+    public DateTime? SuspendedAt { get; init; }
+
+    [BsonIgnoreIfNull]
+    public string SuspendedBy { get; init; }
 }

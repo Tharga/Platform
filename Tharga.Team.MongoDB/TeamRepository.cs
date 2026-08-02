@@ -84,6 +84,26 @@ internal class TeamRepository<TTeamEntity, TMember> : ITeamRepository<TTeamEntit
         await _collection.UpdateOneAsync(filter, update);
     }
 
+    public async Task SetMemberSuspendedAsync(string teamKey, string userKey, DateTime? suspendedAt, string suspendedBy)
+    {
+        var team = await _collection.GetOneAsync(x => x.Key == teamKey);
+
+        var target = team.Members.PickOneOrDefault(x => x.Key == userKey, _logger, teamKey, userKey);
+        if (target == null) return;
+
+        // State is deliberately left at Member. GetTeamsByUserAsync filters on it, so changing it here
+        // would drop the team out of the member's selector -- the opposite of what suspension is for.
+        var updated = target with { SuspendedAt = suspendedAt, SuspendedBy = suspendedBy };
+        var members = team.Members.ReplaceByReference(target, updated);
+
+        var filter = new FilterDefinitionBuilder<TTeamEntity>()
+            .Eq(x => x.Key, teamKey);
+        var update = new UpdateDefinitionBuilder<TTeamEntity>()
+            .Set(x => x.Members, members);
+
+        await _collection.UpdateOneAsync(filter, update);
+    }
+
     public async Task SetMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles)
     {
         var team = await _collection.GetOneAsync(x => x.Key == teamKey);

@@ -33,6 +33,11 @@
         {
             <TeamAvatar Team="SelectedTeam" Size="24px" />
             <span>@SelectedTeam.Name</span>
+            @if (IsSuspended(SelectedTeam))
+            {
+                <RadzenBadge BadgeStyle="BadgeStyle.Warning" Variant="Variant.Flat" Text="Suspended"
+                             title="@SuspendedTitle" />
+            }
         }
         else if (_teams.Length > 1 && SelectedTeam != null)
         {
@@ -41,12 +46,22 @@
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.4rem">
                         <TeamAvatar Team="@((ITeam)team)" Size="20px" />
                         <span>@(((ITeam)team).Name)</span>
+                        @if (IsSuspended((ITeam)team))
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Warning" Variant="Variant.Flat" Text="Suspended"
+                                         title="@SuspendedTitle" />
+                        }
                     </RadzenStack>
                 </ValueTemplate>
                 <Template Context="team">
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.4rem">
                         <TeamAvatar Team="@((ITeam)team)" Size="20px" />
                         <span>@(((ITeam)team).Name)</span>
+                        @if (IsSuspended((ITeam)team))
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Warning" Variant="Variant.Flat" Text="Suspended"
+                                         title="@SuspendedTitle" />
+                        }
                     </RadzenStack>
                 </Template>
             </RadzenDropDown>
@@ -73,6 +88,22 @@
     [Parameter] public EventCallback CreateTeamRequested { get; set; }
 
     private ITeam[] _teams;
+
+    /// <summary>
+    /// Team keys where the caller's own membership is suspended. Resolved once per reload rather than
+    /// per render: the templates run on every keystroke of the dropdown and cannot await.
+    /// </summary>
+    /// <remarks>
+    /// The team is still listed — <c>team:read</c> filtering recomputes scopes from access level and
+    /// roles, which suspension does not touch. The badge is the only thing that has to be asked for.
+    /// </remarks>
+    private HashSet<string> _suspendedTeamKeys = [];
+
+    private const string SuspendedTitle =
+        "Your access to this team is suspended. Select it to see what that means.";
+
+    private bool IsSuspended(ITeam team) => team != null && _suspendedTeamKeys.Contains(team.Key);
+
     private bool _canSeeAllTeams;
     private ITeam _selectedTeam;
     private string _loadingText = TeamMenuText.Loading.Default;
@@ -128,9 +159,23 @@
         _teams = _canSeeAllTeams
             ? await TeamOversightService.GetAllTeamsAsync().ToArrayAsync()
             : await TeamDirectoryService.GetTeamsAsync().ToArrayAsync();
+        // An oversight caller listing every team is not asking about their own membership in each of
+        // them, and would make one lookup per team in the system.
+        _suspendedTeamKeys = _canSeeAllTeams ? [] : await ResolveSuspendedAsync(_teams);
+
         var selectedTeam = await TeamStateService.GetSelectedTeamAsync();
         SelectedTeam ??= selectedTeam;
         StateHasChanged();
+    }
+
+    private async Task<HashSet<string>> ResolveSuspendedAsync(ITeam[] teams)
+    {
+        var suspended = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var team in teams ?? [])
+        {
+            if (await TeamDirectoryService.IsSuspendedAsync(team.Key)) suspended.Add(team.Key);
+        }
+        return suspended;
     }
 
     private async Task InvokeCreateTeamRequested()

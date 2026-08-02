@@ -54,8 +54,11 @@ internal class TestTeamService : TeamServiceBase
 
     protected override Task SetTeamMemberLastSeenAsync(string teamKey, string userKey) => Task.CompletedTask;
 
+    public int GetTeamMembersCallCount { get; private set; }
+
     protected override Task<ITeamMember> GetTeamMembersAsync(string teamKey, string userKey)
     {
+        GetTeamMembersCallCount++;
         if (_teams.TryGetValue(teamKey, out var team))
         {
             var member = team.Members.FirstOrDefault(m => m.Key == userKey);
@@ -65,6 +68,19 @@ internal class TestTeamService : TeamServiceBase
     }
 
     protected override Task SetTeamMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel) => Task.CompletedTask;
+    public readonly List<(string TeamKey, string UserKey, DateTime? SuspendedAt, string SuspendedBy)> SuspendCalls = [];
+
+    /// <summary>Stands in for a host store that never overrode the hook, so the base throws.</summary>
+    public bool SimulateNoSuspendHook { get; init; }
+
+    protected override Task SetTeamMemberSuspendedAsync(string teamKey, string userKey, DateTime? suspendedAt, string suspendedBy)
+    {
+        if (SimulateNoSuspendHook) return base.SetTeamMemberSuspendedAsync(teamKey, userKey, suspendedAt, suspendedBy);
+
+        SuspendCalls.Add((teamKey, userKey, suspendedAt, suspendedBy));
+        return Task.CompletedTask;
+    }
+
     protected override Task SetTeamMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles) => Task.CompletedTask;
     protected override Task SetTeamMemberScopeOverridesAsync(string teamKey, string userKey, string[] scopeOverrides) => Task.CompletedTask;
 
@@ -113,4 +129,6 @@ internal record TestMember : ITeamMember
     public AccessLevel AccessLevel { get; init; }
     public string[] TenantRoles { get; init; } = [];
     public string[] ScopeOverrides { get; init; } = [];
+    public DateTime? SuspendedAt { get; init; }
+    public string SuspendedBy { get; init; }
 }
