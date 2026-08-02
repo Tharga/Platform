@@ -151,6 +151,28 @@ builder.AddThargaTeam(o =>
 
 See [Team-claim revalidation](docs/articles/implementation-guide.md#team-claim-revalidation).
 
+## Naming a team on an MCP call
+
+MCP derived everything from the caller's `TeamKey` claim, so a call could only address the team the
+caller was already anchored to — and a **system key is anchored to none**. Send the team key in a header
+instead:
+
+```http
+POST /mcp
+Authorization: Bearer <api key>
+X-Team-Key: acme-corp
+```
+
+Naming a team grants the caller's **membership** scopes in it, or the team's **consented** level if they
+hold a global role it consented to, and refuses otherwise — including for a suspended member. Selection
+**replaces** rather than accumulates: scopes are recomputed for the named team and the principal's own
+scope claims, which describe a different team, are never consulted. So naming a team can only narrow what
+a caller may do.
+
+Per call rather than per session, because `ModelContextProtocol` 2.0.0 is stateless — over HTTP,
+per-request is per-call. The rule comes from the same resolver the Blazor claims builder uses, so a caller
+reaches a team at the same level either way. See [Tharga.Team.Mcp](Tharga.Team.Mcp/README.md).
+
 ## Suspending instead of deleting
 
 Deletion is final: it drops the record, the memberships, the scopes and the trail. Three reversible

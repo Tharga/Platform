@@ -1006,6 +1006,25 @@ not authorize writing to another.
 | `teams:manage` | **system** | `SystemTeamScopes.Manage` | Rename and set the icon of **any** team — **not** consent or custom roles |
 | `apikey:manage` | team | `ApiKeyScopes.Manage` | Create/refresh/lock/**disable**/delete API keys |
 
+##### Consent is configured once, in the core package
+
+`ConsentOptions` lives in **`Tharga.Team`**, not in the Blazor package, and is registered as a single
+instance every surface reads:
+
+```csharp
+builder.AddThargaTeam(o =>
+{
+    o.Blazor.Consent.Roles = ["Support"];          // roles a team may consent to
+    o.Blazor.Consent.AccessLevel = AccessLevel.User; // level consent grants by default
+});
+```
+
+It is authorization, not presentation: it decides what a caller may do in a team they do **not** belong
+to. More than one surface answers that question — the Blazor circuit, and an MCP call naming a team — and
+while the type lived in the Blazor package the MCP side could not reach it and briefly carried its own
+copy of the default level. The same caller could then reach the same team at two different levels
+depending on which door they came through. Two tests pin the single instance and its assembly.
+
 ##### `teams:manage` stops short of consent
 
 The system scope covers **rename and icon only**. In-team `team:manage` also covers **consent** and

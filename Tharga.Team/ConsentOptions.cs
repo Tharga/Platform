@@ -1,10 +1,19 @@
-using Tharga.Team;
-
-namespace Tharga.Team.Blazor.Framework;
+namespace Tharga.Team;
 
 /// <summary>
 /// Data-access consent options — controls cross-team access granted by a team to global roles.
 /// </summary>
+/// <remarks>
+/// <b>In the core package, not the Blazor one, because consent is authorization rather than
+/// presentation.</b> It decides what a caller may do in a team they do not belong to, and every surface
+/// that answers that question has to agree — the Blazor circuit, and an MCP call naming a team. It lived
+/// under <c>Tharga.Team.Blazor.Framework</c> until the MCP surface needed it too and could not reach it,
+/// which briefly left the same policy configured in two places.
+/// <para>
+/// Resolve it as <c>IOptions&lt;ConsentOptions&gt;</c>. A host that never configures it gets these
+/// defaults, so a package used without the Blazor registration still behaves predictably.
+/// </para>
+/// </remarks>
 public class ConsentOptions
 {
     /// <summary>

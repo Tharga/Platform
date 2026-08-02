@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Tharga.Mcp;
 using Tharga.Team;
 using Tharga.Team.Service;
 
@@ -10,10 +11,12 @@ namespace Tharga.Team.Mcp;
 public sealed class McpScopeChecker : IMcpScopeChecker
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IMcpContextAccessor _contextAccessor;
 
-    public McpScopeChecker(IHttpContextAccessor httpContextAccessor)
+    public McpScopeChecker(IHttpContextAccessor httpContextAccessor, IMcpContextAccessor contextAccessor = null)
     {
         _httpContextAccessor = httpContextAccessor;
+        _contextAccessor = contextAccessor;
     }
 
     /// <summary>
@@ -37,6 +40,13 @@ public sealed class McpScopeChecker : IMcpScopeChecker
         if (user == null) return false;
 
         if (TeamScopePolicy.HasSystemScope(user, scope)) return true;
+
+        // A team named on this call is answered from the scopes resolved for *that* team, never from the
+        // caller's claims. The principal carries scope claims for the team it is anchored to, so falling
+        // through to them would answer a question about one team using another team's access -- which is
+        // the whole hazard the selection has to avoid.
+        if (_contextAccessor?.Current is TeamMcpContext { SelectedTeamScopes: not null } selected)
+            return selected.SelectedTeamScopes.Contains(scope);
 
         var teamKey = user.FindFirst(TeamClaimTypes.TeamKey)?.Value;
         return TeamScopePolicy.HasTeamScope(user, scope, teamKey);
