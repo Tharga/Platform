@@ -52,6 +52,12 @@ public sealed class AuthorizationUserManagementServiceDecorator : IUserManagemen
         return await _inner.DeleteUserAsync(userKey, deleteFromDirectory, cancellationToken);
     }
 
+    public async Task SetUserDisabledAsync(string userKey, bool disabled, CancellationToken cancellationToken = default)
+    {
+        await RequireUsersManageAsync(nameof(SetUserDisabledAsync));
+        await _inner.SetUserDisabledAsync(userKey, disabled, cancellationToken);
+    }
+
     public async IAsyncEnumerable<DirectoryUser> GetDirectoryOnlyUsersAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await RequireUsersManageAsync(nameof(GetDirectoryOnlyUsersAsync));

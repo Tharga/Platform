@@ -71,4 +71,12 @@ public record ApiKeyEntity : EntityBase, IApiKey
     /// <summary>When this key was last used to authenticate. Null if never used.</summary>
     [BsonIgnoreIfNull]
     public DateTime? LastUsedAt { get; init; }
+
+    /// <summary>When this key was disabled. Null means enabled.</summary>
+    [BsonIgnoreIfNull]
+    public DateTime? DisabledAt { get; init; }
+
+    /// <summary>Who disabled this key. Null means enabled.</summary>
+    [BsonIgnoreIfNull]
+    public string DisabledBy { get; init; }
 }

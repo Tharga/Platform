@@ -47,6 +47,14 @@ internal sealed class TeamMembershipClaimsBuilder
         var user = await _userService.GetCurrentUserAsync(principal);
         var member = await _teamService.GetTeamMemberAsync(teamKey, user?.Key);
 
+        // A suspended member is granted nothing, and does not fall through to the consent path below.
+        // Consent grants access by global role rather than by membership, so falling through would hand
+        // the member their access back by another route — and suspension is the more specific and more
+        // recent decision. Returning here, rather than filtering scopes further down, also means no
+        // TeamKey claim is issued: with one, service-layer checks would treat them as being "in" the team.
+        if (member?.SuspendedAt != null)
+            return claims;
+
         if (member != null)
         {
             claims.Add(new Claim(TeamClaimTypes.TeamKey, teamKey));

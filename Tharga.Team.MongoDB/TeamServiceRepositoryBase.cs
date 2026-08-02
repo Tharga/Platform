@@ -115,6 +115,11 @@ public abstract class TeamServiceRepositoryBase<TTeamEntity, TMember> : TeamServ
         return _teamRepository.SetMemberRoleAsync(teamKey, userKey, accessLevel);
     }
 
+    protected override Task SetTeamMemberSuspendedAsync(string teamKey, string userKey, DateTime? suspendedAt, string suspendedBy)
+    {
+        return _teamRepository.SetMemberSuspendedAsync(teamKey, userKey, suspendedAt, suspendedBy);
+    }
+
     protected override Task SetTeamMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles)
     {
         return _teamRepository.SetMemberTenantRolesAsync(teamKey, userKey, tenantRoles);

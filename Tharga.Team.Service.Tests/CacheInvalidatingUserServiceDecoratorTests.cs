@@ -40,6 +40,14 @@ public class CacheInvalidatingUserServiceDecoratorTests
         public Task DeleteUserAsync(string userKey) => Task.CompletedTask;
         public Task SetOwnIconAsync(byte[] data, string contentType) => Task.CompletedTask;
         public Task ClearOwnIconAsync() => Task.CompletedTask;
+
+        public List<(string UserKey, DateTime? DisabledAt, string DisabledBy)> Disabled { get; } = [];
+
+        public Task SetUserDisabledAsync(string userKey, DateTime? disabledAt, string disabledBy)
+        {
+            Disabled.Add((userKey, disabledAt, disabledBy));
+            return Task.CompletedTask;
+        }
     }
 
     /// <summary>A store written from scratch, with no cache to drop.</summary>
@@ -49,6 +57,45 @@ public class CacheInvalidatingUserServiceDecoratorTests
         public IAsyncEnumerable<IUser> GetAsync() => AsyncEnumerable.Empty<IUser>();
         public Task SeedUserNameAsync(string userKey, string name) => Task.CompletedTask;
         public Task SetUserNameAsync(string userKey, string name) => Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// A disable must reach the store, and the cached copy must be dropped behind it.
+    /// </summary>
+    /// <remarks>
+    /// <b>Both halves matter, and each was a real hazard.</b> The interface member is a <i>default</i>
+    /// one, so a decorator that does not override it silently swallows the call into the throwing default
+    /// and never reaches the host store at all — the containment fails, loudly but in the wrong place.
+    /// And a disable that commits but leaves the cached user behind reads back enabled, which is the same
+    /// staleness a rename hit before.
+    /// </remarks>
+    [Fact]
+    public async Task SetUserDisabled_ReachesTheStoreAndInvalidates()
+    {
+        var host = new HostStore();
+        // Through the interface, not the concrete type: the member is a *default* interface member, so
+        // an omitted override is invisible to the compiler here and only shows up as this call landing
+        // in the throwing default instead of the store — which is exactly what a host would hit.
+        IUserService sut = new CacheInvalidatingUserServiceDecorator(host);
+        var disabledAt = new DateTime(2026, 8, 2, 10, 0, 0, DateTimeKind.Utc);
+
+        await sut.SetUserDisabledAsync("u1", disabledAt, "admin");
+
+        Assert.Equal(("u1", disabledAt, "admin"), Assert.Single(host.Disabled));
+        Assert.Contains("u1", host.Invalidated);
+    }
+
+    /// <summary>Enabling invalidates too, or a re-enabled user reads back disabled until the cache ages out.</summary>
+    [Fact]
+    public async Task SetUserEnabled_AlsoInvalidates()
+    {
+        var host = new HostStore();
+        IUserService sut = new CacheInvalidatingUserServiceDecorator(host);
+
+        await sut.SetUserDisabledAsync("u1", null, null);
+
+        Assert.Equal(("u1", (DateTime?)null, (string)null), Assert.Single(host.Disabled));
+        Assert.Contains("u1", host.Invalidated);
     }
 
     /// <summary>The exact case PlutusWave hit: a rename that commits and then reads back stale.</summary>

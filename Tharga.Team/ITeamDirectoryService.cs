@@ -32,4 +32,21 @@ public interface ITeamDirectoryService
     /// the per-team scope recomputation. Two copies of that rule would be two chances for it to drift.
     /// </remarks>
     IAsyncEnumerable<ITeam> GetTeamsAsync();
+
+    /// <summary>
+    /// Whether the caller's own membership in this team is suspended. A suspended member still sees the
+    /// team here and in the selector — they simply hold no scopes in it.
+    /// </summary>
+    /// <remarks>
+    /// <b>Ungated on purpose, and it has to be.</b> A suspended member holds no team scopes at all, so any
+    /// scope-checked read would refuse them — and then nothing could tell them why their team stopped
+    /// working. This asks only about the caller's own membership, which is not somebody else's
+    /// information to protect.
+    /// <para>
+    /// Suspension is invisible to <see cref="GetTeamsAsync()"/>'s <c>team:read</c> filter by design: that
+    /// filter recomputes scopes from access level, roles and overrides, none of which suspension touches.
+    /// The team therefore stays listed with no special case, which is exactly the intent.
+    /// </para>
+    /// </remarks>
+    Task<bool> IsSuspendedAsync(string teamKey);
 }

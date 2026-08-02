@@ -29,6 +29,27 @@ public interface ITeamManagementService
     [RequireScope(TeamScopes.MemberManage)]
     Task SetMemberRoleAsync(string teamKey, string userKey, AccessLevel accessLevel);
 
+    /// <summary>
+    /// Suspends a member's access to the team, or restores it. The member keeps their membership, access
+    /// level, roles and history, and still sees the team in the selector — they are simply granted no
+    /// team scopes, so every scoped operation refuses.
+    /// </summary>
+    /// <remarks>
+    /// Reuses <see cref="TeamScopes.MemberManage"/>, which already authorizes <see cref="RemoveMemberAsync"/> —
+    /// strictly more destructive, so a separate grant would guard the lesser act more carefully than the
+    /// greater one.
+    /// <para>
+    /// The Owner cannot be suspended, and a member cannot suspend themselves. Both are refused by the
+    /// service, not merely hidden in the UI.
+    /// </para>
+    /// <para>
+    /// Distinct from <c>IUserManagementService.SetUserDisabledAsync</c>, which blocks a person from the
+    /// whole application. This one is bounded to a single team.
+    /// </para>
+    /// </remarks>
+    [RequireScope(TeamScopes.MemberManage)]
+    Task SetMemberSuspendedAsync(string teamKey, string userKey, bool suspended);
+
     [RequireScope(TeamScopes.MemberManage)]
     Task SetMemberTenantRolesAsync(string teamKey, string userKey, string[] tenantRoles);
 
@@ -104,7 +125,27 @@ public interface ITeamManagementService
     [RequireScope(TeamScopes.Read)]
     Task<IReadOnlyList<TenantRoleDefinition>> GetTeamCustomRolesAsync(string teamKey);
 
-    /// <summary>One member of a team. Requires <c>team:read</c> on that team.</summary>
+    /// <summary>
+    /// One <b>active</b> member of a team. Requires <c>team:read</c> on that team.
+    /// </summary>
+    /// <remarks>
+    /// <b>Whether an invited or rejected member comes back here is up to the host's store, so do not
+    /// rely on either answer.</b> This resolves through the store's "teams this user belongs to" query.
+    /// The MongoDB store filters that query on <c>State == MembershipState.Member</c>, which makes a
+    /// pending invitee indistinguishable from somebody who was never in the team; a store written
+    /// differently may well return them.
+    /// <para>
+    /// So treat a non-null result as "has some membership" and null as "cannot act as a member" — never
+    /// as a reliable answer to <i>which</i> state they are in. Anything that must tell the states apart —
+    /// a message explaining a refusal, a roster count, an admin grid — has to use
+    /// <see cref="GetMembersAsync"/>, which reads the team directly and is the only portable way to see
+    /// every state.
+    /// </para>
+    /// <para>
+    /// Not hypothetical: suspending a member shipped with this bug, refusing an invitee with "is not a
+    /// member of team", which was both untrue and unhelpful.
+    /// </para>
+    /// </remarks>
     [RequireScope(TeamScopes.Read)]
     Task<ITeamMember> GetTeamMemberAsync(string teamKey, string userKey);
 }

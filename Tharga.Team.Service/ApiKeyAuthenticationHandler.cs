@@ -64,6 +64,15 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
             return AuthenticateResult.Fail("Invalid API key.");
         }
 
+        // Recorded as an auth failure, not dropped. A disabled key still gets used — by a scheduled job
+        // nobody remembered, or by whoever the disabling was aimed at — and those attempts are exactly
+        // what an operator wants to see afterwards. A silent rejection makes the containment invisible.
+        if (key.DisabledAt != null)
+        {
+            LogAuthEvent(key.Name ?? key.TeamKey ?? "system", key.Key, key.TeamKey, false, "Disabled API key");
+            return AuthenticateResult.Fail("This API key has been disabled.");
+        }
+
         var claims = new List<Claim>
         {
             new(ClaimTypes.Name, key.Name ?? key.TeamKey ?? "system"),

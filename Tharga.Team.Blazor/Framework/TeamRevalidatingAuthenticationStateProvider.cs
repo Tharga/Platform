@@ -38,6 +38,11 @@ internal sealed class TeamRevalidatingAuthenticationStateProvider : Revalidating
         // it breaks the DI cycle in which the auth-state provider would otherwise depend on ITeamService,
         // which depends (via BlazorTeamPrincipalAccessor) back on the auth-state provider.
         await using var scope = _scopeFactory.CreateAsyncScope();
+
+        // A disabled user is the one case that does end the session, so it is checked before the claim
+        // refresh: there is no point bringing team access up to date for someone who is being signed out.
+        if (await IsDisabledAsync(scope.ServiceProvider, authenticationState.User)) return false;
+
         var revalidator = scope.ServiceProvider.GetRequiredService<TeamClaimRevalidator>();
 
         var refreshed = await revalidator.TryRefreshAsync(authenticationState.User);
@@ -50,5 +55,36 @@ internal sealed class TeamRevalidatingAuthenticationStateProvider : Revalidating
 
         // Team-claim changes never force a sign-out — the app session is still valid, only team access moved.
         return true;
+    }
+
+    /// <summary>
+    /// Whether the caller has been disabled since they signed in — the eviction half of
+    /// <c>IUserManagementService.SetUserDisabledAsync</c>. Disabling refuses future sign-ins by itself;
+    /// without this, an already-signed-in user would keep working on claims issued before the decision.
+    /// </summary>
+    /// <remarks>
+    /// <b>Fail-open, deliberately.</b> A store that cannot be reached must not sign out every signed-in
+    /// user at once, which is what treating an exception as "disabled" would do — a database blip would
+    /// become an outage. The loop runs again next interval, so a genuinely disabled user is still evicted,
+    /// only one interval later.
+    /// <para>
+    /// The principal is passed explicitly: this runs on a background loop with no <c>HttpContext</c>, so
+    /// the ambient-caller overload would resolve nobody.
+    /// </para>
+    /// </remarks>
+    internal static async Task<bool> IsDisabledAsync(IServiceProvider services, System.Security.Claims.ClaimsPrincipal principal)
+    {
+        try
+        {
+            var userService = services.GetService<IUserService>();
+            if (userService == null) return false;
+
+            var user = await userService.GetCurrentUserAsync(principal);
+            return user?.DisabledAt != null;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

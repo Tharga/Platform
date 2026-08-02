@@ -352,6 +352,94 @@ user record — matched by directory id with an email fallback, so pre-existing 
 stored `oid` are not falsely reported. Nothing is fetched until you press **Load** (a tenant's
 directory can be large); results stream in page by page.
 
+## Suspending instead of deleting
+
+Deletion is final: it removes the user from every team and drops the record. For the ordinary
+cases — someone on leave, an account suspected of compromise, a contractor between engagements — there
+are three reversible alternatives, each bounded differently.
+
+| To stop | Use | Scope | Reach |
+|---|---|---|---|
+| A person signing in at all | `IUserManagementService.SetUserDisabledAsync` | `users:manage` | The whole application |
+| A person working in **one team** | `ITeamManagementService.SetMemberSuspendedAsync` | `member:manage` on that team | That team only |
+| An API key | `IApiKeyManagementService.SetKeyDisabledAsync` | `apikey:manage` | That key |
+
+All three record **when** and **by whom**, are audited under distinct actions in each direction
+(`disable`/`enable`, `suspend`/`restore`), and are reversible without losing anything.
+
+### Disabling a user
+
+A disabled user is refused at sign-in **and evicted from a live session** within
+`ClaimRevalidation.Interval` — a signed-in user holds a Blazor circuit with claims already issued, so
+refusing future sign-ins alone would leave them working indefinitely.
+
+That eviction is deliberately **fail-open**: if the user store cannot be reached, nobody is signed out.
+Treating a store failure as "disabled" would sign out every user at once, turning a database blip into an
+outage. The check runs again next interval.
+
+Two things it does **not** do:
+
+- **It does not cascade to that user's API keys.** A key is not a session — it is an independent
+  credential with its own lifecycle, and disabling a person should not silently retire integrations they
+  happen to have minted. Where both must stop, that is two deliberate acts, which is also what keeps each
+  reversible on its own.
+- **It is not `DirectoryUserStatus.Disabled`.** That means disabled *in the directory* — blocked from the
+  organization rather than from this application. The two are independent, can disagree, and appear as
+  separate badges on the row.
+
+**Nobody can disable themselves.** An administrator who locks themselves out needs a second
+administrator to undo it, and refusing the self-case guarantees somebody is left holding `users:manage`.
+The rule is enforced in the service, not only hidden in the UI, because `ActionItems` lets a host inject
+a row action that dispatches straight to the handler.
+
+To persist it, declare `DisabledAt`/`DisabledBy` on your user entity and implement
+`IUserService.SetUserDisabledAsync`. Both are opt-in by shape, like `Icon` and `DirectoryId`; the
+persistence hook **throws** rather than doing nothing when unimplemented, so a containment that was never
+applied cannot be reported as success.
+
+### Suspending a team member
+
+Bounded to one team. The member keeps their membership, access level, roles and history, **still sees the
+team in the selector**, and holds no scopes in it.
+
+Seeing the team is the point: a membership that silently vanishes is indistinguishable from removal, and
+the member cannot tell that it is reversible or who to ask. Place `<SuspendedTeamNotice />` in your
+layout to explain it — the toolkit owns no shell, so it cannot take the page over for you. Security does
+not depend on that component: no scopes are granted either way, so every `[RequireScope]` refuses.
+
+> **It is not a `MembershipState`.** That was the obvious design and it does the opposite of the
+> intent. Stores list a user's teams by filtering `State == MembershipState.Member`, so a suspended
+> state would drop the team out of the selector — and that filter lives in your code, not the toolkit's.
+> Suspension is `SuspendedAt`/`SuspendedBy` on the member instead, leaving `State` alone, so every
+> existing query keeps working untouched.
+
+Two refusals, both in the service:
+
+- **The Owner cannot be suspended**, for the same reason they cannot leave or be demoted — it would leave
+  a team whose ownership nobody can transfer, since transfer requires the caller to be the owner.
+- **Nobody can suspend themselves.**
+
+And one that came from the field: **an invited member cannot be suspended.** An unaccepted invitation
+grants no access, so there is nothing to take away; withdraw the invitation instead.
+
+#### Resolving a member by key: which lookup
+
+This is worth knowing before you write anything that looks up a member, because getting it wrong is what
+produced that invited-member bug.
+
+| Call | Answers | Sees invited/rejected |
+|---|---|---|
+| `GetTeamMemberAsync(teamKey, userKey)` | "Can this user act as a member?" | **Host-dependent** |
+| `GetMembersAsync(teamKey)` | "Who is on the roster?" | Always |
+
+`GetTeamMemberAsync` resolves through your store's *"teams this user belongs to"* query. The MongoDB
+store filters that on `State == MembershipState.Member`, so a pending invitee comes back null —
+indistinguishable from a stranger. A store written differently may return them.
+
+So treat a non-null result as *"has some membership"* and null as *"cannot act as a member"*, and never
+as a reliable answer to **which** state someone is in. Anything that must tell the states apart — a
+refusal message, a roster count, an admin grid — reads `GetMembersAsync`.
+
 ## Deleting users
 
 Requires the **`users:manage`** system scope and nothing further — there is no separate delete scope.

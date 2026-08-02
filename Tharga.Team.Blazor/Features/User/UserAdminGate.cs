@@ -82,10 +82,46 @@ public static class UserAdminGate
     /// <see cref="CanDeleteTeams(bool)"/>.
     /// </para>
     /// </remarks>
+    /// <summary>
+    /// Whether the Teams tab offers renaming a team or changing its icon. Requires the
+    /// <see cref="SystemTeamScopes.Manage"/> system scope.
+    /// </summary>
+    /// <remarks>
+    /// Presentational only. That scope deliberately does <b>not</b> reach consent or custom roles, so
+    /// this gate must not be reused to offer either — the service refuses them, and a control that
+    /// throws when clicked is the defect per-team action gating already had to fix once.
+    /// <para>
+    /// A <i>system</i> grant, resolved with <c>TeamScopeGate.HasSystemScope</c> — an in-team scope of the
+    /// same name must not satisfy it, exactly as for <see cref="CanDeleteTeams(bool)"/>.
+    /// </para>
+    /// </remarks>
+    public static bool CanManageTeams(bool hasTeamsManageScope)
+        => hasTeamsManageScope;
+
     public static bool CanAssignOwner(bool hasAssignOwnerScope, bool teamIsOwnerless)
         => hasAssignOwnerScope && teamIsOwnerless;
 
     public static bool CanDeleteUser(string rowUserKey, string currentUserKey)
+    {
+        if (string.IsNullOrEmpty(rowUserKey) || string.IsNullOrEmpty(currentUserKey)) return false;
+        return !string.Equals(rowUserKey, currentUserKey, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Whether the row offers disabling the user. Same self-exclusion as <see cref="CanDeleteUser"/>:
+    /// an administrator who disables themselves needs a second one to undo it.
+    /// </summary>
+    /// <remarks>
+    /// A separate gate rather than a call to <see cref="CanDeleteUser"/>, though the rule is identical
+    /// today — they answer different questions, and tying them together means a future change to one
+    /// silently moves the other. <b>Enabling is not gated</b>: the self-case cannot arise, since a
+    /// disabled user has no session from which to enable themselves.
+    /// <para>
+    /// The service refuses the self-case as well. This gate only stops the row offering an action that
+    /// would throw — a host can dispatch to the service directly through <c>ActionItems</c>.
+    /// </para>
+    /// </remarks>
+    public static bool CanDisableUser(string rowUserKey, string currentUserKey)
     {
         if (string.IsNullOrEmpty(rowUserKey) || string.IsNullOrEmpty(currentUserKey)) return false;
         return !string.Equals(rowUserKey, currentUserKey, StringComparison.OrdinalIgnoreCase);

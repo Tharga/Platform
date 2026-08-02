@@ -106,6 +106,12 @@ public sealed class AuthorizationUserServiceDecorator : IUserService
         await _inner.SetUserDirectoryIdAsync(userKey, directoryId);
     }
 
+    public async Task SetUserDisabledAsync(string userKey, DateTime? disabledAt, string disabledBy)
+    {
+        await RequireUsersManageAsync(nameof(SetUserDisabledAsync));
+        await _inner.SetUserDisabledAsync(userKey, disabledAt, disabledBy);
+    }
+
     public async Task DeleteUserAsync(string userKey)
     {
         await RequireUsersManageAsync(nameof(DeleteUserAsync));

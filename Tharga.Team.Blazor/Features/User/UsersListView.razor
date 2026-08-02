@@ -67,8 +67,18 @@ else if (_loaded)
                 <Template>
                     @{
                         var canDeleteUser = UserAdminGate.CanDeleteUser(context.Key, _currentUserKey);
+                        var canDisableUser = UserAdminGate.CanDisableUser(context.Key, _currentUserKey);
                     }
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+                        @* Two badges, never one. This is "blocked from this application"; the directory
+                           badge beside it is "blocked from the organization". They are independent and can
+                           disagree, and an operator who reads one as the other draws the wrong conclusion
+                           in both directions. *@
+                        @if (context.IsDisabled)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Danger" Variant="Variant.Filled" Text="Disabled"
+                                         title="@GetDisabledText(context)" />
+                        }
                         @if (_showDirectory && context.DirectoryStatus != null)
                         {
                             <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(DirectoryStatusBadge.Style(context.DirectoryStatus.Value)))"
@@ -91,6 +101,15 @@ else if (_loaded)
                                     <RadzenSplitButtonItem Text="Audit log" Value="@AuditAction" Icon="manage_search" />
                                 }
                                 @ActionItems
+                                @if (context.IsDisabled)
+                                {
+                                    <RadzenSplitButtonItem Text="Enable" Value="@EnableAction" Icon="play_circle" />
+                                }
+                                else
+                                {
+                                    <RadzenSplitButtonItem Text="@(canDisableUser ? DisableText : DisableSelfText)" Value="@DisableAction"
+                                                           Icon="block" Disabled="@(!canDisableUser)" />
+                                }
                                 <RadzenSplitButtonItem Text="@(canDeleteUser ? DeleteText : DeleteSelfText)" Value="@DeleteAction"
                                                        Icon="delete" Disabled="@(!canDeleteUser)" />
                             </ChildContent>
@@ -213,8 +232,14 @@ else
     private const string SetIconAction = "set-icon";
     private const string RenameAction = "rename";
     private const string AuditAction = "audit";
+    private const string DisableAction = "disable";
+    private const string EnableAction = "enable";
 
     private const string DeleteText = "Delete";
+    private const string DisableText = "Disable";
+
+    /// <summary><inheritdoc cref="DeleteSelfText" path="/summary"/></summary>
+    private const string DisableSelfText = "Disable (this is you)";
 
     /// <summary>
     /// Label on the caller's own row. The item is disabled there, and a disabled control with no stated
@@ -311,6 +336,8 @@ else
             DirectoryId = u.DirectoryId,
             Icon = u.Icon,
             LastSeen = u.LastSeen,
+            DisabledAt = u.DisabledAt,
+            DisabledBy = u.DisabledBy,
             TeamCount = teamLookup[u.Key].Count(),
             Teams = teamLookup[u.Key].Select(x => new UserTeamInfo
             {
@@ -334,6 +361,12 @@ else
                 break;
             case DeleteAction:
                 await DeleteUserAsync(user);
+                break;
+            case DisableAction:
+                await SetUserDisabledAsync(user, true);
+                break;
+            case EnableAction:
+                await SetUserDisabledAsync(user, false);
                 break;
             case SetIconAction:
                 await SetUserIconAsync(user);
@@ -378,8 +411,8 @@ else
                 </RadzenText>
                 <RadzenTextBox Value="@editedName" ValueChanged="@(v => editedName = v)" Placeholder="Name" Style="width: 100%;" />
                 <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" Gap="0.5rem">
-                    <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(_ => ds.Close(false))" />
                     <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" Click="@(_ => ds.Close(true))" />
+                    <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(_ => ds.Close(false))" />
                 </RadzenStack>
             </RadzenStack>,
             new DialogOptions { Width = "480px" });
@@ -469,6 +502,53 @@ else
         {
             _verifying = false;
         }
+    }
+
+    /// <remarks>
+    /// The self-check is repeated here for the same reason it is repeated in <see cref="DeleteUserAsync"/>:
+    /// <c>ActionItems</c> lets a host inject an item, and this handler dispatches on the value, so a
+    /// host-supplied "disable" reaches here without passing the markup gate. The service refuses it too —
+    /// this only turns a thrown exception into an explanation.
+    /// </remarks>
+    private async Task SetUserDisabledAsync(UserViewModel user, bool disabled)
+    {
+        if (disabled && !UserAdminGate.CanDisableUser(user.Key, _currentUserKey))
+        {
+            NotificationService.Notify(NotificationSeverity.Warning, "Cannot disable your own account",
+                "Another administrator has to do it, so somebody is always left able to manage users.");
+            return;
+        }
+
+        if (disabled)
+        {
+            var confirmed = await DialogService.Confirm(
+                $"Disable {user.Name ?? user.EMail}? They are signed out shortly and cannot sign in again, but keep their teams and history so this can be undone.",
+                "Confirm disable user");
+            if (confirmed != true) return;
+        }
+
+        try
+        {
+            await UserManagementService.SetUserDisabledAsync(user.Key, disabled);
+            NotificationService.Notify(NotificationSeverity.Success,
+                disabled ? "User disabled" : "User enabled",
+                disabled
+                    ? $"{user.Name ?? user.EMail} will be signed out within the claim-revalidation interval."
+                    : $"{user.Name ?? user.EMail} can sign in again.");
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error,
+                disabled ? "Could not disable user" : "Could not enable user", ex.Message);
+        }
+    }
+
+    private static string GetDisabledText(UserViewModel user)
+    {
+        var when = user.DisabledAt?.ToString("yyyy-MM-dd HH:mm");
+        var who = string.IsNullOrEmpty(user.DisabledBy) ? null : $" by {user.DisabledBy}";
+        return $"Disabled in this application {when}{who}. Not the same as being disabled in the directory.";
     }
 
     private async Task DeleteUserAsync(UserViewModel user)

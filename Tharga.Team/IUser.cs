@@ -33,4 +33,22 @@ public interface IUser
     /// persist it (the same shape-based opt-in as <see cref="DirectoryId"/> / <see cref="LastSeen"/>).
     /// </summary>
     public string Icon => null;
+
+    /// <summary>
+    /// When this user was disabled, or null if they are enabled. A disabled user is evicted from their
+    /// session within the claim-revalidation interval and cannot sign back in.
+    /// </summary>
+    /// <remarks>
+    /// Opt-in by shape, like <see cref="DirectoryId"/> and <see cref="Icon"/>: declare the property on
+    /// the user entity to persist it, and implement <c>IUserService.SetUserDisabledAsync</c>.
+    /// <para>
+    /// <b>Not the same as <see cref="DirectoryUserStatus.Disabled"/></b>, which means disabled in the
+    /// external directory — blocked from the organization rather than from this application. The two are
+    /// independent and are shown separately, for the same reason local and directory deletion are.
+    /// </para>
+    /// </remarks>
+    public DateTime? DisabledAt => null;
+
+    /// <summary>Who disabled this user, or null if they are enabled.</summary>
+    public string DisabledBy => null;
 }

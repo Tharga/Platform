@@ -101,6 +101,32 @@ public class AuditingUserManagementServiceDecorator : IUserManagementService
     }
 
     /// <remarks>
+    /// Both directions, under distinct actions — <c>disable</c> is a containment, <c>enable</c> is a
+    /// decision to let the person back in. One entry keyed on a boolean would make "who re-enabled this"
+    /// a query rather than a reading. The refusal to disable oneself is audited as a failure too: an
+    /// administrator repeatedly trying it is worth seeing.
+    /// </remarks>
+    public async Task SetUserDisabledAsync(string userKey, bool disabled, CancellationToken cancellationToken = default)
+    {
+        var action = disabled ? "disable" : "enable";
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            await _inner.SetUserDisabledAsync(userKey, disabled, cancellationToken);
+            sw.Stop();
+            Log(action, nameof(SetUserDisabledAsync), sw.ElapsedMilliseconds, true,
+                metadata: Meta((AuditMetadataKeys.UserKey, userKey)));
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            Log(action, nameof(SetUserDisabledAsync), sw.ElapsedMilliseconds, false, ex.Message,
+                metadata: Meta((AuditMetadataKeys.UserKey, userKey)));
+            throw;
+        }
+    }
+
+    /// <remarks>
     /// The directory outcome is recorded rather than just the local write: a rename that succeeded here
     /// and failed there is the case someone will later need to explain, and it is invisible otherwise.
     /// </remarks>

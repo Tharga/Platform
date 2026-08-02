@@ -97,6 +97,11 @@ else if (_loaded)
                                     <RadzenSplitButtonItem Text="Audit log" Value="@AuditAction" Icon="manage_search" />
                                 }
                                 @TeamActionItems
+                                @if (_canManageTeams)
+                                {
+                                    <RadzenSplitButtonItem Text="Rename" Value="@RenameAction" Icon="edit" />
+                                    <RadzenSplitButtonItem Text="Set icon" Value="@SetIconAction" Icon="image" />
+                                }
                                 @if (UserAdminGate.CanAssignOwner(_canAssignOwner, context.IsOwnerless))
                                 {
                                     <RadzenSplitButtonItem Text="Assign owner" Value="@AssignOwnerAction" Icon="manage_accounts" />
@@ -224,6 +229,7 @@ else
     private bool _canAdminister = true;
     private bool _canDeleteTeams;
     private bool _canAssignOwner;
+    private bool _canManageTeams;
     private IUser[] _users;
     private ITeam<TMember>[] _teams;
     private bool _canSeeAllTeams;
@@ -241,6 +247,8 @@ else
             TeamScopeGate.HasSystemScope(authState.User, SystemTeamScopes.Delete));
         // System grant only — an in-team scope of the same name must not satisfy it.
         _canAssignOwner = TeamScopeGate.HasSystemScope(authState.User, SystemTeamScopes.AssignOwner);
+        _canManageTeams = UserAdminGate.CanManageTeams(
+            TeamScopeGate.HasSystemScope(authState.User, SystemTeamScopes.Manage));
 
         if (_canAdminister)
         {
@@ -315,6 +323,8 @@ else
     private const string AuditAction = "audit";
     private const string DeleteAction = "delete";
     private const string AssignOwnerAction = "assign-owner";
+    private const string RenameAction = "rename";
+    private const string SetIconAction = "set-icon";
 
     /// <summary>
     /// Dispatches the team row's split button. A null item is the primary button — expand the row —
@@ -335,6 +345,12 @@ else
                 break;
             case AssignOwnerAction:
                 await AssignOwnerAsync(team);
+                break;
+            case RenameAction:
+                await RenameTeamAsync(team);
+                break;
+            case SetIconAction:
+                await SetTeamIconAsync(team);
                 break;
             default:
                 await TeamActionInvoked.InvokeAsync(new TeamRowAction(item.Value, team));
@@ -359,6 +375,36 @@ else
         await DialogService.OpenAsync($"Audit log — {team.Name}", _ =>
             @<Tharga.Team.Blazor.Features.Audit.AuditLogView PinnedFilter="@pinned" />,
             new DialogOptions { Width = "90vw", Height = "85vh", Resizable = true, Draggable = true });
+    }
+
+    /// <summary>
+    /// Cross-team rename, authorized by <see cref="SystemTeamScopes.Manage"/> rather than by membership.
+    /// Reuses the same dialog the per-team surface opens — it already takes a team key, so nothing about
+    /// it assumed the caller's own team.
+    /// </summary>
+    private async Task RenameTeamAsync(TeamViewModel team)
+    {
+        var result = await DialogService.OpenAsync<TeamDialog<TMember>>(
+            $"Rename {team.Name}",
+            new Dictionary<string, object> { { "TeamKey", team.Key }, { "Name", team.Name } },
+            new DialogOptions { Resizable = true, Draggable = true });
+
+        if (result == true) await LoadDataAsync();
+    }
+
+    /// <inheritdoc cref="RenameTeamAsync" />
+    private async Task SetTeamIconAsync(TeamViewModel team)
+    {
+        var result = await DialogService.OpenAsync<TeamIconDialog>(
+            $"Icon — {team.Name}",
+            new Dictionary<string, object>
+            {
+                { nameof(TeamIconDialog.TeamKey), team.Key },
+                { nameof(TeamIconDialog.HasIcon), !string.IsNullOrEmpty(team.Icon) }
+            },
+            new DialogOptions { Width = "480px" });
+
+        if (result is true) await LoadDataAsync();
     }
 
     /// <summary>

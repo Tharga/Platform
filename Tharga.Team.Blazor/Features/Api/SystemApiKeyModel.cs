@@ -13,4 +13,9 @@ public record SystemApiKeyModel
     public DateTime? LastUsedAt { get; init; }
     public string CreatedBy { get; init; }
     public bool IsExpired => ExpiryDate.HasValue && ExpiryDate < DateTime.UtcNow;
+    public DateTime? DisabledAt { get; init; }
+    public string DisabledBy { get; init; }
+
+    /// <inheritdoc cref="ApiKeyModel.IsDisabled"/>
+    public bool IsDisabled => DisabledAt.HasValue;
 }

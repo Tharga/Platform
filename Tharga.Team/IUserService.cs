@@ -107,6 +107,22 @@ public interface IUserService
     /// Deletes the user record from the store, with no team-membership cleanup — call through
     /// <see cref="IUserManagementService.DeleteUserAsync"/>, which removes team memberships and audits.
     /// </summary>
+    /// <summary>
+    /// Marks the user disabled, or clears the mark. A disabled user is refused at sign-in and evicted
+    /// from a live session within the claim-revalidation interval.
+    /// </summary>
+    /// <remarks>
+    /// Throws rather than no-opping when unimplemented, for the same reason
+    /// <see cref="DeleteUserAsync"/> does: silently skipping a requested disable would hide the missing
+    /// implementation behind an apparently successful containment.
+    /// </remarks>
+    [RequireScope(SystemUserScopes.Manage)]
+    Task SetUserDisabledAsync(string userKey, DateTime? disabledAt, string disabledBy)
+        => throw new NotSupportedException(
+            $"'{GetType().Name}' does not implement {nameof(SetUserDisabledAsync)}. Implement it, and " +
+            $"declare {nameof(IUser.DisabledAt)}/{nameof(IUser.DisabledBy)} on your user entity, to " +
+            $"support disabling users.");
+
     [RequireScope(SystemUserScopes.Manage)]
     Task DeleteUserAsync(string userKey)
         => throw new NotSupportedException(

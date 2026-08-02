@@ -19,4 +19,13 @@ public record ApiKeyModel
     public DateTime? LastUsedAt { get; init; }
     public IReadOnlyList<Tag> Tags { get; init; } = Array.Empty<Tag>();
     public bool IsExpired => ExpiryDate.HasValue && ExpiryDate < DateTime.UtcNow;
+    public DateTime? DisabledAt { get; init; }
+    public string DisabledBy { get; init; }
+
+    /// <summary>
+    /// Disabled is a decision somebody made; expired is a date passing. They are shown differently on
+    /// purpose — an operator who reads one as the other will either chase a key nobody turned off, or
+    /// assume a contained key merely lapsed.
+    /// </summary>
+    public bool IsDisabled => DisabledAt.HasValue;
 }

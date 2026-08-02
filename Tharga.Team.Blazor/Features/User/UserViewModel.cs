@@ -41,4 +41,17 @@ public record UserViewModel
 
     /// <summary>Set when the row has been verified against the external directory; mutable so a verify updates the badge in place.</summary>
     public DirectoryUserStatus? DirectoryStatus { get; set; }
+
+    /// <summary>
+    /// When this user was disabled <i>in this application</i>, or null. Distinct from
+    /// <see cref="DirectoryStatus"/> being <see cref="DirectoryUserStatus.Disabled"/>, which means
+    /// disabled in the external directory — blocked from the organization rather than from here. The two
+    /// are independent, can disagree, and are rendered as separate badges for exactly that reason.
+    /// </summary>
+    public DateTime? DisabledAt { get; init; }
+
+    /// <summary>Who disabled this user, or null.</summary>
+    public string DisabledBy { get; init; }
+
+    public bool IsDisabled => DisabledAt.HasValue;
 }

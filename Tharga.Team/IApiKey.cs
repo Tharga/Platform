@@ -54,4 +54,27 @@ public interface IApiKey
 
     /// <summary>When the key was last used to authenticate, or null if never used. Reset when the key is recycled (refreshed).</summary>
     DateTime? LastUsedAt { get; }
+
+    /// <summary>
+    /// When this key was disabled, or null if it is enabled. A disabled key is refused at authentication.
+    /// </summary>
+    /// <remarks>
+    /// A timestamp rather than a flag, because <i>when</i> and — with <see cref="DisabledBy"/> — <i>who</i>
+    /// are what an operator needs after a security action, and a bool answers neither.
+    /// <para>
+    /// <b>Distinct from expiry and from locking.</b> An expired key stopped working on a date nobody
+    /// chose and is fixed by a new expiry; a disabled key was stopped by a person and is fixed by that
+    /// person or another. A <i>locked</i> key is neither — locking only discards the stored secret so the
+    /// raw value cannot be retrieved again, and a locked key still authenticates.
+    /// </para>
+    /// <para>
+    /// <b>Refreshing does not clear this.</b> A key disabled because it might have leaked stays disabled
+    /// until someone explicitly enables it, or the remedy for a compromise silently undoes the
+    /// containment.
+    /// </para>
+    /// </remarks>
+    DateTime? DisabledAt { get; }
+
+    /// <summary>Who disabled this key, or null if it is enabled.</summary>
+    string DisabledBy { get; }
 }

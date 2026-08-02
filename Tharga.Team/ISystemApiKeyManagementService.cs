@@ -24,6 +24,10 @@ public interface ISystemApiKeyManagementService
     [RequireScope(ApiKeyScopes.SystemManage)]
     Task LockSystemKeyAsync(string key);
 
+    /// <inheritdoc cref="IApiKeyManagementService.SetKeyDisabledAsync"/>
+    [RequireScope(ApiKeyScopes.SystemManage)]
+    Task SetSystemKeyDisabledAsync(string key, bool disabled);
+
     [RequireScope(ApiKeyScopes.SystemManage)]
     Task DeleteSystemKeyAsync(string key);
 }

@@ -75,4 +75,96 @@ public class TeamMembershipClaimsBuilderTests
 
         Assert.Empty(claims);
     }
+
+    private static ITeamMember Suspended(AccessLevel accessLevel = AccessLevel.Administrator)
+        => Mock.Of<ITeamMember>(m =>
+            m.Key == UserKey &&
+            m.AccessLevel == accessLevel &&
+            m.SuspendedAt == new DateTime(2026, 8, 2, 10, 0, 0, DateTimeKind.Utc));
+
+    private static ITeamMember Active(AccessLevel accessLevel = AccessLevel.Administrator)
+        => Mock.Of<ITeamMember>(m => m.Key == UserKey && m.AccessLevel == accessLevel);
+
+    /// <summary>
+    /// The whole of the suspension feature rests here. This builder is the only thing that decides what a
+    /// member may do, and it never consulted membership state before — it granted the access level's full
+    /// scope set the moment a member came back from the store.
+    /// </summary>
+    [Fact]
+    public async Task ASuspendedMember_GetsNothing()
+    {
+        _teamService.Setup(t => t.GetTeamMemberAsync(TeamKey, UserKey)).ReturnsAsync(Suspended());
+        _scopeRegistry.Setup(s => s.GetEffectiveScopes(It.IsAny<AccessLevel>(), It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()))
+            .Returns(new[] { "team:read", "member:manage" });
+
+        var claims = await CreateSut().BuildAsync(PrincipalWithRoles("Support"), TeamKey);
+
+        Assert.Empty(claims);
+    }
+
+    /// <summary>
+    /// <b>No <c>TeamKey</c> claim either.</b> Filtering only the scopes would leave the member looking
+    /// like they are "in" the team to every service-layer check that reads that claim — a subtler and
+    /// worse state than either being in or out.
+    /// </summary>
+    [Fact]
+    public async Task ASuspendedMember_IsNotEvenMarkedAsBeingInTheTeam()
+    {
+        _teamService.Setup(t => t.GetTeamMemberAsync(TeamKey, UserKey)).ReturnsAsync(Suspended());
+
+        var claims = await CreateSut().BuildAsync(PrincipalWithRoles("Support"), TeamKey);
+
+        Assert.DoesNotContain(claims, c => c.Type == TeamClaimTypes.TeamKey);
+        Assert.DoesNotContain(claims, c => c.Type == ClaimTypes.Role && c.Value == Roles.TeamMember);
+    }
+
+    /// <summary>
+    /// The one that is easy to get wrong. Consent grants access by global role rather than by membership,
+    /// so a suspended member who happens to hold a consented role would walk straight back in through the
+    /// non-member path. Suspension is the more specific and more recent decision, so it wins.
+    /// </summary>
+    [Fact]
+    public async Task ASuspendedMember_DoesNotFallThroughToConsent()
+    {
+        _teamService.Setup(t => t.GetTeamMemberAsync(TeamKey, UserKey)).ReturnsAsync(Suspended());
+        _teamService.Setup(t => t.GetConsentedTeamsAsync(It.IsAny<string[]>()))
+            .Returns(Async(Mock.Of<ITeam>(t => t.Key == TeamKey && t.ConsentAccessLevel == AccessLevel.Administrator)));
+        _scopeRegistry.Setup(s => s.GetEffectiveScopes(It.IsAny<AccessLevel>(), It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()))
+            .Returns(new[] { "team:read" });
+
+        var claims = await CreateSut().BuildAsync(PrincipalWithRoles("Support"), TeamKey);
+
+        Assert.Empty(claims);
+        _teamService.Verify(t => t.GetConsentedTeamsAsync(It.IsAny<string[]>()), Times.Never);
+    }
+
+    /// <summary>
+    /// Suspension is not a one-way latch, and an Owner is not exempt from the check here — the refusal to
+    /// suspend an owner lives in the service, so if one somehow exists the builder must still honour it.
+    /// </summary>
+    [Fact]
+    public async Task ASuspendedOwner_AlsoGetsNothing()
+    {
+        _teamService.Setup(t => t.GetTeamMemberAsync(TeamKey, UserKey)).ReturnsAsync(Suspended(AccessLevel.Owner));
+        _scopeRegistry.Setup(s => s.GetEffectiveScopes(It.IsAny<AccessLevel>(), It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()))
+            .Returns(new[] { "team:read" });
+
+        var claims = await CreateSut().BuildAsync(PrincipalWithRoles("Support"), TeamKey);
+
+        Assert.Empty(claims);
+    }
+
+    /// <summary>The other direction: an ordinary member is unaffected, so the check has not broken everyone.</summary>
+    [Fact]
+    public async Task AnActiveMember_IsUnaffected()
+    {
+        _teamService.Setup(t => t.GetTeamMemberAsync(TeamKey, UserKey)).ReturnsAsync(Active());
+        _scopeRegistry.Setup(s => s.GetEffectiveScopes(It.IsAny<AccessLevel>(), It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()))
+            .Returns(new[] { "team:read" });
+
+        var claims = await CreateSut().BuildAsync(PrincipalWithRoles("Support"), TeamKey);
+
+        Assert.Contains(claims, c => c.Type == TeamClaimTypes.TeamKey && c.Value == TeamKey);
+        Assert.Contains(claims, c => c.Type == TeamClaimTypes.Scope && c.Value == "team:read");
+    }
 }

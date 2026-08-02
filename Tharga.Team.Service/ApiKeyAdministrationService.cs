@@ -135,7 +135,7 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
     {
         var item = await _repository.GetAsync(key);
         VerifyTeamOwnership(item, teamKey);
-        var refreshed = BuildKey(teamKey, item.Name, item.Tags, item.AccessLevel ?? AccessLevel.Administrator, item.Roles, item.ScopeOverrides, item.ExpiryDate, item.CreatedBy, item.OwnerMemberKey);
+        var refreshed = BuildKey(teamKey, item.Name, item.Tags, item.AccessLevel ?? AccessLevel.Administrator, item.Roles, item.ScopeOverrides, item.ExpiryDate, item.CreatedBy, item.OwnerMemberKey, item.DisabledAt, item.DisabledBy);
         await _repository.UpdateAsync(key, refreshed);
 
         if (_options.AutoLockKeys)
@@ -150,6 +150,14 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
         var item = await _repository.GetAsync(key);
         VerifyTeamOwnership(item, teamKey);
         await _repository.LockKeyAsync(key);
+    }
+
+    /// <inheritdoc />
+    public async Task SetKeyDisabledAsync(string teamKey, string key, bool disabled, string actor = null)
+    {
+        var item = await _repository.GetAsync(key);
+        VerifyTeamOwnership(item, teamKey);
+        await _repository.SetDisabledAsync(key, disabled ? DateTime.UtcNow : null, disabled ? actor : null);
     }
 
     /// <inheritdoc />
@@ -217,7 +225,7 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
     {
         var item = await _repository.GetAsync(key);
         VerifySystemKey(item);
-        var refreshed = BuildSystemKey(item.Name, item.SystemScopes ?? Array.Empty<string>(), item.ExpiryDate, item.CreatedBy);
+        var refreshed = BuildSystemKey(item.Name, item.SystemScopes ?? Array.Empty<string>(), item.ExpiryDate, item.CreatedBy, item.DisabledAt, item.DisabledBy);
         await _repository.UpdateAsync(key, refreshed);
 
         if (_options.AutoLockKeys)
@@ -232,6 +240,14 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
         var item = await _repository.GetAsync(key);
         VerifySystemKey(item);
         await _repository.LockKeyAsync(key);
+    }
+
+    /// <inheritdoc />
+    public async Task SetSystemKeyDisabledAsync(string key, bool disabled, string actor = null)
+    {
+        var item = await _repository.GetAsync(key);
+        VerifySystemKey(item);
+        await _repository.SetDisabledAsync(key, disabled ? DateTime.UtcNow : null, disabled ? actor : null);
     }
 
     /// <inheritdoc />
@@ -272,7 +288,11 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
         return StringExtension.GetRandomString(min, max);
     }
 
-    private ApiKeyEntity BuildKey(string teamKey, string name, IReadOnlyList<Tag> tags, AccessLevel accessLevel, string[] roles, string[] scopeOverrides, DateTime? expiryDate, string createdBy, string ownerMemberKey = null)
+    // disabledAt/disabledBy are carried forward on a refresh. A refresh mints a new secret; it is not a
+    // decision to trust the key again, so a disabled key stays disabled until someone explicitly enables
+    // it. Dropping them here is how the remedy for a compromise would silently undo the containment —
+    // and this builder rebuilds from a fixed field list, so any state not named is lost without a word.
+    private ApiKeyEntity BuildKey(string teamKey, string name, IReadOnlyList<Tag> tags, AccessLevel accessLevel, string[] roles, string[] scopeOverrides, DateTime? expiryDate, string createdBy, string ownerMemberKey = null, DateTime? disabledAt = null, string disabledBy = null)
     {
         var apiKey = _apiKeyService.BuildApiKey(teamKey, GenerateSecret);
         var encryptedApiKey = _apiKeyService.Encrypt(apiKey);
@@ -293,10 +313,12 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
             CreatedAt = DateTime.UtcNow,
             CreatedBy = createdBy,
             OwnerMemberKey = ownerMemberKey,
+            DisabledAt = disabledAt,
+            DisabledBy = disabledBy,
         };
     }
 
-    private ApiKeyEntity BuildSystemKey(string name, string[] scopes, DateTime? expiryDate, string createdBy)
+    private ApiKeyEntity BuildSystemKey(string name, string[] scopes, DateTime? expiryDate, string createdBy, DateTime? disabledAt = null, string disabledBy = null)
     {
         var apiKey = _apiKeyService.BuildApiKey("system", GenerateSecret);
         var encryptedApiKey = _apiKeyService.Encrypt(apiKey);
@@ -313,6 +335,8 @@ public class ApiKeyAdministrationService : IApiKeyAdministrationService
             ExpiryDate = expiryDate,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = createdBy,
+            DisabledAt = disabledAt,
+            DisabledBy = disabledBy,
         };
     }
 
