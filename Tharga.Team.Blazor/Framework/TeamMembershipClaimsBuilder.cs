@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.Extensions.Options;
 using Tharga.Team;
+using Tharga.Team.Service;
 
 namespace Tharga.Team.Blazor.Framework;
 
@@ -18,11 +19,9 @@ namespace Tharga.Team.Blazor.Framework;
 /// </remarks>
 internal sealed class TeamMembershipClaimsBuilder
 {
-    private readonly ITeamService _teamService;
     private readonly IUserService _userService;
-    private readonly IScopeRegistry _scopeRegistry;
-    private readonly ITenantRoleService _tenantRoleService;
     private readonly ThargaBlazorOptions _options;
+    private readonly TeamGrantResolver _resolver;
 
     public TeamMembershipClaimsBuilder(
         ITeamService teamService,
@@ -31,11 +30,9 @@ internal sealed class TeamMembershipClaimsBuilder
         IScopeRegistry scopeRegistry = null,
         ITenantRoleService tenantRoleService = null)
     {
-        _teamService = teamService;
         _userService = userService;
         _options = options.Value;
-        _scopeRegistry = scopeRegistry;
-        _tenantRoleService = tenantRoleService;
+        _resolver = new TeamGrantResolver(teamService, scopeRegistry, tenantRoleService);
     }
 
     public async Task<IReadOnlyList<Claim>> BuildAsync(ClaimsPrincipal principal, string teamKey)
@@ -45,60 +42,28 @@ internal sealed class TeamMembershipClaimsBuilder
             return claims;
 
         var user = await _userService.GetCurrentUserAsync(principal);
-        var member = await _teamService.GetTeamMemberAsync(teamKey, user?.Key);
 
-        // A suspended member is granted nothing, and does not fall through to the consent path below.
-        // Consent grants access by global role rather than by membership, so falling through would hand
-        // the member their access back by another route — and suspension is the more specific and more
-        // recent decision. Returning here, rather than filtering scopes further down, also means no
-        // TeamKey claim is issued: with one, service-layer checks would treat them as being "in" the team.
-        if (member?.SuspendedAt != null)
+        // Membership, suspension and consent are all decided by TeamGrantResolver, which the MCP surface
+        // reads too. This method's job is only to express the answer as claims — two copies of the rule
+        // is exactly how the team:read hole came about.
+        var grant = await _resolver.ResolveAsync(principal, user?.Key, teamKey, _options.Consent.AccessLevel);
+
+        // Null covers "not a member", "suspended", and "no consented role" alike, and no TeamKey claim is
+        // issued for any of them: with one, service-layer checks would treat the caller as being in the
+        // team regardless of holding no scopes there.
+        if (grant == null)
             return claims;
 
-        if (member != null)
-        {
-            claims.Add(new Claim(TeamClaimTypes.TeamKey, teamKey));
-            claims.Add(new Claim(ClaimTypes.Role, Roles.TeamMember));
-            claims.Add(new Claim(ClaimTypes.Role, $"Team{member.AccessLevel}"));
-            claims.Add(new Claim(TeamClaimTypes.AccessLevel, member.AccessLevel.ToString()));
-            if (!string.IsNullOrEmpty(member.Key))
-                claims.Add(new Claim(TeamClaimTypes.MemberKey, member.Key));
-
-            var scopes = _tenantRoleService != null
-                ? await _tenantRoleService.GetEffectiveScopesAsync(teamKey, member.AccessLevel, member.TenantRoles, member.ScopeOverrides)
-                : _scopeRegistry?.GetEffectiveScopes(member.AccessLevel, member.TenantRoles, member.ScopeOverrides) ?? [];
-            foreach (var scope in scopes)
-                claims.Add(new Claim(TeamClaimTypes.Scope, scope));
-
-            return claims;
-        }
-
-        // Not a member — the caller may still have consent-based access via a global role the team granted.
-        var userRoles = principal.Claims
-            .Where(c => c.Type == ClaimTypes.Role)
-            .Select(c => c.Value)
-            .ToArray();
-
-        if (userRoles.Length == 0)
-            return claims;
-
-        var consentedTeam = await _teamService.GetConsentedTeamsAsync(userRoles)
-            .FirstOrDefaultAsync(t => t.Key == teamKey);
-
-        if (consentedTeam == null)
-            return claims;
-
-        var consentLevel = consentedTeam.ConsentAccessLevel ?? _options.Consent.AccessLevel;
         claims.Add(new Claim(TeamClaimTypes.TeamKey, teamKey));
         claims.Add(new Claim(ClaimTypes.Role, Roles.TeamMember));
-        claims.Add(new Claim(ClaimTypes.Role, $"Team{consentLevel}"));
-        claims.Add(new Claim(TeamClaimTypes.AccessLevel, consentLevel.ToString()));
+        claims.Add(new Claim(ClaimTypes.Role, $"Team{grant.AccessLevel}"));
+        claims.Add(new Claim(TeamClaimTypes.AccessLevel, grant.AccessLevel.ToString()));
 
-        if (_scopeRegistry != null)
-        {
-            foreach (var scope in _scopeRegistry.GetEffectiveScopes(consentLevel, [], []))
-                claims.Add(new Claim(TeamClaimTypes.Scope, scope));
-        }
+        if (!string.IsNullOrEmpty(grant.MemberKey))
+            claims.Add(new Claim(TeamClaimTypes.MemberKey, grant.MemberKey));
+
+        foreach (var scope in grant.Scopes)
+            claims.Add(new Claim(TeamClaimTypes.Scope, scope));
 
         return claims;
     }
