@@ -61,6 +61,7 @@ public static class AuditServiceCollectionExtensions
         // system one, so ScopeProxy applies a different rule to each. Reading one team requires the grant
         // on that team; reading across all of them requires the system grant, and no call on the
         // team-bound interface can reach past the team it names.
+        services.AddScoped<TeamContextResolver>();
         services.AddScoped<AuditReadService>();
         services.AddTeamService<IAuditReadService, AuditReadService>();
         services.AddSystemService<IAuditOversightService, AuditReadService>();
