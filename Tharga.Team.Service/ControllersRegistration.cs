@@ -110,6 +110,10 @@ public static class ControllersRegistration
     {
         var options = app.Services.GetService<ThargaControllerOptions>() ?? new ThargaControllerOptions();
 
+        // Before the controllers, so a system key naming a team in the header carries its claims into
+        // every endpoint -- including a host's own, which need no knowledge of the mechanism.
+        app.UseMiddleware<TeamContextMiddleware>();
+
         app.MapControllers();
 #if NET10_0_OR_GREATER
         app.MapOpenApi();
