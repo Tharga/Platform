@@ -380,8 +380,26 @@ X-API-KEY: <key>
 | `success` | `true`/`false` |
 | `skip`, `take` | Paging; `take` is capped at 500 |
 
-Authorization is the **same rule the Blazor view uses** — both call `AuditAccess.CanRead`, so the two
-surfaces cannot drift apart as either changes:
+### Authorization is on the services, not on any surface
+
+Reading audit goes through two registered services, and **no surface authorizes anything itself**:
+
+| Service | Registered as | Requires |
+|---|---|---|
+| `IAuditReadService.QueryAsync(teamKey, query)` | team service | `audit:read` **on that team** |
+| `IAuditOversightService.QueryAllAsync(query)` | system service | a **system** `audit:read` grant |
+
+Both carry `[RequireScope(AuditScopes.Read)]` and are enforced by `ScopeProxy`, so the REST endpoint, the
+Blazor view and the MCP resource give the same answer to the same caller **because they ask the same
+code** — not because three implementations were tested into agreement.
+
+> **They previously did not.** The UI and REST called `AuditAccess.CanRead`; the MCP resource gated on a
+> host-configurable role instead. The same API key was admitted at one door and refused at another. A
+> static helper shared by the surfaces was not enough: it still had to be *called*, and one surface
+> simply did not.
+
+The team-bound service cannot reach past the team it names, so *a team grant never reaches system-wide
+audit* is a property of the shape rather than a check somebody remembered to write.
 
 | Caller | Result |
 |---|---|
@@ -391,8 +409,32 @@ surfaces cannot drift apart as either changes:
 | Omits `teamKey` without a **system** `audit:read` grant | `403` |
 | Holds system `audit:read` | `200`, any team or all teams |
 
+A system grant reads one named team by *filtering* the oversight read. `ScopeProxy`'s team check does not
+accept a system grant — that provenance split is deliberate, so an in-team scope can never be spent
+cross-team — so the two are separate calls, and the REST endpoint tries both on the caller's behalf.
+
 `audit:read` is registered at `AccessLevel.Administrator`, so a Viewer- or User-level caller is refused
 even for its own team.
+
+### Consent reaches audit, and stops where the level does
+
+A caller who is **not a member** of a team reaches it if the team consented to a role they hold — at
+exactly the consented level, never above it. Since `audit:read` sits at `Administrator`:
+
+| Consented level | Reaches the team | Reads its audit |
+|---|---|---|
+| None | ❌ | ❌ |
+| Viewer | ✅ | ❌ |
+| User | ✅ | ❌ |
+| Administrator | ✅ | ✅ |
+
+Consent is therefore necessary but not sufficient: a team can grant cross-team access and grant no audit
+access by the same act.
+
+> **This does not currently apply to API keys.** Consent matches a caller's *roles*, and an API-key
+> principal carries no role claims — neither a team key nor a system key. A key reaches another team only
+> through an explicit **system** grant. Giving keys roles is an open design question, not an oversight to
+> work around.
 
 Denials are `403`, never `404` — a `404` would confirm whether a team exists to a caller not allowed to
 know that.
