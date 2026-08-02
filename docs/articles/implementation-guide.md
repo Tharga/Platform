@@ -439,6 +439,16 @@ cross-team — so the two are separate calls, and the REST endpoint tries both o
 `audit:read` is registered at `AccessLevel.Administrator`, so a Viewer- or User-level caller is refused
 even for its own team.
 
+### The audit action is hidden, not shown-then-refused
+
+`<UsersView ShowAuditLogButton="true" />` and `<TeamComponent ShowAuditLogButton="true" />` offer the
+per-row audit action only to a caller who can actually read audit — the system grant for the users list,
+which spans every team, and the team grant for a team's own members.
+
+The flag is the host's permission to *offer* the feature; it is not evidence that this caller may use it.
+A control that appears and then refuses is a defect this codebase has fixed twice, and the second time it
+was in the users list while the team surface already had it right.
+
 ### `X-Team-Key` is a platform mechanism, not an audit one
 
 The header is resolved **before** any endpoint runs, and a resolved team is added to the caller's claims.

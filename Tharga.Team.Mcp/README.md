@@ -178,6 +178,17 @@ It is deliberately not an MCP option. Consent decides what a caller may do in a 
 to, and a second copy here would let the same caller reach the same team at two different levels
 depending on which door they came through — which is exactly what happened before it was moved.
 
+## A resource is listed only if you could read it
+
+`resources/list` shows a resource only when the caller could actually read it. Listing something they
+cannot read advertises data they may not have; omitting something they can read hides a capability they
+hold. Both were once true here at the same time — the audit read moved onto `audit:read` while the listing
+one method above still asked for the Developer role.
+
+Each entry therefore asks the same question its read asks, rather than one check standing in for all of
+them. For audit that means asking `IAuditOversightService`, which is what the read is gated on: a
+registered logger says the *feature* exists, not that *this caller* may use it.
+
 ## System-scope diagnostic resources (opt-in)
 
 Expose read-only diagnostic data under `team://system/*` for callers with the Developer role. Non-developers see no resources and get `UnauthorizedAccessException` on read.
