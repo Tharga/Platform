@@ -113,7 +113,7 @@ API-key behaviour (auto-lock, expiry, and the random secret length via `MinKeyLe
 
 ## User administration & Entra directory
 
-The user store tracks per-user **last seen** (opt-in: declare `LastSeen`/`DirectoryId` on your user entity), and `IUserManagementService` provides audited administration: verify users against Microsoft Entra ID, list users that exist only in Entra, and delete users — from the app and (explicit opt-in) from Entra. Everything cross-user — including viewing the admin lists and enumerating users via `IUserService` — requires the `users:manage` system scope, enforced in the service layer:
+The user store tracks per-user **last seen** (opt-in: declare `LastSeen`/`DirectoryId` on your user entity), and `IUserManagementService` provides audited administration: verify users against Microsoft Entra ID, list users that exist only in Entra, disable users, and delete them — from the app and (explicit opt-in) from Entra. Everything cross-user — including viewing the admin lists and enumerating users via `IUserService` — requires the `users:manage` system scope, enforced in the service layer:
 
 ```csharp
 // dotnet add package Tharga.Team.Entra
@@ -139,7 +139,7 @@ See [Team & user icons](docs/articles/icons.md).
 
 ## Live claim revalidation
 
-Team claims (membership, access level, tenant-role scopes, consent access) are enriched at HTTP authentication, so in a long-lived Blazor Server circuit they would otherwise stay frozen until a reload — a removed member, a downgraded access level, or a revoked consent would keep their old access, in the service-layer checks as well as the UI. Tharga.Team revalidates them on an interval and refreshes the principal **in place** (no forced sign-out), so team access is stale for at most one interval. On by default (30 min); tune or disable it:
+Team claims (membership, access level, tenant-role scopes, consent access) are enriched at HTTP authentication, so in a long-lived Blazor Server circuit they would otherwise stay frozen until a reload — a removed member, a downgraded access level, or a revoked consent would keep their old access, in the service-layer checks as well as the UI. Tharga.Team revalidates them on an interval and refreshes the principal **in place**, so team access is stale for at most one interval. A change in team access never signs anybody out — the session is still valid, only the access moved. The one exception is a **disabled user**, who is signed out on the same interval. On by default (30 min); tune or disable it:
 
 ```csharp
 builder.AddThargaTeam(o =>
@@ -150,6 +150,36 @@ builder.AddThargaTeam(o =>
 ```
 
 See [Team-claim revalidation](docs/articles/implementation-guide.md#team-claim-revalidation).
+
+## Suspending instead of deleting
+
+Deletion is final: it drops the record, the memberships, the scopes and the trail. Three reversible
+alternatives cover the ordinary cases — someone on leave, a suspected compromise, a paused integration —
+each bounded differently:
+
+| To stop | Call | Scope | Reach |
+|---|---|---|---|
+| A person signing in at all | `IUserManagementService.SetUserDisabledAsync` | `users:manage` | The whole application |
+| A person working in **one team** | `ITeamManagementService.SetMemberSuspendedAsync` | `member:manage` | That team only |
+| An API key | `IApiKeyManagementService.SetKeyDisabledAsync` | `apikey:manage` | That key |
+
+All three record **when** and **by whom**, audit both directions under distinct actions, and give back
+everything on the way out. Nobody can disable or suspend themselves, and a team's Owner cannot be
+suspended.
+
+A **disabled user** is refused at sign-in and evicted from a live session within the revalidation
+interval. A **suspended member** keeps their membership and still sees the team in the selector — they
+simply hold no scopes in it, so every scoped operation refuses. Seeing the team is the point: a
+membership that silently vanishes is indistinguishable from removal. Drop `<SuspendedTeamNotice />` into
+your layout to explain it to them.
+
+A **disabled key** stops authenticating, and the refusal is recorded as an authentication failure —
+those attempts are the point of the trail. Refreshing it does **not** re-enable it: a refresh mints a new
+secret, it is not a decision to trust the key again.
+
+To persist any of it, declare the properties on your entity (`DisabledAt`/`DisabledBy` on the user,
+`SuspendedAt`/`SuspendedBy` on the member) and implement the matching hook. Both are opt-in by shape, as
+`Icon` and `LastSeen` are. See [Suspending instead of deleting](docs/articles/user-management.md#suspending-instead-of-deleting).
 
 ## Advanced Usage
 
