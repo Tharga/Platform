@@ -13,7 +13,7 @@ namespace Tharga.Team.Service.Audit;
 [ApiController]
 [Route("api/audit")]
 [Authorize(Policy = ApiKeyConstants.ThargaApiPolicyName)]
-public class AuditController(CompositeAuditLogger auditLogger) : ControllerBase
+public class AuditController(IAuditReadService auditReadService, IAuditOversightService auditOversightService) : ControllerBase
 {
     /// <summary>Audit entries, newest first.</summary>
     /// <param name="teamKey">
@@ -40,17 +40,12 @@ public class AuditController(CompositeAuditLogger auditLogger) : ControllerBase
         [FromQuery] int skip = 0,
         [FromQuery] int take = 100)
     {
-        // Forbid rather than 404: the caller is authenticated and the resource exists, they simply may not
-        // read it. A 404 here would also leak whether a team key is real, by answering differently for one
-        // that is not.
-        if (!AuditAccess.CanRead(User, teamKey))
-            return Forbid();
-
-        var result = await auditLogger.QueryAsync(new AuditQuery
+        // No authorization here. Both services carry [RequireScope] and are enforced by ScopeProxy --
+        // the team-bound one against the team named below, the oversight one against the system grant.
+        // A check in this method would be a second copy of a rule the service already owns, and a second
+        // copy is how the three surfaces came to disagree in the first place.
+        var query = new AuditQuery
         {
-            // Bound by the same value the authorization check used, so a caller authorized for one team
-            // cannot widen the query past it.
-            TeamKey = teamKey,
             From = from,
             To = to,
             Feature = feature,
@@ -58,9 +53,36 @@ public class AuditController(CompositeAuditLogger auditLogger) : ControllerBase
             Success = success,
             Skip = skip < 0 ? 0 : skip,
             Take = Math.Clamp(take, 1, MaxTake),
-        });
+        };
 
-        return Ok(result);
+        try
+        {
+            // Two ways to be allowed to read one team: a grant on that team, or a system grant that
+            // covers every team. ScopeProxy's team check does not accept a system grant -- that
+            // provenance split is deliberate and must not be loosened globally -- so the two are asked
+            // separately, and both services do their own deciding. The controller only chooses which
+            // doors to try; it never decides whether one opens.
+            if (!string.IsNullOrEmpty(teamKey))
+            {
+                try
+                {
+                    return Ok(await auditReadService.QueryAsync(teamKey, query));
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // No grant on that team. A system grant may still cover it, narrowed by the filter.
+                }
+            }
+
+            return Ok(await auditOversightService.QueryAllAsync(query with { TeamKey = teamKey }));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Forbid rather than 404: the caller is authenticated and the resource exists, they simply
+            // may not read it. A 404 would also leak whether a team key is real, by answering differently
+            // for one that is not.
+            return Forbid();
+        }
     }
 
     /// <summary>Ceiling on <c>take</c>, so one request cannot pull the whole collection.</summary>

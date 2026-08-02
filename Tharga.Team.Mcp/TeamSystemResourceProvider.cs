@@ -25,14 +25,22 @@ public sealed class TeamSystemResourceProvider : IMcpResourceProvider
         WriteIndented = true,
     };
 
+    private readonly IAuditOversightService _auditOversightService;
+
+    /// <param name="auditOversightService">
+    /// Reads audit across every team, and carries the authorization with it. Injected instead of the
+    /// logger so this provider performs no audit check of its own — see <see cref="ReadAuditAsync"/>.
+    /// </param>
     public TeamSystemResourceProvider(
         IApiKeyAdministrationService apiKeyAdministrationService = null,
         ITenantRoleRegistry tenantRoleRegistry = null,
-        CompositeAuditLogger auditLogger = null)
+        CompositeAuditLogger auditLogger = null,
+        IAuditOversightService auditOversightService = null)
     {
         _apiKeyAdministrationService = apiKeyAdministrationService;
         _tenantRoleRegistry = tenantRoleRegistry;
         _auditLogger = auditLogger;
+        _auditOversightService = auditOversightService;
     }
 
     public McpScope Scope => McpScope.System;
@@ -140,10 +148,21 @@ public sealed class TeamSystemResourceProvider : IMcpResourceProvider
         };
     }
 
+    /// <remarks>
+    /// Goes through <see cref="IAuditOversightService"/>, which carries <c>[RequireScope(audit:read)]</c>
+    /// as a system grant, rather than reading the logger directly behind an <c>IsDeveloper</c> check.
+    /// <para>
+    /// <b>That check was a third rule for the same question.</b> The UI and REST asked whether the caller
+    /// held <c>audit:read</c>; this asked whether they held a host-configurable role, so the same API key
+    /// got different answers from different surfaces. Behaviour changes accordingly: a holder of that
+    /// role without <c>audit:read</c> loses access here, and a holder of the system scope without the
+    /// role gains it.
+    /// </para>
+    /// </remarks>
     private async Task<McpResourceContent> ReadAuditAsync()
     {
-        if (_auditLogger == null)
-            throw new InvalidOperationException("CompositeAuditLogger is not registered.");
+        if (_auditOversightService == null)
+            throw new InvalidOperationException("IAuditOversightService is not registered.");
 
         var query = new AuditQuery
         {
@@ -152,7 +171,7 @@ public sealed class TeamSystemResourceProvider : IMcpResourceProvider
             SortDescending = true,
         };
 
-        var result = await _auditLogger.QueryAsync(query);
+        var result = await _auditOversightService.QueryAllAsync(query);
 
         return new McpResourceContent
         {

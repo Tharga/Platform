@@ -122,16 +122,39 @@ public class TeamSystemResourceProviderTests
         Assert.Contains("feature:read", content.Text);
     }
 
+    /// <remarks>
+    /// Reads through <see cref="IAuditOversightService"/> now, not the logger. That service carries
+    /// <c>[RequireScope(audit:read)]</c> as a system grant, so the authorization lives with it and this
+    /// provider performs no audit check of its own — where it previously asked whether the caller held a
+    /// host-configurable role, a rule neither the UI nor REST used.
+    /// </remarks>
     [Fact]
     public async Task ReadResourceAsync_Audit_ReturnsQueryResult()
     {
-        var sut = new TeamSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
+        var oversight = Substitute.For<IAuditOversightService>();
+        oversight.QueryAllAsync(Arg.Any<AuditQuery>()).Returns(new AuditQueryResult());
+
+        var sut = new TeamSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger, oversight);
 
         var content = await sut.ReadResourceAsync(TeamSystemResourceProvider.AuditUri, MakeContext(isDeveloper: true), TestContext.Current.CancellationToken);
 
         Assert.NotNull(content.Text);
         Assert.Contains("items", content.Text);
         Assert.Equal("application/json", content.MimeType);
+    }
+
+    /// <summary>
+    /// The provider no longer decides audit access. With no oversight service registered it fails loudly
+    /// rather than falling back to reading the logger unchecked, which is the shape that let the surfaces
+    /// diverge.
+    /// </summary>
+    [Fact]
+    public async Task ReadResourceAsync_Audit_WithoutTheOversightService_Throws()
+    {
+        var sut = new TeamSystemResourceProvider(_apiKeyService, _roleRegistry, _auditLogger);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sut.ReadResourceAsync(TeamSystemResourceProvider.AuditUri, MakeContext(isDeveloper: true), TestContext.Current.CancellationToken));
     }
 
     [Fact]
