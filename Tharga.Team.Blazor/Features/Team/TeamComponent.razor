@@ -117,7 +117,9 @@ else
                         <RadzenDataGridColumn TItem="ITeam<TMember>" Title="Consent" Width="230px" Filterable="false" Sortable="false"
                                               Visible="@(_canSeeAllTeams || _showConsentToggle)">
                             <Template Context="team">
-                                @TeamConsent(team)
+                                @* No label: the column header already says Consent, and repeating it in
+                                   every cell is the same word printed once per row. *@
+                                @ConsentFor(team, showLabel: false)
                             </Template>
                         </RadzenDataGridColumn>
                         <RadzenDataGridColumn TItem="ITeam<TMember>" Title="Members" Width="110px" Filterable="false" Sortable="false">
@@ -146,7 +148,7 @@ else
                     <ExpandableCard Text="@team.Name" Icon="groups" ImageUrl="@TeamIconUrl(team)" Selected="@(_selectedTeam?.Key == team.Key)">
                         <ChildContent>
                             <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" AlignItems="AlignItems.End" Gap="0.75rem">
-                                @TeamConsent(team)
+                                @ConsentFor(team, showLabel: true)
                                 @TeamActionsFragment(team)
                             </RadzenStack>
                             @TeamDetail(team)
@@ -826,6 +828,13 @@ else
     /// a card's header.
     /// </summary>
     /// <remarks>
+    /// <b>Only where it can be changed.</b> Consent is editable on the selected team alone, so in a list
+    /// most rows cannot be edited — and a column of disabled drop-downs is a row of controls that do
+    /// nothing. Those rows state the level instead.
+    /// <para>
+    /// The label is the caller's to ask for: a grid column header already says "Consent", so repeating it
+    /// in every cell prints the same word once per row. A card has no header, so there it carries.
+    /// </para>
     /// The label sits <b>above</b> the drop-down rather than beside it. Side by side, the label ran
     /// straight into the selected level and the two read as one sentence — "Consent access for Developer,
     /// Administrator" — which states something nobody wrote: that Administrator is a consenting role
@@ -835,28 +844,32 @@ else
     /// would be a comfortable label that misstates who can reach the team.
     /// </para>
     /// </remarks>
-    private RenderFragment<ITeam<TMember>> TeamConsent => team =>
+    private RenderFragment ConsentFor(ITeam<TMember> team, bool showLabel) =>
     @<text>
         <RadzenStack Orientation="Orientation.Vertical" Gap="0.15rem" AlignItems="AlignItems.Start">
-            @if (_showConsentToggle)
+            @if (_showConsentToggle && CanEditConsent(team))
             {
-                <RadzenLabel Text="@ConsentLabel" Style="font-size: 0.85em; opacity: 0.75;" />
+                @if (showLabel)
+                {
+                    <RadzenLabel Text="@ConsentLabel" Style="font-size: 0.85em; opacity: 0.75;" />
+                }
                 <RadzenDropDown TValue="AccessLevel?"
                                 Value="@ConsentOf(team)"
                                 Data="@_consentLevels"
                                 AllowClear="true"
-                                Disabled="@(!CanEditConsent(team))"
                                 Placeholder="No access"
                                 Change="@(async args => await SetConsent(team, (AccessLevel?)args))"
                                 Style="width: 100%;" />
             }
-            else if (_canSeeAllTeams)
+            else if (_canSeeAllTeams || _showConsentToggle)
             {
-                @* No selector to read the level from, so the badge carries it. *@
+                @* Nothing to change here, so the value is stated rather than offered. Consent is only
+                   editable on the selected team, so in a list most rows are this case -- and a column of
+                   disabled drop-downs is a row of controls that do nothing. *@
                 <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(TeamVisibility.BadgeStyle(ConsentOf(team))))"
                              Variant="Variant.Flat"
                              Text="@TeamVisibility.Label(ConsentOf(team))"
-                             title="What this team has consented to grant you." />
+                             title="What this team has consented to grant. Select the team to change it." />
             }
             @if (_canSeeAllTeams && !IsMemberOf(team))
             {
