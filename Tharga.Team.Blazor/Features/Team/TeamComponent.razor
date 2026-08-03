@@ -82,28 +82,61 @@ else
                                 ExpandMode="DataGridExpandMode.Multiple"
                                 RowRender="@OnTeamRowRender">
                     <Columns>
-                        <RadzenDataGridColumn TItem="ITeam<TMember>" Title="Team" Property="Name" SortOrder="SortOrder.Ascending">
+                        @* Name is a real property on ITeam, so it sorts and filters through the grid's
+                           own machinery. Every other column here is derived -- the caller's level comes
+                           from their membership row, the badges from consent -- so they are marked
+                           unsortable rather than given a SortProperty that does not exist. A sort control
+                           that silently does nothing is worse than no control. *@
+                        <RadzenDataGridColumn TItem="ITeam<TMember>" Title="Team" Property="Name"
+                                              SortOrder="SortOrder.Ascending" Filterable="true">
                             <Template Context="team">
                                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
                                     <TeamAvatar Team="@team" Size="24px" />
                                     <span>@team.Name</span>
-                                    @if (_canSeeAllTeams)
+                                </RadzenStack>
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="ITeam<TMember>" Title="Your access" Width="140px" Filterable="false" Sortable="false">
+                            <Template Context="team">
+                                @{
+                                    var myLevel = MyAccessLevel(team);
+                                }
+                                @if (myLevel != null)
+                                {
+                                    <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(AccessLevelBadge.Style(myLevel)))"
+                                                 Variant="Variant.Flat"
+                                                 Text="@AccessLevelBadge.Text(myLevel)"
+                                                 title="Your access level on this team." />
+                                }
+                                else
+                                {
+                                    <span class="rz-text-disabled">—</span>
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="ITeam<TMember>" Title="Consent" Width="170px" Filterable="false" Sortable="false"
+                                              Visible="@_canSeeAllTeams">
+                            <Template Context="team">
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.35rem" Wrap="FlexWrap.Wrap">
+                                    <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(TeamVisibility.BadgeStyle(ConsentOf(team))))"
+                                                 Variant="Variant.Flat"
+                                                 Text="@TeamVisibility.Label(ConsentOf(team))"
+                                                 title="What this team has consented to grant you." />
+                                    @if (!IsMemberOf(team))
                                     {
-                                        <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(TeamVisibility.BadgeStyle(ConsentOf(team))))"
-                                                     Variant="Variant.Flat"
-                                                     Text="@TeamVisibility.Label(ConsentOf(team))"
-                                                     title="What this team has consented to grant you." />
-                                        @if (!IsMemberOf(team))
-                                        {
-                                            <RadzenBadge BadgeStyle="BadgeStyle.Light" Variant="Variant.Flat" Text="Not a member"
-                                                         title="You are viewing this team through cross-team access, not membership." />
-                                        }
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Light" Variant="Variant.Flat" Text="Not a member"
+                                                     title="You are viewing this team through cross-team access, not membership." />
                                     }
                                 </RadzenStack>
                             </Template>
                         </RadzenDataGridColumn>
                         <RadzenDataGridColumn TItem="ITeam<TMember>" Title="Members" Width="110px" Filterable="false" Sortable="false">
-                            <Template Context="team">@(team.Members?.Count() ?? 0)</Template>
+                            <Template Context="team">
+                                @{
+                                    var counts = TeamMemberCounts.Of(team.Members);
+                                }
+                                <span title="@counts.Title">@counts.Text</span>
+                            </Template>
                         </RadzenDataGridColumn>
                         <RadzenDataGridColumn TItem="ITeam<TMember>" Title="" Width="240px" Sortable="false" Filterable="false" TextAlign="TextAlign.Right">
                             <Template Context="team">
@@ -870,6 +903,20 @@ else
             // a background set on the <tr> here, so a row-level style is invisible.
             args.Attributes["data-tharga-current-member"] = "true";
         }
+    }
+
+    /// <summary>
+    /// The caller's own access level on a team, or null when they are not a member of it.
+    /// </summary>
+    /// <remarks>
+    /// Null means "not a member", which is a different statement from any level — an oversight caller
+    /// reaching a team by consent has access without membership, and showing them a level here would
+    /// claim a membership they do not have. The Consent column says what they actually get.
+    /// </remarks>
+    private AccessLevel? MyAccessLevel(ITeam<TMember> team)
+    {
+        var member = team.Members?.FirstOrDefault(x => x.Key == _user?.Key && x.State == MembershipState.Member);
+        return member?.AccessLevel;
     }
 
     private bool IsMemberOf(ITeam<TMember> team)
