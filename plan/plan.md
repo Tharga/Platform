@@ -41,20 +41,30 @@ One resolver per way of naming a target scope set. All four return the same shap
 - [ ] **No shadow claims.** Do not park the removed scopes on the principal under another claim type to
       consult later; an inert claim listing scopes is what a future reader misreads as a grant.
 
-## 4. The filter
+## 4. The filter — DONE
 
-- [ ] **`AccessSimulationFilter` — subtractive only.** Removes scope and role claims; **no code path adds
-      a claim.** The de-escalation guarantee is then a property of the type, not of a calculation.
-- [ ] Identity claims (name, subject, email, member key, team key) untouched — the audit actor stays real
-      by construction rather than by a rule someone must remember.
-- [ ] **Simulating a user drops all system scopes.** They cannot be computed for someone else
-      (`ISystemRoleRegistry` maps app roles, which come from the identity provider). Dropping is the safe
-      direction; §5 makes it visible.
-- [ ] Access level: replace, clamped so the simulated level is never more privileged.
-      **`Owner=0 … Viewer=3`, so less privilege is a larger ordinal and `Math.Min` is backwards.**
-      `Custom=4` is the floor, not rank 4 — tested as its own case.
+- [x] **`AccessSimulationFilter`. Scopes are strictly subtractive — no code path adds a scope claim**,
+      team or system.
+- [x] **Correction to the plan as written:** it said *no code path adds a claim at all*. That is not
+      achievable. `[RequireAccessLevel]` reads the `AccessLevel` claim and `AuthorizeView Roles="Team…"`
+      reads the matching role, so a simulation that only *removed* them would show a caller with **no**
+      level rather than a lower one. The honest statement is narrower and still strong: **scopes are
+      absolutely subtractive; the access level is a clamped replacement**, and both claim and role move
+      together so nothing can read one and disagree with the other.
+- [x] Identity claims (name, subject, email, member key, team key) untouched — the audit actor stays real
+      by construction.
+- [x] **Every identity on the principal is filtered, not only the primary one.** Authorization reads the
+      union across identities, so a scope left on a secondary identity would still be honoured — the
+      simulation would appear to work while granting what it claimed to remove. Tested.
+- [x] `TryRemoveClaim` returning false **throws** rather than continuing. A claim that survives a removal
+      it reported is the one failure this type exists to prevent.
+- [x] **Simulating a user drops system scopes and app roles.** Neither can be computed for someone else;
+      dropping is the safe direction and §5 makes it visible.
+- [x] `AccessLevelPrivilege` — its own type, because the obvious implementation is wrong in a way that
+      compiles: `Owner=0 … Viewer=3`, so `Math.Min` picks the *more* privileged. `Custom` is the floor,
+      handled explicitly rather than by its ordinal happening to work.
 
-## 5. The difference report — build it with the filter, not after
+## 5. The difference report — DONE (report), UI pending
 
 - [ ] `target \ real`: what the target holds that the caller does not, and which the simulation therefore
       **cannot show**.
