@@ -743,7 +743,7 @@ public class MyTeamService : TeamServiceRepositoryBase<TeamEntity, TeamMember>
 |-----------|-------------|
 | `<TeamSelector />` | Dropdown to switch between teams. Gains a **search box** once there are `FilterThreshold` teams (default 8) — below that a short list is read faster than it is typed into. `AllowFiltering` forces it either way |
 | `<TeamComponent />` | Full team management (create, rename, delete, members). **Cards while the list is short, a sortable/filterable/paged grid once it is not** — the same threshold the selector uses. See [Finding a team](#finding-a-team-when-there-are-many-of-them) |
-| `<TeamInviteView />` | Pending invitation view |
+| `<TeamInviteView />` | Pending invitation view. **Works standalone on its own route** — see [Where invitations are redeemed](#where-invitations-are-redeemed) |
 | `<UsersView />` | Admin user list: last seen, directory verification, user deletion, and a directory-only tab when a directory service is registered. Highlights your own row, shows record keys with copy, and cross-links users to teams. Its **Teams** tab shows owner, last used, invited-count split and an empty-team badge, and offers deleting any team to a holder of the `teams:delete` system scope, which no consent option grants. Opt-in `ShowAuditLogButton` adds a per-row audit log. Viewing and acting require the `users:manage` system scope — enforced in the service layer (see [User management & directory](user-management.md)) |
 | `<ApiKeyView />` | API key management (requires Step 5). Shows **Created** and **Last used** columns per key, and a **Tags** column (chips for keys in `ChipTagKeys`, plus an `(i)` tooltip of all tags). Opt-in `[Parameter]` flags: `ShowAuditLogButton`, `ShowScopeOverrides` (Scopes column + create-card multi-select + Edit-Scopes dialog per row), `ChipTagKeys` |
 | `<AuditLogView />` | Audit log viewer (requires Step 8) |
@@ -1083,6 +1083,43 @@ break sign-in.
 **An entry point's check need not be a scope.** An invitation is authorized by its invite code, because
 the invitee is not yet a member and holds nothing. The rule is that a first-level call is *checked*, not
 that it is checked by a scope.
+
+### Where invitations are redeemed
+
+**Redeeming an invitation and administering a team are different capabilities with different audiences.**
+Put them on different routes, or the gate on one becomes the gate on the other.
+
+`TeamComponent` renders `<TeamInviteView>` at the top of its own markup, which is why `/team` happens to
+be where invitations are redeemed by default. That is convenience, not a requirement:
+**`TeamInviteView` is standalone and route-agnostic.** It reads the invite code from the current URL —
+any route — and falls back to browser storage, so the code survives a redirect through login.
+
+```razor
+@page "/invitation"
+@attribute [Authorize]
+
+<TeamInviteView TMember="MyMember" ShowEmptyMessage="true" />
+```
+
+Then point generated links at it:
+
+```csharp
+o.Blazor.InvitePath = "/invitation";
+```
+
+`InvitePath` covers the invitation **email** and the **"Copy invitation link"** action alike — both go
+through one builder. That matters: a host can rewrite what its own `ITeamEmailSender` sends, but nothing
+can rewrite what an administrator copies to the clipboard. Unset, links point at `/team` as before.
+
+> **`[Authorize]` and nothing more.** Gating the redemption route any further reproduces the problem it
+> exists to solve. If you restrict `/team` to staff roles — reasonable when teams come from a
+> registration flow — and invitations land there, **the one page that redeems an invite is closed to
+> exactly the people who need it**, and it fails silently from every angle: the inviter sees a normal
+> link, the invitee sees a "not found" that reads like an expired invitation, and nothing surfaces
+> server-side because the request never reaches the invite handling (Tharga/Team#191).
+
+The route name is yours; `/invitation` above is only an example, and worth checking against whatever your
+own stack already serves.
 
 ### Team services and system services
 
