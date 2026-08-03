@@ -6,17 +6,29 @@ namespace Tharga.Team.Blazor.Features.Simulation;
 /// <summary>
 /// What a simulation will not be able to show.
 /// </summary>
-/// <param name="UnreachableScopes">
-/// Scopes the target holds and the caller does not, so the simulation shows <i>less</i> than the target
-/// really sees.
+/// <param name="Scopes">
+/// Scopes the target holds and the caller does not. Read through <see cref="UnreachableScopes"/>.
 /// </param>
 /// <param name="SystemAccessNotReproduced">
 /// Whether the target's system-wide access is unknown rather than empty.
 /// </param>
+/// <remarks>
+/// <b><c>default</c> is a valid, meaningful value: "nothing compared yet, nothing to report".</b> A
+/// struct's default state is always reachable — a field declared and not assigned is one — and the first
+/// version dereferenced the list from it, so opening the picker and switching target kind threw a
+/// <see cref="NullReferenceException"/> straight into the error boundary. Members are null-safe rather
+/// than relying on every caller to avoid the default.
+/// </remarks>
 public readonly record struct AccessSimulationGap(
-    IReadOnlyList<string> UnreachableScopes,
+    IReadOnlyList<string> Scopes,
     bool SystemAccessNotReproduced)
 {
+    /// <summary>
+    /// Scopes the target holds and the caller does not, so the simulation shows <i>less</i> than the
+    /// target really sees. Never null.
+    /// </summary>
+    public IReadOnlyList<string> UnreachableScopes => Scopes ?? [];
+
     /// <summary>Whether there is anything the caller needs to be told.</summary>
     public bool IsFaithful => UnreachableScopes.Count == 0 && !SystemAccessNotReproduced;
 }

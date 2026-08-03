@@ -98,7 +98,7 @@ public sealed class AccessSimulationState
             var scopes = await EffectiveScopesAsync(teamKey, member);
             candidates.Add(new AccessSimulationCandidate(
                 member.Key,
-                member.Name ?? member.Key,
+                await DisplayNameAsync(member),
                 member.AccessLevel,
                 scopes));
         }
@@ -224,6 +224,30 @@ public sealed class AccessSimulationState
 
         return await new TeamGrantResolver(_teamService, _scopeRegistry, _tenantRoleService)
             .ResolveAsync(state.User, user?.Key, teamKey, _consentAccessLevel);
+    }
+
+    /// <summary>
+    /// What to call a member: their per-team display name, else their own name, else whatever the
+    /// toolkit can make of their identity.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="ITeamMember.Name"/> is a per-team <i>override</i> and is usually null, so using it
+    /// alone showed a raw key — which is exactly what the picker must not do, since choosing who to view
+    /// as is the one place a person has to be recognisable. Resolved the way
+    /// <c>TeamComponent</c> already does it: <see cref="ITeamMember.Key"/> is the user key, so the user
+    /// record carries the name and <c>TeamServiceBase.ResolveDisplayName</c> supplies the email-or-identity
+    /// fallback.
+    /// </remarks>
+    private async Task<string> DisplayNameAsync(ITeamMember member)
+    {
+        if (!string.IsNullOrEmpty(member.Name)) return member.Name;
+
+        var user = await _userService.GetUserByKeyAsync(member.Key);
+        if (user == null) return member.Key;
+
+        return !string.IsNullOrEmpty(user.Name)
+            ? user.Name
+            : TeamServiceBase.ResolveDisplayName(user) ?? member.Key;
     }
 
     /// <remarks>

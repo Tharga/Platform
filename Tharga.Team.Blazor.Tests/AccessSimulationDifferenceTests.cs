@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Tharga.Team;
 using Tharga.Team.Blazor.Features.Simulation;
 
@@ -130,5 +130,35 @@ public class AccessSimulationDifferenceTests
     public void NoSimulation_IsFaithful()
     {
         Assert.True(AccessSimulationDifference.Compare(Holding("orders:read"), null).IsFaithful);
+    }
+
+    /// <summary>
+    /// <b>Reported from the sample, 2026-08-03:</b> switching the picker between target kinds threw a
+    /// <c>NullReferenceException</c> into the error boundary. The gap is a struct, so a field that has
+    /// been declared and not assigned holds <c>default</c> — and the first version dereferenced its list
+    /// from there.
+    /// <para>
+    /// A struct's default state cannot be prevented, only made meaningful. Here it reads as "nothing
+    /// compared yet, nothing to report", which is what a picker with no selection should say.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void TheDefaultGapIsUsableRatherThanACrash()
+    {
+        AccessSimulationGap gap = default;
+
+        Assert.Empty(gap.UnreachableScopes);
+        Assert.False(gap.SystemAccessNotReproduced);
+        Assert.True(gap.IsFaithful);
+    }
+
+    /// <summary>And an explicitly null list behaves the same, however it was constructed.</summary>
+    [Fact]
+    public void ANullScopeListReadsAsEmpty()
+    {
+        var gap = new AccessSimulationGap(null, SystemAccessNotReproduced: true);
+
+        Assert.Empty(gap.UnreachableScopes);
+        Assert.False(gap.IsFaithful);
     }
 }
