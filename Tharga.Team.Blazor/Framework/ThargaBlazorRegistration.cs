@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
@@ -47,6 +47,19 @@ public static class ThargaBlazorRegistration
         if (o._teamService != null)
         {
             services.AddScoped<ITeamStateService, TeamStateService>();
+
+            // Scoped, like every other Blazor-side service here. It re-resolves the caller's real grant
+            // per request rather than reading the (possibly reduced) principal, so it must not be a
+            // singleton capturing anything.
+            services.AddScoped<Features.Simulation.AccessSimulationState>();
+
+            // Only when the host turned it on: without simulation there is nothing to record, and an
+            // enricher that reads a cookie on every audit entry should not exist for a feature nobody
+            // enabled.
+            if (o.Simulation.Enabled)
+            {
+                services.AddSingleton<Tharga.Team.Service.Audit.IAuditEnricher, Features.Simulation.AccessSimulationAuditEnricher>();
+            }
 
             services.AddScoped(o._teamService);
             services.AddScoped(typeof(ITeamService), sp => sp.GetRequiredService(o._teamService));
@@ -99,6 +112,10 @@ public static class ThargaBlazorRegistration
                     scopes.Register(TeamScopes.MemberManage, AccessLevel.Administrator, "Manage team members — invite, remove, edit display names, and change access level, roles, and scope overrides.");
                     scopes.Register(ApiKeyScopes.Manage, AccessLevel.Administrator, "Create, refresh, lock, and delete API keys.");
                     scopes.Register(AuditScopes.Read, AccessLevel.Administrator, "View the audit log.");
+                    // Administrator level, which yields "team owner or administrator" without naming
+                    // them: those levels are granted every registered scope. A host can widen it to a
+                    // tenant role, or withhold it, without a toolkit change.
+                    scopes.Register(Features.Simulation.SimulationScopes.Simulate, AccessLevel.Administrator, "View the application as a less privileged user (de-escalation only).");
                 });
             }
 

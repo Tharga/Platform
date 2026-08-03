@@ -1,6 +1,7 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
+using Tharga.Team.Blazor.Features.Simulation;
 
 namespace Tharga.Team.Blazor.Framework;
 
@@ -67,7 +68,35 @@ internal class TeamServerClaimsTransformation : IClaimsTransformation
         foreach (var claim in await _membershipClaimsBuilder.BuildAsync(principal, teamKey))
             AddClaimSafe(identity, claim.Type, claim.Value);
 
+        ApplySimulation(identity, httpContext);
+
         return principal;
+    }
+
+    /// <summary>
+    /// Narrows the finished identity to the access being simulated, if any.
+    /// </summary>
+    /// <remarks>
+    /// <b>Last, and after everything else has been added</b> — the point is to remove from the complete
+    /// set, and a filter applied earlier would be undone by whatever was issued after it.
+    /// <para>
+    /// The raw cookie value is stamped onto the identity so the in-circuit revalidator can re-apply the
+    /// same simulation without an <c>HttpContext</c>, exactly as the selected team is carried. Both
+    /// paths must apply it: this one alone would leave a simulation silently expiring at the next
+    /// revalidation interval.
+    /// </para>
+    /// </remarks>
+    private static void ApplySimulation(ClaimsIdentity identity, HttpContext httpContext)
+    {
+        if (!httpContext.Request.Cookies.TryGetValue(AccessSimulationCookie.Name, out var value)
+            || string.IsNullOrEmpty(value))
+            return;
+
+        var simulation = AccessSimulationCookie.Read(value);
+        if (simulation == null) return;
+
+        AddClaimSafe(identity, AccessSimulationCookie.ClaimType, value);
+        AccessSimulationFilter.Apply(new ClaimsPrincipal(identity), simulation);
     }
 
     private static void AddClaimSafe(ClaimsIdentity identity, string type, string value)

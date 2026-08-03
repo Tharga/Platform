@@ -135,6 +135,11 @@ public record ThargaBlazorOptions : BlazorOptions
     public ClaimRevalidationOptions ClaimRevalidation { get; set; } = new();
 
     /// <summary>
+    /// Lets a team administrator view the application as a less privileged user. Off by default.
+    /// </summary>
+    public Features.Simulation.AccessSimulationOptions Simulation { get; set; } = new();
+
+    /// <summary>
     /// Controls how team/scope claims are enriched on the principal.
     /// <para>
     /// <b>true (default)</b> — Claims are enriched server-side via <c>IClaimsTransformation</c>,
