@@ -120,6 +120,29 @@ public record ThargaBlazorOptions : BlazorOptions
     public string CreateTeamPath { get; set; }
 
     /// <summary>
+    /// Optional route that generated invitation links point at, instead of <c>/team</c>.
+    /// </summary>
+    /// <remarks>
+    /// Redeeming an invitation and administering a team are different capabilities with different
+    /// audiences, but the generated link sent them to the same URL — so a host that gated <c>/team</c>
+    /// for its own staff closed the one page that redeems an invite to precisely the people who needed
+    /// it (Tharga/Team#191). It failed silently from every angle: a normal-looking link, a
+    /// "not found"-shaped refusal that reads as an expired invitation, and nothing server-side, because
+    /// the request never reached the invite handling at all.
+    /// <para>
+    /// Point this at a route carrying <c>&lt;TeamInviteView&gt;</c> and nothing more than
+    /// <c>[Authorize]</c>. <b>Gating it any further reproduces the same failure at a new URL.</b>
+    /// </para>
+    /// <para>
+    /// Both link paths go through one builder, so this covers the invitation email <i>and</i> the
+    /// "Copy invitation link" action. The clipboard is the half a host cannot reach on its own — an
+    /// <c>ITeamEmailSender</c> can rewrite what it sends, but not what an administrator copies.
+    /// </para>
+    /// When <c>null</c> (default), links point at <c>/team</c> as before.
+    /// </remarks>
+    public string InvitePath { get; set; }
+
+    /// <summary>
     /// Data-access consent options (cross-team access granted by a team to global roles).
     /// </summary>
     public ConsentOptions Consent { get; set; } = new();
