@@ -43,6 +43,45 @@ That is also what makes an untrusted carrier acceptable — the active simulatio
 `selected_team_id`, so a user can forge one, and the worst a forged one does is reduce their own access
 further.
 
+## Who can do it: team Owner / Administrator
+
+**Restricted to team Owner and Administrator** (user, 2026-08-03). Two reasons, and the second is
+stronger than it first looked.
+
+**It matches the audience.** The purpose is administrators setting access. Those are the people holding
+Owner or Administrator on the team.
+
+**It makes the team-scope gap structurally impossible, not merely rare.**
+`ScopeRegistry.GetScopesForAccessLevel` returns *every registered scope* for
+`accessLevel <= Administrator`. So an Owner or Administrator already holds every registered team scope,
+and simulating any member of their team can only ever narrow. The user expected this to be rare; it is
+in fact guaranteed — **with one exception**.
+
+**The exception: `ScopeOverrides`.** `GetEffectiveScopes` unions access-level scopes with role scopes and
+with the member's `ScopeOverrides`, and overrides are **arbitrary strings, not validated against the
+registry**. A member carrying an override for an unregistered scope — or a runtime tenant role granting
+one — holds something their Owner does not. Narrow, but real, and the only team-scope case that survives
+the restriction.
+
+### The gate should be a scope, not an access-level check
+
+Register a simulation scope at `AccessLevel.Administrator`. Owner and Administrator then hold it
+automatically by the rule above — exactly the intent — while a host can widen it to a tenant role or
+withhold it, without a toolkit change. That is the codebase's idiom, and it composes with `[RequireScope]`
+rather than adding a second kind of check.
+
+### Two things the gate must not do
+
+**Never gate the exit.** If the gate is a scope, a simulation can remove it. "Return to my normal access"
+must be unconditional — it only ever restores what the caller really holds, so there is nothing to
+authorize.
+
+**Gate the picker on real claims, re-resolved — not on the filtered principal.** Otherwise a caller who
+simulated away the simulation scope cannot change or inspect their simulation. And **do not stash the
+removed scopes on the principal** as shadow claims to consult later: an inert claim type that happens to
+list scopes is precisely what a future reader mistakes for a grant. Re-resolve server-side; this is an
+admin screen and can afford it.
+
 ## The warning is load-bearing, not a nicety
 
 The user asked for *"a check to warn if there are scopes difference after the removal"*. Given the
@@ -52,6 +91,16 @@ If Alice simulates Bob and Bob holds scopes Alice does not, Alice sees `Bob ∩ 
 actually sees**. Without a warning she concludes *"Bob cannot reach the billing page"* when he can. For a
 feature whose entire job is getting access right, that error points toward **granting more than
 necessary** — the exact opposite of what it exists to do.
+
+**The Owner/Administrator restriction does not remove the need for it, and the "it will be rare" argument
+cuts the other way.** A gap that fires rarely is one nobody develops intuition for; the first time it
+happens is the time it is trusted. What the restriction *does* buy is that the warning can be
+**prominent** without becoming noise — it is not competing with a stream of false alarms.
+
+And the restriction leaves the most likely gap completely untouched: **system scopes**. Owner and
+Administrator are *team* access levels, while system scopes come from app roles that are
+team-independent. A team Owner is not necessarily a Developer, so a target holding a system scope the
+Owner lacks is entirely ordinary — and it is exactly the half that cannot be computed at all.
 
 So the simulation always reports `target \ real`: what the target has that the caller does not, and
 therefore what the simulation could not show. Two sources of that gap:
@@ -145,6 +194,8 @@ claims never enter into it.
 
 ## Acceptance criteria
 
+0. Only a caller holding the simulation scope (Administrator level by default, so Owner/Administrator)
+   can start one; **returning to normal access is never gated**.
 1. A target can be named as a user, a role, explicit scopes, or an access level, and applying it leaves
    only the scopes the target and the caller both hold.
 2. **The effective set is always a subset of the real one** — asserted directly, and again against a

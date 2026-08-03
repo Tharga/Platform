@@ -29,6 +29,18 @@ One resolver per way of naming a target scope set. All four return the same shap
 - [ ] Only **members of the current team** are offerable. A non-member reaching through consent needs
       their app roles, which the toolkit does not store.
 
+## 3b. Who may simulate
+
+- [ ] **A registered scope at `AccessLevel.Administrator`.** Owner and Administrator hold every registered
+      scope, so this yields exactly "team owner/admin" by default while letting a host widen or withhold
+      it without a toolkit change.
+- [ ] **The exit is never gated.** A simulation can remove the gating scope; "return to normal" only ever
+      restores what the caller really holds, so there is nothing to authorize.
+- [ ] **The picker is gated on the real grant, re-resolved server-side.** Not on the filtered principal —
+      a caller who simulated away the scope must still be able to change or inspect the simulation.
+- [ ] **No shadow claims.** Do not park the removed scopes on the principal under another claim type to
+      consult later; an inert claim listing scopes is what a future reader misreads as a grant.
+
 ## 4. The filter
 
 - [ ] **`AccessSimulationFilter` — subtractive only.** Removes scope and role claims; **no code path adds
@@ -46,6 +58,12 @@ One resolver per way of naming a target scope set. All four return the same shap
 
 - [ ] `target \ real`: what the target holds that the caller does not, and which the simulation therefore
       **cannot show**.
+- [ ] **Under the Owner/Administrator restriction this narrows sharply, which changes its presentation
+      rather than its necessity.** Owner/Administrator hold every *registered* team scope, so the only
+      surviving team-scope gap is a member `ScopeOverride` (or runtime tenant role) naming an
+      **unregistered** scope — `GetEffectiveScopes` unions overrides in without validating them.
+      Because it is rare it can be **prominent**; rare is when a silent gap does the most damage, since
+      nobody has built intuition for it.
 - [ ] Plus an explicit "system scopes are not reproduced" when the target is a user.
 - [ ] **Shown before applying, not only after.** The failure this prevents is an administrator concluding
       *"they cannot do X"* from a simulation that was never able to show X — an error that points toward
@@ -100,6 +118,11 @@ One resolver per way of naming a target scope set. All four return the same shap
       like a bug if it were additive.
 - [ ] Both issuance paths apply the filter (§6).
 - [ ] The difference report names exactly the scopes the target has and the caller lacks.
+- [ ] **The `ScopeOverride` case**: a member holding an unregistered scope is reported as a gap even
+      against an Owner. This is the one team-scope gap the restriction does not close, so it is the one
+      worth a named test.
+- [ ] A caller without the simulation scope cannot start one; **a caller who simulated the scope away can
+      still return to normal**, and can still reach the picker.
 - [ ] Access-level clamp, including `Custom`.
 - [ ] Simulation absent after sign-out; stored roles never written.
 - [ ] Audit names the real user.
@@ -135,12 +158,15 @@ One resolver per way of naming a target scope set. All four return the same shap
   to prevent. Recorded so it is not "fixed" later.
 - **#127 is not a dependency** — a forced reload re-issues claims through the HTTP path.
 
+- **Restricted to team Owner / Administrator** (user, 2026-08-03), via a scope registered at
+  Administrator level rather than a hard-coded access-level check — see §3b. This makes the team-scope
+  gap structurally impossible rather than merely rare, with the single `ScopeOverrides` exception.
+
 ## Still open
 
-- **Which scope gates picking another user as a target** (§8). Reading another user's effective access is
-  a modest disclosure, but it should not be open to every member.
 - **Nested simulation** — simulate, then simulate again from inside. Subtractive composition is safe, but
-  "return to normal" must go all the way back rather than one step. Simplest answer: replace, never stack.
+  "return to normal" must go all the way back rather than one step. Recommended: **replace, never stack**,
+  which also keeps the indicator honest about what is active.
 
 ## Last session
 
@@ -154,4 +180,9 @@ its `principal` argument is unused on the member path.
 target really sees would push an administrator toward over-granting — failing at exactly the job the
 feature exists to do.
 
-**Next:** confirm, settle the two open questions, then §3.
+**The Owner/Administrator restriction is better founded than "they hold almost everything".** They hold
+*every registered team scope*, by an explicit rule in `ScopeRegistry`. The gap is closed structurally,
+except for unregistered `ScopeOverrides` — and it is not closed at all for system scopes, which is where
+the reporting still has to work.
+
+**Next:** confirm, settle nested simulation, then §3.
