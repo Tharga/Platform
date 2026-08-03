@@ -9,18 +9,25 @@ namespace Tharga.Team.Blazor.Features.Simulation;
 /// The four kinds are not four features. Each names a <b>target scope set</b>, and the simulation is
 /// always the same operation afterwards: keep what the target has and the caller also has, remove the
 /// rest. Keeping the construction in one place is what makes that true rather than aspirational.
+/// <para>
+/// <b>Every kind drops system scopes and application roles.</b> They were originally dropped only when
+/// simulating a user — the reasoning being that another person's system access cannot be computed — but
+/// that left the other three kinds keeping the caller's own system-wide grants, so simulating "Viewer"
+/// still showed every team and the cross-team audit log. A simulation is for seeing <i>less</i>; a
+/// system-wide grant surviving one defeats it whatever the target was named. Reported from the sample,
+/// 2026-08-03.
+/// </para>
+/// <para>
+/// The consequence is worth stating: a simulation shows access <b>within the selected team</b>, never a
+/// faithful reproduction of someone's system-wide reach. <c>AccessSimulationDifference</c> says so for a
+/// user target, where it is unknowable rather than merely dropped.
+/// </para>
 /// </remarks>
 internal static class AccessSimulationTargets
 {
     /// <summary>
     /// Another member of the selected team, from the grant they actually hold there.
     /// </summary>
-    /// <remarks>
-    /// <b>Drops system scopes and app roles</b>, because they cannot be computed for anyone else:
-    /// <c>ISystemRoleRegistry</c> maps app roles issued by the identity provider, which the toolkit does
-    /// not store. Their system access is unknown rather than empty, so showing the caller's own would be
-    /// a claim about the target that nothing supports.
-    /// </remarks>
     public static AccessSimulation FromUser(string label, AccessLevel accessLevel, IEnumerable<string> scopes)
         => new()
         {
@@ -45,7 +52,9 @@ internal static class AccessSimulationTargets
         {
             Kind = AccessSimulationKind.Role,
             Label = roleName,
-            Scopes = [.. scopes ?? []]
+            Scopes = [.. scopes ?? []],
+            DropSystemScopes = true,
+            DropAppRoles = true
         };
 
     /// <summary>An explicit set of scopes, exactly as given.</summary>
@@ -57,7 +66,9 @@ internal static class AccessSimulationTargets
         {
             Kind = AccessSimulationKind.Scopes,
             Label = list.Length == 0 ? "no scopes" : string.Join(", ", list),
-            Scopes = list
+            Scopes = list,
+            DropSystemScopes = true,
+            DropAppRoles = true
         };
     }
 
@@ -68,6 +79,8 @@ internal static class AccessSimulationTargets
             Kind = AccessSimulationKind.AccessLevel,
             Label = accessLevel.ToString(),
             Scopes = [.. scopes ?? []],
-            AccessLevel = accessLevel
+            AccessLevel = accessLevel,
+            DropSystemScopes = true,
+            DropAppRoles = true
         };
 }

@@ -210,6 +210,13 @@
         if (principal != null && Enum.TryParse<AccessLevel>(principal.FindFirst(TeamClaimTypes.AccessLevel)?.Value, out var claimLevel))
             _selectedLevel = ScopeReference.ToSelectableLevel(claimLevel);
 
+        // Under an access simulation the claim is the simulated truth and the member record is not: the
+        // record still says Owner, because simulation narrows claims and never touches stored data. The
+        // lookup below would therefore overwrite the simulated level with the real one, and this page --
+        // whose whole job is showing what a given level grants -- would keep reporting Owner/Administrator
+        // while everything around it had narrowed. Reported from the sample, 2026-08-03.
+        if (Tharga.Team.Blazor.Features.Simulation.AccessSimulationCookie.IsActive(principal)) return;
+
         try
         {
             var teamState = ServiceProvider.GetService<ITeamStateService>();

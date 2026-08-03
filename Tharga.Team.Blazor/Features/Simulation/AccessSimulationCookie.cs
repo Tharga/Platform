@@ -39,6 +39,17 @@ internal static class AccessSimulationCookie
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
+    /// <summary>
+    /// Whether <paramref name="principal"/> is currently viewing under a simulation.
+    /// </summary>
+    /// <remarks>
+    /// For components that read state the simulation cannot reach. Simulation filters <b>claims</b>; a
+    /// component that queries the store directly sees the caller's real record however thoroughly their
+    /// claims were narrowed. Those components have to ask, and this is the question.
+    /// </remarks>
+    public static bool IsActive(System.Security.Claims.ClaimsPrincipal principal)
+        => Read(principal?.FindFirst(ClaimType)?.Value) != null;
+
     /// <summary>Serializes a simulation for storage. Null clears it.</summary>
     public static string Write(AccessSimulation simulation)
     {

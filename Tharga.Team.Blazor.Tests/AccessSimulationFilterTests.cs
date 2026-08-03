@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Tharga.Team;
 using Tharga.Team.Blazor.Features.Simulation;
 using Tharga.Team.Blazor.Framework;
@@ -170,14 +170,37 @@ public class AccessSimulationFilterTests
         Assert.Contains("TeamAdministrator", RoleClaims(principal));
     }
 
-    [Fact]
-    public void SimulatingARole_LeavesSystemScopesAlone()
+    /// <summary>
+    /// <b>Reported from the sample, 2026-08-03:</b> simulating a role or an access level still showed
+    /// every team and the cross-team audit log, because system scopes were dropped only for a user
+    /// target. A system-wide grant surviving a simulation defeats it whatever the target was called, so
+    /// every kind now drops them.
+    /// </summary>
+    [Theory]
+    [InlineData(AccessSimulationKind.User)]
+    [InlineData(AccessSimulationKind.Role)]
+    [InlineData(AccessSimulationKind.Scopes)]
+    [InlineData(AccessSimulationKind.AccessLevel)]
+    public void EveryKindOfSimulation_DropsSystemScopesAndAppRoles(AccessSimulationKind kind)
     {
-        var principal = Principal(scopes: ["orders:read"], systemScopes: ["audit:read"]);
+        var simulation = kind switch
+        {
+            AccessSimulationKind.User => AccessSimulationTargets.FromUser("Bob", AccessLevel.Viewer, ["orders:read"]),
+            AccessSimulationKind.Role => AccessSimulationTargets.FromRole("Support", ["orders:read"]),
+            AccessSimulationKind.Scopes => AccessSimulationTargets.FromScopes(["orders:read"]),
+            _ => AccessSimulationTargets.FromAccessLevel(AccessLevel.Viewer, ["orders:read"])
+        };
 
-        AccessSimulationFilter.Apply(principal, Simulation("orders:read"));
+        var principal = Principal(
+            scopes: ["orders:read"],
+            systemScopes: ["teams:read", "audit:read"],
+            appRoles: ["Developer"],
+            accessLevel: AccessLevel.Owner);
 
-        Assert.Equal(["audit:read"], SystemScopes(principal));
+        AccessSimulationFilter.Apply(principal, simulation);
+
+        Assert.Empty(SystemScopes(principal));
+        Assert.DoesNotContain("Developer", RoleClaims(principal));
     }
 
     // --- access level: the clamped replacement ---
