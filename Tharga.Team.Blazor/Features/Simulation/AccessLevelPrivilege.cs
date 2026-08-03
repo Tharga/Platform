@@ -1,4 +1,4 @@
-using Tharga.Team;
+﻿using Tharga.Team;
 
 namespace Tharga.Team.Blazor.Features.Simulation;
 
@@ -22,18 +22,30 @@ internal static class AccessLevelPrivilege
     /// Whether <paramref name="candidate"/> grants no more privilege than <paramref name="actual"/>.
     /// </summary>
     public static bool IsNoMorePrivilegedThan(AccessLevel candidate, AccessLevel actual)
-    {
-        if (candidate == actual) return true;
+        => candidate == actual || Rank(candidate) > Rank(actual);
 
-        // The floor: it grants nothing on its own, so it is never an escalation from anything.
-        if (candidate == AccessLevel.Custom) return true;
-
-        // Nothing else is a de-escalation *from* the floor — Custom grants no base scopes, so any ranked
-        // level is more privileged than it.
-        if (actual == AccessLevel.Custom) return false;
-
-        return (int)candidate > (int)actual;
-    }
+    /// <summary>
+    /// Position on the privilege ladder, least privileged highest.
+    /// </summary>
+    /// <remarks>
+    /// <b>This mapping is deliberately not observable today, and that is a known limitation rather than
+    /// an oversight.</b> <c>Custom</c> is ordinal 4 and every ranked level is 0–3, so a plain
+    /// <c>(int)level</c> produces identical results for all five values — a mutation run replacing this
+    /// body with the raw cast stays green, and no test can distinguish them without changing the enum.
+    /// <para>
+    /// It stays because the two agree by <i>accident</i>. <c>Custom</c> is the floor because it grants no
+    /// base scopes, not because it happens to sort last; a level inserted after it, or a reordering,
+    /// would silently invert the comparison while every test still passed. Writing the reason down as
+    /// code costs one line and survives a reader who does not know the accident.
+    /// </para>
+    /// <para>
+    /// The trip-wire is <c>AccessLevelPrivilegeTests.EveryAccessLevelIsAccountedFor</c>, which fails the
+    /// moment the enum changes shape — so the assumption cannot drift unnoticed even though this line
+    /// cannot be tested directly.
+    /// </para>
+    /// </remarks>
+    private static int Rank(AccessLevel level)
+        => level == AccessLevel.Custom ? int.MaxValue : (int)level;
 
     /// <summary>
     /// The level a simulation may present: <paramref name="candidate"/> when it is a de-escalation, and

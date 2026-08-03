@@ -43,6 +43,11 @@ public sealed record AccessSimulation
     /// <summary>
     /// The target's scopes. The caller keeps the ones they also hold and loses the rest.
     /// </summary>
+    /// <remarks>
+    /// <b>Record equality compares this by reference, not by content</b>, so two simulations carrying the
+    /// same scopes are not equal. Nothing compares simulations today — the revalidator compares claims —
+    /// but do not add an equality check on this type without fixing that first.
+    /// </remarks>
     public IReadOnlyList<string> Scopes { get; init; } = [];
 
     /// <summary>

@@ -80,20 +80,27 @@ One resolver per way of naming a target scope set. All four return the same shap
       granting more access than needed, which is the opposite of the feature's purpose.
 - [ ] Pure and directly tested. It is a set difference; it should not need a rendered component to assert.
 
-## 6. Reaching both claim-issuance paths
+## 6. Reaching both claim-issuance paths — DONE
 
-- [ ] `TeamServerClaimsTransformation`: read the cookie, stamp the marker claim, apply the filter last.
-- [ ] `TeamClaimRevalidator`: read the marker claim from the principal, apply the filter last.
-- [ ] **A test asserting *each* path applies it** — not a test of the filter, a test that it is reached.
-      #175 was this exact shape. A revalidator that skipped it would restore full access on the next
-      interval, silently, up to 30 minutes later.
+- [x] `TeamServerClaimsTransformation`: reads the cookie, stamps the marker claim, applies the filter last.
+- [x] `TeamClaimRevalidator`: reads the marker claim from the principal, applies the filter last.
+- [x] **A test asserting *each* path applies it**, each with a self-check that the same setup issues the
+      full set when no simulation is active — otherwise "still one scope" could mean the builder was
+      never reached. Both call sites mutation-checked.
+- [x] **Found while wiring: the revalidator compared *unfiltered* fresh claims against the caller's
+      *filtered* current ones**, so with a simulation active every interval looked like a claims change
+      and the circuit would re-render on a timer forever. The comparison now happens after filtering,
+      against the same objects the filter mutated. Tested by `AnUnchangedSimulation_IsNotReportedAsAChange`.
 
-## 7. Cookie and lifetime
+## 7. Cookie and lifetime — DONE (write path pending with the UI)
 
-- [ ] Named beside `Constants.SelectedTeamKeyCookie` so the two session-scoped cookies are visibly the
-      same kind of thing.
-- [ ] Session cookie — gone at sign-out, never written to stored roles.
-- [ ] Read at the HTTP boundary only; carried on the principal thereafter.
+- [x] `access_simulation`, named beside `selected_team_id`.
+- [x] Read at the HTTP boundary only; the raw value is carried on the principal as a marker claim, since
+      the revalidator has no `HttpContext`. Kept raw rather than parsed so it is obviously untrusted
+      wherever it is read.
+- [x] Parsing never throws — malformed, truncated or hand-edited means "no simulation", which returns the
+      caller to real access. The safe direction, and the same outcome as clearing the cookie.
+- [ ] Session cookie set/cleared by the UI (§8).
 
 ## 8. UI
 
@@ -120,24 +127,34 @@ One resolver per way of naming a target scope set. All four return the same shap
 
 ## 11. Tests
 
-- [ ] **The effective set is a subset of the real set** — the central claim, for all four target kinds.
-- [ ] **A forged cookie naming scopes the caller does not hold grants nothing.** This is the test that
-      says why an untrusted carrier is acceptable.
-- [ ] A stale simulation (roles changed since it was created) cannot elevate.
-- [ ] Applying a role **replaces** rather than adds — the user's own framing, and the case that would look
-      like a bug if it were additive.
-- [ ] Both issuance paths apply the filter (§6).
-- [ ] The difference report names exactly the scopes the target has and the caller lacks.
+**66 simulation tests so far. Whole suite 1653 green, warnings unchanged at 11.**
+
+- [x] **The effective set is a subset of the real set** — asserted directly and as a property over
+      several shapes.
+- [x] **A forged simulation naming scopes the caller does not hold grants nothing.**
+- [x] A stale simulation cannot elevate.
+- [x] Applying a role **replaces** rather than adds.
+- [x] Both issuance paths apply the filter (§6).
+- [x] The difference report names exactly the scopes the target has and the caller lacks, including the
+      unregistered-`ScopeOverride` case.
 - [ ] **The `ScopeOverride` case**: a member holding an unregistered scope is reported as a gap even
       against an Owner. This is the one team-scope gap the restriction does not close, so it is the one
       worth a named test.
 - [ ] A caller without the simulation scope cannot start one; **a caller who simulated the scope away can
       still return to normal**, and can still reach the picker.
-- [ ] Access-level clamp, including `Custom`.
+- [x] Access-level clamp, including `Custom`, exhaustive over all 25 pairs.
 - [ ] Simulation absent after sign-out; stored roles never written.
 - [ ] Audit names the real user.
 - [ ] A host that does not opt in is unaffected.
-- [ ] Mutation-check each guard.
+- [~] **Mutation-checked: 15/16 caught.** Script at `scratchpad/mutate189.py`.
+      **One survivor, reported rather than papered over:** replacing `Rank`'s `Custom` special case with a
+      plain `(int)level` cast stays green. It has to — `Custom` is ordinal 4 and every ranked level is
+      0–3, so the two agree for all five values and no test can separate them without changing the enum.
+      The line stays because they agree by *accident*: `Custom` is the floor for granting no base scopes,
+      not for sorting last. `EveryAccessLevelIsAccountedFor` is the trip-wire if the enum changes shape.
+      Contorting the code or the test to reach 16/16 would buy nothing real.
+- [x] **A mutation run also improved the design.** The `Custom` handling was originally two guard clauses
+      in the comparison — entirely dead code, deleted without a single test noticing.
 
 ## 12. Documentation
 
