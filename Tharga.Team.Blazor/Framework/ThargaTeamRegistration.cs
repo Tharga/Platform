@@ -71,12 +71,11 @@ public static class ThargaTeamRegistration
         // Blazor UI layer — pass the pre-configured options object directly
         builder.Services.AddThargaTeamBlazor(o =>
         {
-            o.Title = options.Blazor.Title;
-            o.AutoCreateFirstTeam = options.Blazor.AutoCreateFirstTeam;
-            o.AllowTeamCreation = options.Blazor.AllowTeamCreation;
-            o.Consent = options.Blazor.Consent;
-            o.SkipAuthStateDecoration = options.Blazor.SkipAuthStateDecoration;
-            o.ClaimRevalidation = options.Blazor.ClaimRevalidation;
+            // Every public option, by reflection. This used to be a hand-written list of nine
+            // assignments, which meant an option added later was accepted from the caller and silently
+            // discarded — configured, no error, and simply never in effect. See the forwarder.
+            ThargaBlazorOptionsForwarder.Copy(options.Blazor, o);
+
             o._teamService = options.Blazor._teamService;
             o._userService = options.Blazor._userService;
             o._memberType = options.Blazor._memberType;

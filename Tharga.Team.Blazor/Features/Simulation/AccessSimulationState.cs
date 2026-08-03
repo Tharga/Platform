@@ -126,6 +126,20 @@ public sealed class AccessSimulationState
         ];
     }
 
+    /// <summary>
+    /// The scopes the caller actually holds on the selected team, for picking a set by hand.
+    /// </summary>
+    /// <remarks>
+    /// Their own, not the whole registry. Offering a scope they do not hold would invite choosing one
+    /// the filter cannot keep, and the result would read as the picker ignoring the choice rather than
+    /// as the guarantee working.
+    /// </remarks>
+    public async Task<IReadOnlyList<string>> GetOwnScopesAsync()
+    {
+        var grant = await ResolveRealGrantAsync();
+        return [.. (grant?.Scopes ?? []).OrderBy(s => s, StringComparer.Ordinal)];
+    }
+
     /// <summary>The access levels that can be simulated.</summary>
     public IReadOnlyList<AccessSimulationCandidate> GetAccessLevelTargets()
         =>

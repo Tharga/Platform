@@ -1,4 +1,4 @@
-@using Microsoft.AspNetCore.Authorization
+﻿@using Microsoft.AspNetCore.Authorization
 @using Tharga.Team
 @using Tharga.Team.Blazor.Features.Simulation
 @attribute [Authorize]
@@ -19,18 +19,38 @@
                     <RadzenSelectBarItem Text="A member" Value="AccessSimulationKind.User" />
                     <RadzenSelectBarItem Text="A role" Value="AccessSimulationKind.Role" Disabled="@(_roles.Count == 0)" />
                     <RadzenSelectBarItem Text="An access level" Value="AccessSimulationKind.AccessLevel" />
+                    <RadzenSelectBarItem Text="Scopes" Value="AccessSimulationKind.Scopes" Disabled="@(_allScopes.Count == 0)" />
                 </Items>
             </RadzenSelectBar>
         </RadzenStack>
 
-        <RadzenStack Orientation="Orientation.Vertical" Gap="0">
-            <RadzenLabel Text="@KindLabel" />
-            <RadzenDropDown @bind-Value="_selectedKey" Data="@Candidates" TValue="string"
-                            TextProperty="@nameof(AccessSimulationCandidate.Name)"
-                            ValueProperty="@nameof(AccessSimulationCandidate.Key)"
-                            AllowFiltering="true" Placeholder="Choose…"
-                            Change="@(_ => OnTargetChanged())" Style="width: 100%;" />
-        </RadzenStack>
+        @* Picking scopes by hand answers "what would someone with exactly these see?", which the other
+           three cannot: a role and a level are whatever they happen to grant today, and a member is
+           whatever they happen to hold. *@
+        @if (_kind == AccessSimulationKind.Scopes)
+        {
+            <RadzenStack Orientation="Orientation.Vertical" Gap="0">
+                <RadzenLabel Text="Scopes to keep" />
+                <RadzenDropDown @bind-Value="_selectedScopes" Data="@_allScopes" TValue="IEnumerable<string>"
+                                Multiple="true" AllowClear="true" AllowFiltering="true"
+                                Placeholder="Choose scopes…" Change="@(_ => OnTargetChanged())"
+                                Style="width: 100%;" />
+                <RadzenText TextStyle="TextStyle.Caption" class="rz-mt-1">
+                    Everything else is removed. Choosing none shows the application with no team scopes at all.
+                </RadzenText>
+            </RadzenStack>
+        }
+        else
+        {
+            <RadzenStack Orientation="Orientation.Vertical" Gap="0">
+                <RadzenLabel Text="@KindLabel" />
+                <RadzenDropDown @bind-Value="_selectedKey" Data="@Candidates" TValue="string"
+                                TextProperty="@nameof(AccessSimulationCandidate.Name)"
+                                ValueProperty="@nameof(AccessSimulationCandidate.Key)"
+                                AllowFiltering="true" Placeholder="Choose…"
+                                Change="@(_ => OnTargetChanged())" Style="width: 100%;" />
+            </RadzenStack>
+        }
 
         @* The warning, shown before applying rather than after. The failure it prevents is an
            administrator concluding "they cannot do X" from a simulation that was never able to show X —
@@ -81,6 +101,8 @@
     private IReadOnlyList<AccessSimulationCandidate> _members = [];
     private IReadOnlyList<AccessSimulationCandidate> _roles = [];
     private IReadOnlyList<AccessSimulationCandidate> _levels = [];
+    private IReadOnlyList<string> _allScopes = [];
+    private IEnumerable<string> _selectedScopes = [];
 
     private IReadOnlyList<AccessSimulationCandidate> Candidates => _kind switch
     {
@@ -101,10 +123,23 @@
         _members = await SimulationState.GetMemberTargetsAsync();
         _roles = await SimulationState.GetRoleTargetsAsync();
         _levels = SimulationState.GetAccessLevelTargets();
+
+        // Only what the caller actually holds. Offering the full registry would invite choosing a scope
+        // that cannot be kept, and the result would look like the picker ignoring the choice.
+        _allScopes = await SimulationState.GetOwnScopesAsync();
     }
 
     private async Task OnTargetChanged()
     {
+        if (_kind == AccessSimulationKind.Scopes)
+        {
+            // A scope selection is its own target -- there is no candidate to look up, and an empty
+            // selection is a legitimate choice rather than "nothing picked yet".
+            _selected = new AccessSimulationCandidate("scopes", "these scopes", null, [.. _selectedScopes]);
+            _gap = await SimulationState.DescribeGapAsync(Build(_selected));
+            return;
+        }
+
         _selected = Candidates.FirstOrDefault(c => c.Key == _selectedKey);
         if (_selected == null)
         {
@@ -117,6 +152,7 @@
 
     private AccessSimulation Build(AccessSimulationCandidate candidate) => _kind switch
     {
+        AccessSimulationKind.Scopes => AccessSimulationTargets.FromScopes(candidate.Scopes),
         AccessSimulationKind.Role => AccessSimulationTargets.FromRole(candidate.Name, candidate.Scopes),
         AccessSimulationKind.AccessLevel => AccessSimulationTargets.FromAccessLevel(
             candidate.AccessLevel ?? AccessLevel.Custom, candidate.Scopes),
