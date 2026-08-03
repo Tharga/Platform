@@ -15,31 +15,29 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ---
 
-## 3. Naming the target
+## 3. Naming the target — DONE
 
 One resolver per way of naming a target scope set. All four return the same shape, so §4 has one input.
 
-- [ ] **A user** — `TeamGrantResolver.ResolveAsync(null, userKey, teamKey, …)`. The `principal` argument
+- [x] **A user** — `TeamGrantResolver.ResolveAsync(null, userKey, teamKey, …)`. The `principal` argument
       is unused on the member path, so this works with the resolver **unchanged**.
-- [ ] **A role** — `ITenantRoleService.GetEffectiveScopesAsync` when runtime roles are on, else
+- [x] **A role** — `ITenantRoleService.GetEffectiveScopesAsync` when runtime roles are on, else
       `IScopeRegistry.GetEffectiveScopes`. Same two-way choice `TeamGrantResolver` already makes; reuse
       rather than restate it.
-- [ ] **Explicit scopes** — as given.
-- [ ] **An access level** — `IScopeRegistry.GetScopesForAccessLevel`.
-- [ ] Only **members of the current team** are offerable. A non-member reaching through consent needs
+- [x] **Explicit scopes** — as given.
+- [x] **An access level** — `IScopeRegistry.GetScopesForAccessLevel`.
+- [x] Only **members of the current team** are offerable, and never yourself. A non-member reaching through consent needs
       their app roles, which the toolkit does not store.
 
-## 3b. Who may simulate
+## 3b. Who may simulate — DONE
 
-- [ ] **A registered scope at `AccessLevel.Administrator`.** Owner and Administrator hold every registered
+- [x] **`simulation:use`, registered at `AccessLevel.Administrator`.** Owner and Administrator hold every registered
       scope, so this yields exactly "team owner/admin" by default while letting a host widen or withhold
       it without a toolkit change.
-- [ ] **The exit is never gated.** A simulation can remove the gating scope; "return to normal" only ever
+- [x] **The exit is never gated.** `StopAsync` has no check, deliberately and with the reason recorded. A simulation can remove the gating scope; "return to normal" only ever
       restores what the caller really holds, so there is nothing to authorize.
-- [ ] **The picker is gated on the real grant, re-resolved server-side.** Not on the filtered principal —
-      a caller who simulated away the scope must still be able to change or inspect the simulation.
-- [ ] **No shadow claims.** Do not park the removed scopes on the principal under another claim type to
-      consult later; an inert claim listing scopes is what a future reader misreads as a grant.
+- [x] **The picker is gated on the real grant, re-resolved by `AccessSimulationState`.**
+- [x] **No shadow claims.** The removed scopes are nowhere on the principal.
 
 ## 4. The filter — DONE
 
@@ -100,30 +98,34 @@ One resolver per way of naming a target scope set. All four return the same shap
       wherever it is read.
 - [x] Parsing never throws — malformed, truncated or hand-edited means "no simulation", which returns the
       caller to real access. The safe direction, and the same outcome as clearing the cookie.
-- [ ] Session cookie set/cleared by the UI (§8).
+- [x] Session cookie set/cleared by the UI, then a forced reload.
 
-## 8. UI
+## 8. UI — DONE (host wiring pending)
 
-- [ ] Pick a target: user / role / scopes / access level.
-- [ ] The §5 warning shown **in the picker**, before applying.
-- [ ] A persistent indicator while active, with one-click return. Not decoration — a user who forgets they
-      are simulating files bugs against their own session.
-- [ ] Toggling navigates with `forceLoad: true`; a circuit cannot set a cookie.
-- [ ] Cancel rightmost, per the shared dialog convention.
-- [ ] Gate the picker: choosing another **user** as the target reads their access, so it needs a scope
-      rather than being open to any member. Decide which — likely the same one that already lists members.
+- [x] `AccessSimulationDialog` — member / role / access level, with the §5 warning **in the picker**
+      before applying, and a positive "this will be an exact view" when there is no gap.
+- [x] `AccessSimulationBar` — persistent indicator with one-click return.
+- [x] `forceLoad: true` after writing the cookie.
+- [x] Cancel rightmost, via the shared `CancelButton`. `DialogButtonOrderTests` scans the new dialog and
+      passes.
+- [x] Gated on `simulation:use`.
+- [ ] The host has to place `<AccessSimulationBar />` and open the dialog. Document in §12.
 
-## 9. Audit
+## 9. Audit — DONE
 
-- [ ] An `IAuditEnricher` recording that simulation was active and what the target was.
-- [ ] New `AuditMetadataKeys` constants — the vocabulary is part of the audit record's public contract.
-- [ ] A test that the entry names the **real** user.
+- [x] `AccessSimulationAuditEnricher`, registered only when the feature is on.
+- [x] `AccessSimulationMetadataKeys` — `simulation.active`, `simulation.kind`, `simulation.target`.
+- [x] A test that the entry names the **real** user; the actor is untouched by construction, since
+      simulation never removes identity claims.
+- [x] A malformed cookie adds nothing and does not throw — the enricher records, it does not gate.
 
-## 10. Registration
+## 10. Registration — DONE
 
-- [ ] Opt-in on `ThargaBlazorOptions`; off by default.
-- [ ] Container validates with `ValidateOnBuild` + `ValidateScopes`, plus the self-check that a captive
-      dependency really would fail it.
+- [x] `o.Blazor.Simulation.Enabled`, off by default.
+- [x] `AccessSimulationState` scoped, alongside the other Blazor services.
+- [x] The scope is granted to Owner and Administrator and to nobody else — tested, with a self-check that
+      the registry really does grant by level (otherwise "not granted to Viewer" could mean it grants
+      nothing to anyone).
 
 ## 11. Tests
 
@@ -144,8 +146,8 @@ One resolver per way of naming a target scope set. All four return the same shap
       still return to normal**, and can still reach the picker.
 - [x] Access-level clamp, including `Custom`, exhaustive over all 25 pairs.
 - [ ] Simulation absent after sign-out; stored roles never written.
-- [ ] Audit names the real user.
-- [ ] A host that does not opt in is unaffected.
+- [x] Audit names the real user.
+- [x] A host that does not opt in is unaffected — the enricher is not even registered.
 - [~] **Mutation-checked: 15/16 caught.** Script at `scratchpad/mutate189.py`.
       **One survivor, reported rather than papered over:** replacing `Rank`'s `Custom` special case with a
       plain `(int)level` cast stays green. It has to — `Custom` is ordinal 4 and every ranked level is

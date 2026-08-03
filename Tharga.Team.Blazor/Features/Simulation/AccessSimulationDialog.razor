@@ -1,0 +1,139 @@
+@using Microsoft.AspNetCore.Authorization
+@using Tharga.Team
+@using Tharga.Team.Blazor.Features.Simulation
+@attribute [Authorize]
+@inject DialogService DialogService
+@inject AccessSimulationState SimulationState
+
+<RadzenStack Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" Gap="1rem" Style="height: 100%;">
+    <RadzenStack Gap="1rem">
+        <RadzenText TextStyle="TextStyle.Body2">
+            See the application as someone with less access. Your own access is only ever reduced — anything
+            you do is still recorded as you.
+        </RadzenText>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0">
+            <RadzenLabel Text="Simulate" />
+            <RadzenSelectBar @bind-Value="_kind" TValue="AccessSimulationKind" Change="@(_ => OnTargetChanged())" Size="ButtonSize.Small">
+                <Items>
+                    <RadzenSelectBarItem Text="A member" Value="AccessSimulationKind.User" />
+                    <RadzenSelectBarItem Text="A role" Value="AccessSimulationKind.Role" Disabled="@(_roles.Count == 0)" />
+                    <RadzenSelectBarItem Text="An access level" Value="AccessSimulationKind.AccessLevel" />
+                </Items>
+            </RadzenSelectBar>
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0">
+            <RadzenLabel Text="@KindLabel" />
+            <RadzenDropDown @bind-Value="_selectedKey" Data="@Candidates" TValue="string"
+                            TextProperty="@nameof(AccessSimulationCandidate.Name)"
+                            ValueProperty="@nameof(AccessSimulationCandidate.Key)"
+                            AllowFiltering="true" Placeholder="Choose…"
+                            Change="@(_ => OnTargetChanged())" Style="width: 100%;" />
+        </RadzenStack>
+
+        @* The warning, shown before applying rather than after. The failure it prevents is an
+           administrator concluding "they cannot do X" from a simulation that was never able to show X —
+           an error that leads to granting more access than necessary, which is the opposite of what this
+           screen is for. *@
+        @if (_selected != null && !_gap.IsFaithful)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat" AllowClose="false">
+                <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-mb-1">This will not be an exact view</RadzenText>
+                @if (_gap.UnreachableScopes.Count > 0)
+                {
+                    <RadzenText TextStyle="TextStyle.Body2" class="rz-mb-1">
+                        You do not hold @string.Join(", ", _gap.UnreachableScopes) yourself, so the simulation
+                        cannot show what @_selected.Name can do with @(_gap.UnreachableScopes.Count == 1 ? "it" : "them").
+                        <strong>They may be able to do more than you are about to see.</strong>
+                    </RadzenText>
+                }
+                @if (_gap.SystemAccessNotReproduced)
+                {
+                    <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0">
+                        System-wide access comes from application roles, which are not stored here — so it is
+                        dropped rather than reproduced. This shows their access <em>within this team</em>.
+                    </RadzenText>
+                }
+            </RadzenAlert>
+        }
+
+        @if (_selected != null && _gap.IsFaithful)
+        {
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-color-success">
+                You hold everything @_selected.Name does, so this will be an exact view.
+            </RadzenText>
+        }
+    </RadzenStack>
+
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right">
+        <RadzenButton Text="Start" Icon="visibility" Disabled="@(_selected == null)" Click="@Start" />
+        <CancelButton Click="@Cancel" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    private AccessSimulationKind _kind = AccessSimulationKind.User;
+    private string _selectedKey;
+    private AccessSimulationCandidate _selected;
+    private AccessSimulationGap _gap;
+
+    private IReadOnlyList<AccessSimulationCandidate> _members = [];
+    private IReadOnlyList<AccessSimulationCandidate> _roles = [];
+    private IReadOnlyList<AccessSimulationCandidate> _levels = [];
+
+    private IReadOnlyList<AccessSimulationCandidate> Candidates => _kind switch
+    {
+        AccessSimulationKind.Role => _roles,
+        AccessSimulationKind.AccessLevel => _levels,
+        _ => _members
+    };
+
+    private string KindLabel => _kind switch
+    {
+        AccessSimulationKind.Role => "Role",
+        AccessSimulationKind.AccessLevel => "Access level",
+        _ => "Member"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _members = await SimulationState.GetMemberTargetsAsync();
+        _roles = await SimulationState.GetRoleTargetsAsync();
+        _levels = SimulationState.GetAccessLevelTargets();
+    }
+
+    private async Task OnTargetChanged()
+    {
+        _selected = Candidates.FirstOrDefault(c => c.Key == _selectedKey);
+        if (_selected == null)
+        {
+            _gap = default;
+            return;
+        }
+
+        _gap = await SimulationState.DescribeGapAsync(Build(_selected));
+    }
+
+    private AccessSimulation Build(AccessSimulationCandidate candidate) => _kind switch
+    {
+        AccessSimulationKind.Role => AccessSimulationTargets.FromRole(candidate.Name, candidate.Scopes),
+        AccessSimulationKind.AccessLevel => AccessSimulationTargets.FromAccessLevel(
+            candidate.AccessLevel ?? AccessLevel.Custom, candidate.Scopes),
+        _ => AccessSimulationTargets.FromUser(candidate.Name, candidate.AccessLevel ?? AccessLevel.Custom, candidate.Scopes)
+    };
+
+    private Task Cancel()
+    {
+        DialogService.Close(false);
+        return Task.CompletedTask;
+    }
+
+    private async Task Start()
+    {
+        if (_selected == null) return;
+
+        DialogService.Close(true);
+        await SimulationState.StartAsync(Build(_selected));
+    }
+}

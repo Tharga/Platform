@@ -1,0 +1,40 @@
+@using Tharga.Team.Blazor.Features.Simulation
+@inject AccessSimulationState SimulationState
+
+@* Deliberately loud, and deliberately on every page while active. A caller who forgets they are
+   simulating will read missing controls as bugs and file them against their own session. The exit is
+   here rather than behind a menu for the same reason: the way out has to be as visible as the state. *@
+
+@if (_active != null)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat" AllowClose="false" class="rz-m-0 rz-p-2">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0">
+                Viewing as <strong>@Describe(_active)</strong> — your own access is reduced.
+            </RadzenText>
+            <RadzenButton Text="Return to my access" Icon="undo" ButtonStyle="ButtonStyle.Warning"
+                          Size="ButtonSize.Small" Variant="Variant.Flat" Click="@Stop" />
+        </RadzenStack>
+    </RadzenAlert>
+}
+
+@code {
+    private AccessSimulation _active;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!SimulationState.Enabled) return;
+
+        _active = await SimulationState.GetActiveAsync();
+    }
+
+    private static string Describe(AccessSimulation simulation) => simulation.Kind switch
+    {
+        AccessSimulationKind.User => simulation.Label,
+        AccessSimulationKind.Role => $"the {simulation.Label} role",
+        AccessSimulationKind.AccessLevel => $"access level {simulation.Label}",
+        _ => simulation.Label
+    };
+
+    private Task Stop() => SimulationState.StopAsync();
+}
