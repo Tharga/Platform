@@ -1,7 +1,8 @@
-namespace Tharga.Team.Blazor.Features.Team;
+﻿namespace Tharga.Team.Blazor.Features.Team;
 
 /// <summary>
-/// Decides what the team selector offers a caller who belongs to no team.
+/// Decides what the team selector offers: a way to create a team when the caller belongs to none, and a
+/// way to search when they belong to too many to scan.
 /// </summary>
 /// <remarks>
 /// Pure and static so it is unit-testable — the project has no bUnit, so a decision left in razor markup
@@ -25,4 +26,35 @@ internal static class TeamSelectorGate
     /// </remarks>
     public static bool ShowCreateTeamLink(int teamCount, bool allowTeamCreation)
         => teamCount == 0 && allowTeamCreation;
+
+    /// <summary>
+    /// The team count at and above which the selector offers a search box.
+    /// </summary>
+    /// <remarks>
+    /// Shared with the team list, which uses the same number to decide between cards and a grid. Two
+    /// decisions, but both turn on the same fact about the same collection, so they move together.
+    /// </remarks>
+    public const int DefaultFilterThreshold = TeamListPresentation.DefaultThreshold;
+
+    /// <summary>
+    /// Whether the selector offers a search box.
+    /// </summary>
+    /// <param name="teamCount">Teams the caller can choose between.</param>
+    /// <param name="threshold">The count at and above which a filter is worth showing.</param>
+    /// <param name="allowFiltering">
+    /// A host's explicit answer, which wins outright. Null defers to <paramref name="threshold"/>.
+    /// </param>
+    /// <remarks>
+    /// The same judgement <see cref="Audit.AuditFilterVisibility"/> makes about the audit filter bar —
+    /// *"one option is not a filter"* — applied to a different control. Kept here rather than inline in
+    /// markup for the reason every decision in this feature is: the project has no bUnit, so a rule left
+    /// in a razor file cannot be tested at all.
+    /// <para>
+    /// A host that forces it on for a caller with one team gets a filter over one team. That is their
+    /// call to make and not worth second-guessing — <c>false</c> and <c>true</c> both mean "I have
+    /// decided", and the threshold exists precisely for everyone who has not.
+    /// </para>
+    /// </remarks>
+    public static bool ShowFilter(int teamCount, int threshold, bool? allowFiltering = null)
+        => allowFiltering ?? TeamListPresentation.IsMany(teamCount, threshold);
 }

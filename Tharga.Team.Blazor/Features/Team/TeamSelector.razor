@@ -41,7 +41,10 @@
         }
         else if (_teams.Length > 1 && SelectedTeam != null)
         {
-            <RadzenDropDown @bind-Value=@SelectedTeam Data="@(_teams.OrderBy(f => f.Name))" TextProperty="Name">
+            <RadzenDropDown @bind-Value=@SelectedTeam Data="@(_teams.OrderBy(f => f.Name))" TextProperty="Name"
+                            AllowFiltering="@TeamSelectorGate.ShowFilter(_teams.Length, FilterThreshold, AllowFiltering)"
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                            FilterOperator="StringFilterOperator.Contains">
                 <ValueTemplate Context="team">
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.4rem">
                         <TeamAvatar Team="@((ITeam)team)" Size="20px" />
@@ -86,6 +89,23 @@
     /// When unset, the link navigates to <c>CreateTeamPath</c> (if configured) or <c>/team</c>.
     /// </summary>
     [Parameter] public EventCallback CreateTeamRequested { get; set; }
+
+    /// <summary>
+    /// How many teams there must be before the selector offers a search box. Defaults to
+    /// <see cref="TeamSelectorGate.DefaultFilterThreshold"/>.
+    /// </summary>
+    /// <remarks>
+    /// A short list is read faster than it is typed into, so the filter appears only once scanning is
+    /// the slower option. Lower it for a host whose team names are long or similar; raise it for one
+    /// whose users belong to a handful of memorable teams.
+    /// </remarks>
+    [Parameter] public int FilterThreshold { get; set; } = TeamSelectorGate.DefaultFilterThreshold;
+
+    /// <summary>
+    /// Forces the search box on or off, ignoring <see cref="FilterThreshold"/>. Null, the default, lets
+    /// the threshold decide.
+    /// </summary>
+    [Parameter] public bool? AllowFiltering { get; set; }
 
     private ITeam[] _teams;
 

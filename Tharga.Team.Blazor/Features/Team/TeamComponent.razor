@@ -33,6 +33,19 @@
     tr[data-tharga-current-member] > td:first-child {
         box-shadow: inset 3px 0 0 0 var(--rz-primary, #2563eb);
     }
+
+    /* The selected team, marking what ExpandableCard.Selected used to. A left accent only: the current
+       member row already owns the tint, and two competing backgrounds in one view read as an error
+       rather than as two facts. Cell-level for the same reason as above -- a background on the row
+       element is painted over by Radzen's own cell backgrounds.
+       (Angle brackets are avoided even in this comment: Razor parses them inside a style block.) */
+    tr[data-tharga-selected-team] > td:first-child {
+        box-shadow: inset 3px 0 0 0 var(--rz-primary, #2563eb);
+    }
+
+    tr[data-tharga-selected-team] > td {
+        font-weight: 600;
+    }
 </style>
 
 @if (_teams == null)
@@ -45,244 +58,110 @@ else
         <TeamInviteView TMember="TMember" />
         @if (_teams.Any())
         {
-            @foreach (var team in _teams)
-            {
-                <ExpandableCard Text="@team.Name" Icon="groups" ImageUrl="@TeamIconUrl(team)" Selected="@(_selectedTeam?.Key == team.Key)">
-                    <ChildContent>
-                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" AlignItems="AlignItems.Center">
-                        @if (_canSeeAllTeams)
-                        {
-                            <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(TeamVisibility.BadgeStyle(ConsentOf(team))))"
-                                         Variant="Variant.Flat"
-                                         Text="@TeamVisibility.Label(ConsentOf(team))"
-                                         title="What this team has consented to grant you."
-                                         class="rz-mr-2" />
-                            @if (!IsMemberOf(team))
-                            {
-                                <RadzenBadge BadgeStyle="BadgeStyle.Light" Variant="Variant.Flat" Text="Not a member"
-                                             title="You are viewing this team through cross-team access, not membership."
-                                             class="rz-mr-2" />
-                            }
-                        }
-                        @if (_showConsentToggle)
-                        {
-                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
-                                <RadzenLabel Text="@($"Consent access for {string.Join(", ", _consentRoles)}")" Style="font-size: 0.85em;" />
-                                <RadzenDropDown TValue="AccessLevel?"
-                                                Value="@ConsentOf(team)"
-                                                Data="@_consentLevels"
-                                                AllowClear="true"
-                                                Disabled="@(!CanEditConsent(team))"
-                                                Placeholder="No access"
-                                                Change="@(async args => await SetConsent(team, (AccessLevel?)args))" />
-                            </RadzenStack>
-                        }
-                        @{
-                            var actions = TeamActions(team);
-                        }
-                        @if (actions.Count == 1)
-                        {
-                            <RadzenButton Text="@actions[0].Text" Icon="@actions[0].Icon" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
-                                          Click="@(() => InvokeTeamActionAsync(actions[0].Value, team))" />
-                        }
-                        else if (actions.Count > 1)
-                        {
-                            <RadzenSplitButton Text="@actions[0].Text" Icon="@actions[0].Icon" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
-                                               Click="@(item => OnTeamActionAsync(item, team, actions[0].Value))">
-                                <ChildContent>
-                                    @foreach (var action in actions.Skip(1))
-                                    {
-                                        <RadzenSplitButtonItem Text="@action.Text" Value="@action.Value" Icon="@action.Icon" />
-                                    }
-                                </ChildContent>
-                            </RadzenSplitButton>
-                        }
-                    </RadzenStack>
-                    <RadzenRow>
-                        <RadzenColumn>
-                            @* <RadzenDataGrid Data="@team.Members" Visible="@(HasAccessLevel(team, AccessLevel.Administrator))" TItem="TMember"> *@
-                            <RadzenDataGrid Data="@team.Members" TItem="TMember" RowRender="@OnMemberRowRender">
-                                <Columns>
-                                    @* <RadzenDataGridColumn Title="Key" Property="@nameof(ITeamMember.Key)" /> *@
-                                    <RadzenDataGridColumn Title="EMail" SortOrder="SortOrder.Ascending">
-                                        <Template>
-                                            @{
-                                                var user = _users.FirstOrDefault(x => x.Key == context.Key);
-                                                <span style="margin-right: 6px;"><UserAvatar User="user" EMail="@(context.Invitation?.EMail ?? user?.EMail)" Name="@context.Name" Size="32px" /></span>
-                                                @(context.Invitation?.EMail ?? user?.EMail)
-                                            }
-                                        </Template>
-                                    </RadzenDataGridColumn>
-                                    <RadzenDataGridColumn Title="Name" Property="@nameof(ITeamMember.Name)">
-                                        <Template>
-                                            @{
-                                                var canEditThisRow = EnableMemberNameEdit && CanManageMembers(team);
-                                            }
-                                            @if (canEditThisRow && !string.IsNullOrEmpty(_editingMemberKey) && _editingMemberKey == context.Key)
-                                            {
-                                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem"
-                                                             Style="min-width: 0; flex-wrap: nowrap;">
-                                                    <RadzenTextBox Value="@_editingMemberName"
-                                                                   ValueChanged="@(v => _editingMemberName = v)"
-                                                                   Style="flex: 1 1 0; min-width: 0;" />
-                                                    <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Small"
-                                                                  Click="@(() => SaveMemberName(team, context))"
-                                                                  Style="flex: 0 0 auto;" />
-                                                    @if (!string.IsNullOrEmpty(context.Name))
-                                                    {
-                                                        <RadzenButton Icon="restart_alt" ButtonStyle="ButtonStyle.Warning" Variant="Variant.Flat" Size="ButtonSize.Small"
-                                                                      Click="@(() => ResetMemberName(team, context))"
-                                                                      title="Clear override (use the global user name)"
-                                                                      Style="flex: 0 0 auto;" />
-                                                    }
-                                                    <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Small"
-                                                                  Click="@CancelMemberNameEdit"
-                                                                  Style="flex: 0 0 auto;" />
-                                                </RadzenStack>
-                                            }
-                                            else
-                                            {
-                                                var member = context;
-                                                var user = _users.FirstOrDefault(x => x.Key == member.Key);
-                                                var displayName = !string.IsNullOrEmpty(member.Name)
-                                                    ? member.Name
-                                                    : user?.Name ?? TeamServiceBase.ResolveDisplayName(user);
-                                                var hasOverride = !string.IsNullOrEmpty(member.Name)
-                                                                  && !string.IsNullOrEmpty(user?.Name)
-                                                                  && member.Name != user.Name;
-                                                var tooltip = hasOverride
-                                                    ? $"Team override. Original name: {user.Name}"
-                                                    : null;
+            @* Two shapes for two situations, chosen by the same threshold the selector uses.
 
-                                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
-                                                    <span title="@tooltip" style="@(hasOverride ? "font-style: italic;" : "")">@displayName</span>
-                                                    @if (canEditThisRow)
-                                                    {
-                                                        <RadzenButton Icon="edit" Variant="Variant.Text" Size="ButtonSize.Small"
-                                                                      Click="@(() => StartMemberNameEdit(member))"
-                                                                      title="Edit display name" />
-                                                    }
-                                                </RadzenStack>
-                                            }
-                                        </Template>
-                                    </RadzenDataGridColumn>
-                                    <RadzenDataGridColumn Title="Access Level" Property="@nameof(ITeamMember.AccessLevel)">
-                                        <Template>
-                                            @if (_user.Key == context.Key || context.AccessLevel == AccessLevel.Owner) //Cannot change self or owner.
-                                            {
-                                                <RadzenText>@context.AccessLevel</RadzenText>
-                                            }
-                                            else if (CanManageMembers(team))
-                                            {
-                                                // Custom hidden until #76 adds member scope/role editing (see InviteUserDialog).
-                                                var accessLevels = Enum.GetValues<AccessLevel>().Where(x => x != AccessLevel.Owner && x != AccessLevel.Custom);
-                                                <RadzenDropDown TValue="AccessLevel" Value="@context.AccessLevel" ValueChanged="@(x => ChangeRole(team, context.Key, x))" Data="@accessLevels"/>
-                                            }
-                                            else
-                                            {
-                                                <RadzenText>@context.AccessLevel</RadzenText>
-                                            }
-                                        </Template>
-                                    </RadzenDataGridColumn>
-                                    <RadzenDataGridColumn Title="Roles" Width="200px" Visible="@(ShowRoles && _tenantRoleRegistry != null)">
-                                        <Template>
-                                            @if (CanManageMembers(team) && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
-                                            {
-                                                <RoleEditor Roles="@GetVisibleRoles(team.Key)"
-                                                            Selected="@(context.TenantRoles ?? Array.Empty<string>())"
-                                                            SelectedChanged="@(r => ChangeTenantRoles(team, context.Key, r))" />
-                                            }
-                                            else
-                                            {
-                                                <RadzenText>@(string.Join(", ", context.TenantRoles ?? Array.Empty<string>()))</RadzenText>
-                                            }
-                                        </Template>
-                                    </RadzenDataGridColumn>
-                                    <RadzenDataGridColumn Title="Scope Overrides" Width="200px" Visible="@(ShowScopeOverrides && _scopeRegistry != null)">
-                                        <Template>
-                                            @if (CanManageMembers(team) && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
-                                            {
-                                                <ScopeOverrideEditor AllScopes="_allScopeNames"
-                                                                     Descriptions="_scopeDescriptions"
-                                                                     InheritedScopes="@_scopeRegistry.GetEffectiveScopes(context.AccessLevel, context.TenantRoles, null)"
-                                                                     Overrides="@(context.ScopeOverrides ?? Array.Empty<string>())"
-                                                                     OverridesChanged="@(o => ChangeScopeOverrides(team, context.Key, o))" />
-                                            }
-                                            else
-                                            {
-                                                <RadzenText>@(string.Join(", ", context.ScopeOverrides ?? Array.Empty<string>()))</RadzenText>
-                                            }
-                                        </Template>
-                                    </RadzenDataGridColumn>
-                                    <RadzenDataGridColumn Title="Scopes" Width="80px" Visible="@(_scopeRegistry != null && ShowScopeTooltip)">
-                                        <Template>
-                                            <span title="@GetEffectiveScopesWithOriginText(team, context)">
-                                                <RadzenIcon Icon="info" Style="cursor: help;" />
-                                            </span>
-                                        </Template>
-                                    </RadzenDataGridColumn>
-                                    <RadzenDataGridColumn Title="Status" Property="@nameof(ITeamMember.State)">
-                                        <Template>
-                                            @if (context.State == MembershipState.Invited && context.Invitation != null)
-                                            {
-                                                <span title="@($"Invited {context.Invitation.InviteTime:yyyy-MM-dd HH:mm} UTC")" style="cursor: help;">@context.State</span>
-                                            }
-                                            else
-                                            {
-                                                <span>@context.State</span>
-                                            }
-                                            @* Shown beside the state, not instead of it. Suspension deliberately
-                                               leaves State at Member -- that is what keeps the team in the
-                                               member's selector -- so the row has to say both things or it
-                                               misdescribes what was done. *@
-                                            @if (context.SuspendedAt != null)
-                                            {
-                                                <RadzenBadge BadgeStyle="BadgeStyle.Warning" Variant="Variant.Flat"
-                                                             Text="Suspended" class="rz-ml-2"
-                                                             title="@SuspendedMemberTitle(context)" />
-                                            }
-                                        </Template>
-                                    </RadzenDataGridColumn>
-                                    <RadzenDataGridColumn Title="Last Seen" Property="@nameof(ITeamMember.LastSeen)">
-                                        <Template>
-                                            <DateTimeView Date="@context.LastSeen"/>
-                                        </Template>
-                                    </RadzenDataGridColumn>
-                                    <RadzenDataGridColumn>
-                                        <Template>
-                                            @{
-                                                var memberActions = MemberActions(team, context);
-                                            }
-                                            @* Same Text/Icon/style as the split button's primary half, so a
-                                               member with one available action does not look like a
-                                               different kind of control from the member beside them. *@
-                                            @if (memberActions.Count == 1)
-                                            {
-                                                <RadzenButton Text="@memberActions[0].Text" Icon="@memberActions[0].Icon"
-                                                              ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
-                                                              Click="@(() => InvokeMemberActionAsync(memberActions[0].Value, team, context.Key))"/>
-                                            }
-                                            else if (memberActions.Count > 1)
-                                            {
-                                                <RadzenSplitButton Text="@memberActions[0].Text" Icon="@memberActions[0].Icon"
-                                                                   ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
-                                                                   Click="@(item => OnMemberActionAsync(item, team, context.Key, memberActions[0].Value))">
-                                                    <ChildContent>
-                                                        @foreach (var action in memberActions.Skip(1))
-                                                        {
-                                                            <RadzenSplitButtonItem Text="@action.Text" Value="@action.Value" Icon="@action.Icon"/>
-                                                        }
-                                                    </ChildContent>
-                                                </RadzenSplitButton>
-                                            }
-                                        </Template>
-                                    </RadzenDataGridColumn>
-                                </Columns>
-                            </RadzenDataGrid>
-                        </RadzenColumn>
-                    </RadzenRow>
-                    </ChildContent>
-                </ExpandableCard>
+               Cards suit a handful: the expand affordance is obvious and a grid of three rows looks like
+               an administrative report of nothing much. Past the threshold that reverses -- cards cannot
+               be sorted, filtered or paged, and a page of stacked accordions is not a list.
+
+               Both render @TeamDetail and @TeamActions, defined once below. That is what keeps two
+               layouts from being twice the work: only the container differs, never the contents, so a
+               change to a member column or an action cannot land in one shape and not the other.
+
+               Paging is a *rendering* fix, not a loading one: ReloadTeams still fetches every team with
+               its members. A paged, member-less read is a service-contract change and is out of scope. *@
+            @if (TeamListPresentation.ShowAsGrid(_teams.Length, TeamFilterThreshold, TeamLayout))
+            {
+                <RadzenDataGrid @ref="_teamGrid" Data="@_teams" TItem="ITeam<TMember>"
+                                AllowSorting="@AllowTeamSorting"
+                                AllowFiltering="@TeamSelectorGate.ShowFilter(_teams.Length, TeamFilterThreshold, AllowTeamFiltering)"
+                                AllowPaging="@TeamSelectorGate.ShowFilter(_teams.Length, TeamPageSize + 1, AllowTeamPaging)"
+                                FilterMode="FilterMode.Simple" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                PageSize="@TeamPageSize" PageSizeOptions="@TeamPageSizeOptionsValues"
+                                ShowPagingSummary="true" PagingSummaryFormat="Showing {0}-{1} of {2}"
+                                ExpandMode="DataGridExpandMode.Multiple"
+                                RowRender="@OnTeamRowRender">
+                    <Columns>
+                        @* Name is a real property on ITeam, so it sorts and filters through the grid's
+                           own machinery. Every other column here is derived -- the caller's level comes
+                           from their membership row, the badges from consent -- so they are marked
+                           unsortable rather than given a SortProperty that does not exist. A sort control
+                           that silently does nothing is worse than no control. *@
+                        <RadzenDataGridColumn TItem="ITeam<TMember>" Title="Team" Property="Name"
+                                              SortOrder="SortOrder.Ascending" Filterable="true">
+                            <Template Context="team">
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                    <TeamAvatar Team="@team" Size="24px" />
+                                    <span>@team.Name</span>
+                                </RadzenStack>
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="ITeam<TMember>" Title="Your access" Width="140px" Filterable="false" Sortable="false">
+                            <Template Context="team">
+                                @{
+                                    var myLevel = MyAccessLevel(team);
+                                }
+                                @if (myLevel != null)
+                                {
+                                    <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(AccessLevelBadge.Style(myLevel)))"
+                                                 Variant="Variant.Flat"
+                                                 Text="@AccessLevelBadge.Text(myLevel)"
+                                                 title="Your access level on this team." />
+                                }
+                                else
+                                {
+                                    <span class="rz-text-disabled">—</span>
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="ITeam<TMember>" Title="Consent" Width="230px" Filterable="false" Sortable="false"
+                                              Visible="@(_canSeeAllTeams || _showConsentToggle)">
+                            <Template Context="team">
+                                @* No label: the column header already says Consent, and repeating it in
+                                   every cell is the same word printed once per row. *@
+                                @ConsentCell(team)
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="ITeam<TMember>" Title="Members" Width="110px" Filterable="false" Sortable="false">
+                            <Template Context="team">
+                                @{
+                                    var counts = TeamMemberCounts.Of(team.Members);
+                                }
+                                <span title="@counts.Title">@counts.Text</span>
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="ITeam<TMember>" Title="" Width="240px" Sortable="false" Filterable="false" TextAlign="TextAlign.Right">
+                            <Template Context="team">
+                                @TeamActionsFragment(team)
+                            </Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                    <Template Context="team">
+                        @TeamDetail(team)
+                    </Template>
+                </RadzenDataGrid>
+            }
+            else
+            {
+                @foreach (var team in _teams)
+                {
+                    <ExpandableCard Text="@team.Name" Icon="groups" ImageUrl="@TeamIconUrl(team)" Selected="@(_selectedTeam?.Key == team.Key)">
+                        @* On the title, so what a team grants is readable without opening it -- the same
+                           thing the grid's Consent column does for a row. Badges only: TopMenu sits
+                           inside the header's click handler, so a control here would toggle the card as
+                           well as itself. *@
+                        <TopMenu>
+                            @ConsentBadges(team)
+                        </TopMenu>
+                        <ChildContent>
+                            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" AlignItems="AlignItems.End" Gap="0.75rem">
+                                @ConsentControl(team, showLabel: true)
+                                @TeamActionsFragment(team)
+                            </RadzenStack>
+                            @TeamDetail(team)
+                        </ChildContent>
+                    </ExpandableCard>
+                }
             }
         }
         <RadzenText Visible="@(!_teams.Any() && _allowTeamCreation)">You are not member of a team. Create your own team and start inviting members.</RadzenText>
@@ -320,6 +199,43 @@ else
 
     /// <summary>When true (and an <see cref="ITenantRoleRegistry"/> is registered), shows the per-member tenant-role editor column. Default false.</summary>
     [Parameter] public bool ShowRoles { get; set; }
+
+    // --- The teams grid. Deliberately prefixed "Team", because every other parameter on this component
+    // --- configures the *members* grid inside a row, and a bare "AllowSorting" would be ambiguous.
+
+    /// <summary>
+    /// Whether the team list is drawn as cards or as a grid. Defaults to
+    /// <see cref="TeamListLayout.Auto"/>: cards while the list is short, a grid once it is not.
+    /// </summary>
+    [Parameter] public TeamListLayout TeamLayout { get; set; } = TeamListLayout.Auto;
+
+    /// <summary>Sorting on the team list. Default on.</summary>
+    [Parameter] public bool AllowTeamSorting { get; set; } = true;
+
+    /// <summary>
+    /// Forces the team-name filter on or off. Null, the default, shows it once there are
+    /// <see cref="TeamFilterThreshold"/> teams or more.
+    /// </summary>
+    [Parameter] public bool? AllowTeamFiltering { get; set; }
+
+    /// <summary>
+    /// How many teams there must be before the list offers a filter. Defaults to
+    /// <see cref="TeamSelectorGate.DefaultFilterThreshold"/> — the same judgement the selector makes,
+    /// because it is the same question about the same collection.
+    /// </summary>
+    [Parameter] public int TeamFilterThreshold { get; set; } = TeamSelectorGate.DefaultFilterThreshold;
+
+    /// <summary>
+    /// Forces paging on or off. Null, the default, pages only when there is more than one page —
+    /// a pager under a list that fits is a control that does nothing.
+    /// </summary>
+    [Parameter] public bool? AllowTeamPaging { get; set; }
+
+    /// <summary>Teams per page. Default 10.</summary>
+    [Parameter] public int TeamPageSize { get; set; } = 10;
+
+    /// <summary>Page sizes offered. Defaults to 10 / 25 / 50.</summary>
+    [Parameter] public IEnumerable<int> TeamPageSizeOptionsValues { get; set; } = [10, 25, 50];
 
     /// <summary>
     /// Optional callback invoked when the user activates the built-in "Create new Team" button.
@@ -362,6 +278,41 @@ else
     private ITenantRoleRegistry _tenantRoleRegistry;
     private ITenantRoleVisibilityProvider _roleVisibilityProvider;
     private readonly Dictionary<string, IReadOnlyList<TenantRoleDefinition>> _visibleRolesByTeam = new();
+
+    private RadzenDataGrid<ITeam<TMember>> _teamGrid;
+
+    /// <summary>
+    /// Whether the selected team's row has been opened for the current set of teams.
+    /// </summary>
+    /// <remarks>
+    /// Latched so the row is expanded once and then left alone. Without it, every re-render would
+    /// re-open a row the reader had just collapsed — the grid would refuse to stay shut, which reads as
+    /// a broken control rather than as a helpful default. Cleared by <see cref="ReloadTeams"/>, so a
+    /// changed selection or a reloaded list opens the right row again.
+    /// </remarks>
+    private bool _selectedRowExpanded;
+
+    /// <summary>
+    /// Opens the selected team's row, so the surface a caller is actually working in is the one already
+    /// showing.
+    /// </summary>
+    /// <remarks>
+    /// Done here rather than at load because the grid has to exist before a row can be expanded —
+    /// <c>_teamGrid</c> is null until the first render that draws it, and in the cards layout it stays
+    /// null for good.
+    /// </remarks>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+
+        if (_selectedRowExpanded || _teamGrid == null || _teams == null || _selectedTeam == null) return;
+
+        var row = _teams.FirstOrDefault(x => x.Key == _selectedTeam.Key);
+        if (row == null) return;
+
+        _selectedRowExpanded = true;
+        await _teamGrid.ExpandRow(row);
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -684,6 +635,345 @@ else
         NotificationService.Notify(NotificationSeverity.Success, "Ownership transferred");
     }
 
+    /// <summary>
+    /// A team's members and its consent selector — the body of a card, and the detail row of a grid.
+    /// </summary>
+    /// <remarks>
+    /// Defined once and rendered by both layouts. Two presentations of the same thing are only worth
+    /// having while the thing itself has one definition; duplicating this would mean a new member column
+    /// landing in one shape and not the other, which is worse than having no choice of shape at all.
+    /// </remarks>
+    private RenderFragment<ITeam<TMember>> TeamDetail => team =>
+    @<text>
+        <RadzenRow>
+            <RadzenColumn>
+                @* <RadzenDataGrid Data="@team.Members" Visible="@(HasAccessLevel(team, AccessLevel.Administrator))" TItem="TMember"> *@
+                <RadzenDataGrid Data="@team.Members" TItem="TMember" RowRender="@OnMemberRowRender">
+                    <Columns>
+                        @* <RadzenDataGridColumn Title="Key" Property="@nameof(ITeamMember.Key)" /> *@
+                        <RadzenDataGridColumn Title="EMail" SortOrder="SortOrder.Ascending">
+                            <Template>
+                                @{
+                                    var user = _users.FirstOrDefault(x => x.Key == context.Key);
+                                    <span style="margin-right: 6px;"><UserAvatar User="user" EMail="@(context.Invitation?.EMail ?? user?.EMail)" Name="@context.Name" Size="32px" /></span>
+                                    @(context.Invitation?.EMail ?? user?.EMail)
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn Title="Name" Property="@nameof(ITeamMember.Name)">
+                            <Template>
+                                @{
+                                    var canEditThisRow = EnableMemberNameEdit && CanManageMembers(team);
+                                }
+                                @if (canEditThisRow && !string.IsNullOrEmpty(_editingMemberKey) && _editingMemberKey == context.Key)
+                                {
+                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem"
+                                                 Style="min-width: 0; flex-wrap: nowrap;">
+                                        <RadzenTextBox Value="@_editingMemberName"
+                                                       ValueChanged="@(v => _editingMemberName = v)"
+                                                       Style="flex: 1 1 0; min-width: 0;" />
+                                        <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Small"
+                                                      Click="@(() => SaveMemberName(team, context))"
+                                                      Style="flex: 0 0 auto;" />
+                                        @if (!string.IsNullOrEmpty(context.Name))
+                                        {
+                                            <RadzenButton Icon="restart_alt" ButtonStyle="ButtonStyle.Warning" Variant="Variant.Flat" Size="ButtonSize.Small"
+                                                          Click="@(() => ResetMemberName(team, context))"
+                                                          title="Clear override (use the global user name)"
+                                                          Style="flex: 0 0 auto;" />
+                                        }
+                                        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Small"
+                                                      Click="@CancelMemberNameEdit"
+                                                      Style="flex: 0 0 auto;" />
+                                    </RadzenStack>
+                                }
+                                else
+                                {
+                                    var member = context;
+                                    var user = _users.FirstOrDefault(x => x.Key == member.Key);
+                                    var displayName = !string.IsNullOrEmpty(member.Name)
+                                        ? member.Name
+                                        : user?.Name ?? TeamServiceBase.ResolveDisplayName(user);
+                                    var hasOverride = !string.IsNullOrEmpty(member.Name)
+                                                      && !string.IsNullOrEmpty(user?.Name)
+                                                      && member.Name != user.Name;
+                                    var tooltip = hasOverride
+                                        ? $"Team override. Original name: {user.Name}"
+                                        : null;
+
+                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
+                                        <span title="@tooltip" style="@(hasOverride ? "font-style: italic;" : "")">@displayName</span>
+                                        @if (canEditThisRow)
+                                        {
+                                            <RadzenButton Icon="edit" Variant="Variant.Text" Size="ButtonSize.Small"
+                                                          Click="@(() => StartMemberNameEdit(member))"
+                                                          title="Edit display name" />
+                                        }
+                                    </RadzenStack>
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn Title="Access Level" Property="@nameof(ITeamMember.AccessLevel)">
+                            <Template>
+                                @if (_user.Key == context.Key || context.AccessLevel == AccessLevel.Owner) //Cannot change self or owner.
+                                {
+                                    <RadzenText>@context.AccessLevel</RadzenText>
+                                }
+                                else if (CanManageMembers(team))
+                                {
+                                    // Custom hidden until #76 adds member scope/role editing (see InviteUserDialog).
+                                    var accessLevels = Enum.GetValues<AccessLevel>().Where(x => x != AccessLevel.Owner && x != AccessLevel.Custom);
+                                    <RadzenDropDown TValue="AccessLevel" Value="@context.AccessLevel" ValueChanged="@(x => ChangeRole(team, context.Key, x))" Data="@accessLevels"/>
+                                }
+                                else
+                                {
+                                    <RadzenText>@context.AccessLevel</RadzenText>
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn Title="Roles" Width="200px" Visible="@(ShowRoles && _tenantRoleRegistry != null)">
+                            <Template>
+                                @if (CanManageMembers(team) && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
+                                {
+                                    <RoleEditor Roles="@GetVisibleRoles(team.Key)"
+                                                Selected="@(context.TenantRoles ?? Array.Empty<string>())"
+                                                SelectedChanged="@(r => ChangeTenantRoles(team, context.Key, r))" />
+                                }
+                                else
+                                {
+                                    <RadzenText>@(string.Join(", ", context.TenantRoles ?? Array.Empty<string>()))</RadzenText>
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn Title="Scope Overrides" Width="200px" Visible="@(ShowScopeOverrides && _scopeRegistry != null)">
+                            <Template>
+                                @if (CanManageMembers(team) && _user.Key != context.Key && context.AccessLevel != AccessLevel.Owner)
+                                {
+                                    <ScopeOverrideEditor AllScopes="_allScopeNames"
+                                                         Descriptions="_scopeDescriptions"
+                                                         InheritedScopes="@_scopeRegistry.GetEffectiveScopes(context.AccessLevel, context.TenantRoles, null)"
+                                                         Overrides="@(context.ScopeOverrides ?? Array.Empty<string>())"
+                                                         OverridesChanged="@(o => ChangeScopeOverrides(team, context.Key, o))" />
+                                }
+                                else
+                                {
+                                    <RadzenText>@(string.Join(", ", context.ScopeOverrides ?? Array.Empty<string>()))</RadzenText>
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn Title="Scopes" Width="80px" Visible="@(_scopeRegistry != null && ShowScopeTooltip)">
+                            <Template>
+                                <span title="@GetEffectiveScopesWithOriginText(team, context)">
+                                    <RadzenIcon Icon="info" Style="cursor: help;" />
+                                </span>
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn Title="Status" Property="@nameof(ITeamMember.State)">
+                            <Template>
+                                @if (context.State == MembershipState.Invited && context.Invitation != null)
+                                {
+                                    <span title="@($"Invited {context.Invitation.InviteTime:yyyy-MM-dd HH:mm} UTC")" style="cursor: help;">@context.State</span>
+                                }
+                                else
+                                {
+                                    <span>@context.State</span>
+                                }
+                                @* Shown beside the state, not instead of it. Suspension deliberately
+                                   leaves State at Member -- that is what keeps the team in the
+                                   member's selector -- so the row has to say both things or it
+                                   misdescribes what was done. *@
+                                @if (context.SuspendedAt != null)
+                                {
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Warning" Variant="Variant.Flat"
+                                                 Text="Suspended" class="rz-ml-2"
+                                                 title="@SuspendedMemberTitle(context)" />
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn Title="Last Seen" Property="@nameof(ITeamMember.LastSeen)">
+                            <Template>
+                                <DateTimeView Date="@context.LastSeen"/>
+                            </Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn>
+                            <Template>
+                                @{
+                                    var memberActions = MemberActions(team, context);
+                                }
+                                @* Same Text/Icon/style as the split button's primary half, so a
+                                   member with one available action does not look like a
+                                   different kind of control from the member beside them. *@
+                                @if (memberActions.Count == 1)
+                                {
+                                    <RadzenButton Text="@memberActions[0].Text" Icon="@memberActions[0].Icon"
+                                                  ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                                                  Click="@(() => InvokeMemberActionAsync(memberActions[0].Value, team, context.Key))"/>
+                                }
+                                else if (memberActions.Count > 1)
+                                {
+                                    <RadzenSplitButton Text="@memberActions[0].Text" Icon="@memberActions[0].Icon"
+                                                       ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                                                       Click="@(item => OnMemberActionAsync(item, team, context.Key, memberActions[0].Value))">
+                                        <ChildContent>
+                                            @foreach (var action in memberActions.Skip(1))
+                                            {
+                                                <RadzenSplitButtonItem Text="@action.Text" Value="@action.Value" Icon="@action.Icon"/>
+                                            }
+                                        </ChildContent>
+                                    </RadzenSplitButton>
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+            </RadzenColumn>
+        </RadzenRow>
+    </text>;
+
+    /// <summary>
+    /// What this team grants, and the control to change it. Rendered in the grid's Consent column and in
+    /// a card's header.
+    /// </summary>
+    /// <remarks>
+    /// <b>Only where it can be changed.</b> Consent is editable on the selected team alone, so in a list
+    /// most rows cannot be edited — and a column of disabled drop-downs is a row of controls that do
+    /// nothing. Those rows state the level instead.
+    /// <para>
+    /// The label is the caller's to ask for: a grid column header already says "Consent", so repeating it
+    /// in every cell prints the same word once per row. A card has no header, so there it carries.
+    /// </para>
+    /// The label sits <b>above</b> the drop-down rather than beside it. Side by side, the label ran
+    /// straight into the selected level and the two read as one sentence — "Consent access for Developer,
+    /// Administrator" — which states something nobody wrote: that Administrator is a consenting role
+    /// rather than the level being granted. Stacking separates the question from the answer.
+    /// <para>
+    /// The roles are listed in full rather than abbreviated. Naming fewer than actually hold consent
+    /// would be a comfortable label that misstates who can reach the team.
+    /// </para>
+    /// </remarks>
+    /// <summary>
+    /// What this team grants and whether the caller belongs to it, side by side.
+    /// </summary>
+    /// <remarks>
+    /// Horizontal, because the two are one thought — "full access, but not a member" is the sentence an
+    /// oversight caller is reading. Stacked, they looked like two unrelated properties.
+    /// <para>
+    /// Read-only by design, which is what lets it sit in a card's <c>TopMenu</c>: that slot lives inside
+    /// the header's click handler, so anything interactive there would toggle the card as well as itself.
+    /// </para>
+    /// </remarks>
+    private RenderFragment ConsentBadges(ITeam<TMember> team) =>
+    @<text>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.35rem" Wrap="FlexWrap.Wrap">
+            @if (_canSeeAllTeams || _showConsentToggle)
+            {
+                <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(TeamVisibility.BadgeStyle(ConsentOf(team))))"
+                             Variant="Variant.Flat"
+                             Text="@TeamVisibility.Label(ConsentOf(team))"
+                             title="What this team has consented to grant. Select the team to change it." />
+            }
+            @if (_canSeeAllTeams && !IsMemberOf(team))
+            {
+                <RadzenBadge BadgeStyle="BadgeStyle.Light" Variant="Variant.Flat" Text="Not a member"
+                             title="You are viewing this team through cross-team access, not membership." />
+            }
+        </RadzenStack>
+    </text>;
+
+    /// <summary>
+    /// The consent selector, where consent can actually be changed. Renders nothing where it cannot.
+    /// </summary>
+    private RenderFragment ConsentControl(ITeam<TMember> team, bool showLabel) =>
+    @<text>
+        @if (_showConsentToggle && CanEditConsent(team))
+        {
+            <RadzenStack Orientation="Orientation.Vertical" Gap="0.15rem" AlignItems="AlignItems.Start">
+                @if (showLabel)
+                {
+                    <RadzenLabel Text="@ConsentLabel" Style="font-size: 0.85em; opacity: 0.75;" />
+                }
+                <RadzenDropDown TValue="AccessLevel?"
+                                Value="@ConsentOf(team)"
+                                Data="@_consentLevels"
+                                AllowClear="true"
+                                Placeholder="No access"
+                                Change="@(async args => await SetConsent(team, (AccessLevel?)args))"
+                                Style="width: 100%;" />
+            </RadzenStack>
+        }
+    </text>;
+
+    /// <summary>
+    /// The grid's Consent cell: the selector on the row that can be changed, the value stated on the rest.
+    /// </summary>
+    /// <remarks>
+    /// Consent is editable on the selected team alone, so in a list most rows cannot be edited — and a
+    /// column of disabled drop-downs is a row of controls that do nothing.
+    /// </remarks>
+    private RenderFragment ConsentCell(ITeam<TMember> team) =>
+    @<text>
+        @if (_showConsentToggle && CanEditConsent(team))
+        {
+            @ConsentControl(team, showLabel: false)
+        }
+        else
+        {
+            @ConsentBadges(team)
+        }
+    </text>;
+
+    /// <summary>
+    /// "Consent access for Developer" — the roles a team can consent to, named.
+    /// </summary>
+    /// <remarks>
+    /// Computed once rather than per row: it does not vary by team, and rebuilding it inside a template
+    /// that runs per render is work for nothing.
+    /// </remarks>
+    private string ConsentLabel => $"Consent access for {string.Join(", ", _consentRoles)}";
+
+    /// <summary>The team-level actions, as a button or a split button. Shared by both layouts.</summary>
+    private RenderFragment<ITeam<TMember>> TeamActionsFragment => team =>
+    @<text>
+        @{
+            var teamActions = TeamActions(team);
+        }
+        @if (teamActions.Count == 1)
+        {
+            <RadzenButton Text="@teamActions[0].Text" Icon="@teamActions[0].Icon" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                          Click="@(() => InvokeTeamActionAsync(teamActions[0].Value, team))" />
+        }
+        else if (teamActions.Count > 1)
+        {
+            <RadzenSplitButton Text="@teamActions[0].Text" Icon="@teamActions[0].Icon" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                               Click="@(item => OnTeamActionAsync(item, team, teamActions[0].Value))">
+                <ChildContent>
+                    @foreach (var action in teamActions.Skip(1))
+                    {
+                        <RadzenSplitButtonItem Text="@action.Text" Value="@action.Value" Icon="@action.Icon" />
+                    }
+                </ChildContent>
+            </RadzenSplitButton>
+        }
+    </text>;
+
+    /// <summary>
+    /// Marks the selected team's row, replacing what <c>ExpandableCard.Selected</c> did.
+    /// </summary>
+    /// <remarks>
+    /// Class rather than inline style so a host can restyle it, and so it follows the theme. The member
+    /// grid marks the signed-in user's own row the same way (<see cref="OnMemberRowRender"/>), so the two
+    /// highlights are consistent devices rather than two inventions.
+    /// </remarks>
+    private void OnTeamRowRender(RowRenderEventArgs<ITeam<TMember>> args)
+    {
+        if (_selectedTeam?.Key == args.Data?.Key)
+        {
+            // Marker attribute, styled on the cells -- a background set on the row element is invisible
+            // under Radzen's own cell backgrounds. Same device and reason as the current-member row.
+            args.Attributes["data-tharga-selected-team"] = "true";
+        }
+    }
+
     private async Task DeleteTeam(ITeam<TMember> team)
     {
         var response = await DialogService.Confirm($"Team '{team.Name}' will be deleted.");
@@ -719,6 +1009,20 @@ else
             // a background set on the <tr> here, so a row-level style is invisible.
             args.Attributes["data-tharga-current-member"] = "true";
         }
+    }
+
+    /// <summary>
+    /// The caller's own access level on a team, or null when they are not a member of it.
+    /// </summary>
+    /// <remarks>
+    /// Null means "not a member", which is a different statement from any level — an oversight caller
+    /// reaching a team by consent has access without membership, and showing them a level here would
+    /// claim a membership they do not have. The Consent column says what they actually get.
+    /// </remarks>
+    private AccessLevel? MyAccessLevel(ITeam<TMember> team)
+    {
+        var member = team.Members?.FirstOrDefault(x => x.Key == _user?.Key && x.State == MembershipState.Member);
+        return member?.AccessLevel;
     }
 
     private bool IsMemberOf(ITeam<TMember> team)
@@ -918,6 +1222,10 @@ else
     private async Task ReloadTeams()
     {
         _teams = null;
+
+        // The list is about to change, so the "already opened" latch no longer refers to anything. A
+        // reload after selecting a different team should open that team's row.
+        _selectedRowExpanded = false;
         _selectedTeam = await TeamStateService.GetSelectedTeamAsync();
         var teams = _canSeeAllTeams
             ? await TeamOversightService.GetAllTeamsAsync<TMember>().ToArrayAsync()

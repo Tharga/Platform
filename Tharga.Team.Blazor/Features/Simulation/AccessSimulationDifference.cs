@@ -1,5 +1,4 @@
 ﻿using System.Security.Claims;
-using Tharga.Team;
 
 namespace Tharga.Team.Blazor.Features.Simulation;
 

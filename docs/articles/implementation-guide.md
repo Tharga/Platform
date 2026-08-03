@@ -741,8 +741,8 @@ public class MyTeamService : TeamServiceRepositoryBase<TeamEntity, TeamMember>
 
 | Component | Description |
 |-----------|-------------|
-| `<TeamSelector />` | Dropdown to switch between teams |
-| `<TeamComponent />` | Full team management (create, rename, delete, members) |
+| `<TeamSelector />` | Dropdown to switch between teams. Gains a **search box** once there are `FilterThreshold` teams (default 8) — below that a short list is read faster than it is typed into. `AllowFiltering` forces it either way |
+| `<TeamComponent />` | Full team management (create, rename, delete, members). **Cards while the list is short, a sortable/filterable/paged grid once it is not** — the same threshold the selector uses. See [Finding a team](#finding-a-team-when-there-are-many-of-them) |
 | `<TeamInviteView />` | Pending invitation view |
 | `<UsersView />` | Admin user list: last seen, directory verification, user deletion, and a directory-only tab when a directory service is registered. Highlights your own row, shows record keys with copy, and cross-links users to teams. Its **Teams** tab shows owner, last used, invited-count split and an empty-team badge, and offers deleting any team to a holder of the `teams:delete` system scope, which no consent option grants. Opt-in `ShowAuditLogButton` adds a per-row audit log. Viewing and acting require the `users:manage` system scope — enforced in the service layer (see [User management & directory](user-management.md)) |
 | `<ApiKeyView />` | API key management (requires Step 5). Shows **Created** and **Last used** columns per key, and a **Tags** column (chips for keys in `ChipTagKeys`, plus an `(i)` tooltip of all tags). Opt-in `[Parameter]` flags: `ShowAuditLogButton`, `ShowScopeOverrides` (Scopes column + create-card multi-select + Edit-Scopes dialog per row), `ChipTagKeys` |
@@ -1192,7 +1192,54 @@ Team mutations are enforced in the **service layer** (`AuthorizationTeamServiceD
 | Member invite/remove/role/overrides/display-name | `member:manage` on the team |
 | Transfer ownership | Owner only |
 
-Team scopes (`team:*`, `member:manage`) authorize only the caller's **own** team — the `TeamKey` claim must match the team being acted on, so an admin of one team can't act on another. `TeamComponent` mirrors this in the UI: because the scope is issued for the **selected** team only, the Rename and Delete buttons appear on the selected team's card and not on the other teams you belong to. Select a team to manage it. **`teams:delete`** is a **system** scope (toolkit-defined) that authorizes deleting *any* team regardless of membership and regardless of `AllowTeamCreation` — grant it to your support/dev tooling via `o.ConfigureSystemRoles` (e.g. map `Developer` → `teams:delete`) or to a system API key. Setting `AllowTeamCreation = false` disables the self-service create and in-team delete paths but never blocks `teams:delete`.
+Team scopes (`team:*`, `member:manage`) authorize only the caller's **own** team — the `TeamKey` claim must match the team being acted on, so an admin of one team can't act on another. `TeamComponent` mirrors this in the UI: because the scope is issued for the **selected** team only, the Rename and Delete buttons appear on the selected team and not on the other teams you belong to. Select a team to manage it. **`teams:delete`** is a **system** scope (toolkit-defined) that authorizes deleting *any* team regardless of membership and regardless of `AllowTeamCreation` — grant it to your support/dev tooling via `o.ConfigureSystemRoles` (e.g. map `Developer` → `teams:delete`) or to a system API key. Setting `AllowTeamCreation = false` disables the self-service create and in-team delete paths but never blocks `teams:delete`.
+
+### Finding a team when there are many of them
+
+Both team surfaces were built for a handful of teams. Past that they change shape, at the same threshold —
+**8 by default**, because both turn on the same fact: whether the list can still be taken in at a glance.
+
+**The selector** gains a search box:
+
+```razor
+<TeamSelector />                        @* search appears at 8 teams *@
+<TeamSelector FilterThreshold="3" />    @* …or wherever you want it *@
+<TeamSelector AllowFiltering="true" />  @* …or always *@
+```
+
+**The team list** switches from expandable cards to a grid with sorting, filtering and paging:
+
+```razor
+<TeamComponent TMember="MyMember" />                              @* cards, then a grid at 8 *@
+<TeamComponent TMember="MyMember" TeamLayout="TeamListLayout.Grid" />   @* always a grid *@
+<TeamComponent TMember="MyMember" TeamLayout="TeamListLayout.Cards" />  @* always cards *@
+```
+
+Cards suit a handful — the expand affordance is obvious, and a grid of three rows looks like an
+administrative report of nothing much. Past the threshold that reverses: cards cannot be sorted, filtered
+or paged, and a page of stacked accordions is not a list.
+
+| Parameter | Default | What it does |
+|-----------|---------|--------------|
+| `TeamLayout` | `Auto` | `Cards`, `Grid`, or let the threshold decide |
+| `TeamFilterThreshold` | 8 | Teams needed before the list becomes a grid, and before its filter shows |
+| `AllowTeamSorting` | `true` | Sorting on the team name |
+| `AllowTeamFiltering` | *threshold* | Forces the name filter on or off |
+| `AllowTeamPaging` | *auto* | Pages only when there is more than one page |
+| `TeamPageSize` | 10 | Teams per page |
+| `TeamPageSizeOptionsValues` | 10 / 25 / 50 | Page sizes offered |
+
+The grid shows **Team** (sortable, filterable, the default sort), **Your access** — your own level, or an
+em-dash where you are not a member — **Consent**, **Members** as `3 (+2)` where two are still invited, and
+the team actions. The selected team's row is marked and opens on load.
+
+**Only the team name sorts and filters.** Every other column is derived — your level comes from your
+membership row, the badges from consent — and a sort control that silently does nothing is worse than no
+control.
+
+> **Paging is a rendering fix, not a loading one.** The team list still fetches every team with its
+> members up front, so paging changes how much is drawn rather than how much is fetched. A paged,
+> member-less read would be a service-contract change and is not part of this.
 
 ### Alternative: Access level enforcement
 
