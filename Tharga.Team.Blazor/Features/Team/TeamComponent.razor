@@ -33,6 +33,19 @@
     tr[data-tharga-current-member] > td:first-child {
         box-shadow: inset 3px 0 0 0 var(--rz-primary, #2563eb);
     }
+
+    /* The selected team, marking what ExpandableCard.Selected used to. A left accent only: the current
+       member row already owns the tint, and two competing backgrounds in one view read as an error
+       rather than as two facts. Cell-level for the same reason as above -- a background on the row
+       element is painted over by Radzen's own cell backgrounds.
+       (Angle brackets are avoided even in this comment: Razor parses them inside a style block.) */
+    tr[data-tharga-selected-team] > td:first-child {
+        box-shadow: inset 3px 0 0 0 var(--rz-primary, #2563eb);
+    }
+
+    tr[data-tharga-selected-team] > td {
+        font-weight: 600;
+    }
 </style>
 
 @if (_teams == null)
@@ -45,25 +58,75 @@ else
         <TeamInviteView TMember="TMember" />
         @if (_teams.Any())
         {
-            @foreach (var team in _teams)
-            {
-                <ExpandableCard Text="@team.Name" Icon="groups" ImageUrl="@TeamIconUrl(team)" Selected="@(_selectedTeam?.Key == team.Key)">
-                    <ChildContent>
-                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" AlignItems="AlignItems.Center">
-                        @if (_canSeeAllTeams)
-                        {
-                            <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(TeamVisibility.BadgeStyle(ConsentOf(team))))"
-                                         Variant="Variant.Flat"
-                                         Text="@TeamVisibility.Label(ConsentOf(team))"
-                                         title="What this team has consented to grant you."
-                                         class="rz-mr-2" />
-                            @if (!IsMemberOf(team))
-                            {
-                                <RadzenBadge BadgeStyle="BadgeStyle.Light" Variant="Variant.Flat" Text="Not a member"
-                                             title="You are viewing this team through cross-team access, not membership."
-                                             class="rz-mr-2" />
+            @* One grid rather than a stack of expandable cards. Sorting, filtering and paging are what a
+               list of teams needs the moment there are more than a handful, and an accordion offers none
+               of them. Modelled on AuditLogView, which already solved paging and filter state here.
+
+               Paging is a *rendering* fix, not a loading one: ReloadTeams still fetches every team with
+               its members. A paged, member-less read is a service-contract change and is out of scope. *@
+            <RadzenDataGrid Data="@_teams" TItem="ITeam<TMember>"
+                            AllowSorting="@AllowTeamSorting"
+                            AllowFiltering="@TeamSelectorGate.ShowFilter(_teams.Length, TeamFilterThreshold, AllowTeamFiltering)"
+                            AllowPaging="@TeamSelectorGate.ShowFilter(_teams.Length, TeamPageSize + 1, AllowTeamPaging)"
+                            FilterMode="FilterMode.Simple" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                            PageSize="@TeamPageSize" PageSizeOptions="@TeamPageSizeOptionsValues"
+                            ShowPagingSummary="true" PagingSummaryFormat="Showing {0}-{1} of {2}"
+                            ExpandMode="DataGridExpandMode.Multiple"
+                            RowRender="@OnTeamRowRender">
+                <Columns>
+                    <RadzenDataGridColumn TItem="ITeam<TMember>" Title="Team" Property="Name" SortOrder="SortOrder.Ascending">
+                        <Template Context="team">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                <TeamAvatar Team="@team" Size="24px" />
+                                <span>@team.Name</span>
+                                @if (_canSeeAllTeams)
+                                {
+                                    <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(TeamVisibility.BadgeStyle(ConsentOf(team))))"
+                                                 Variant="Variant.Flat"
+                                                 Text="@TeamVisibility.Label(ConsentOf(team))"
+                                                 title="What this team has consented to grant you." />
+                                    @if (!IsMemberOf(team))
+                                    {
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Light" Variant="Variant.Flat" Text="Not a member"
+                                                     title="You are viewing this team through cross-team access, not membership." />
+                                    }
+                                }
+                            </RadzenStack>
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="ITeam<TMember>" Title="Members" Width="110px" Filterable="false" Sortable="false">
+                        <Template Context="team">@(team.Members?.Count() ?? 0)</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="ITeam<TMember>" Title="" Width="240px" Sortable="false" Filterable="false" TextAlign="TextAlign.Right">
+                        <Template Context="team">
+                            @{
+                                var rowActions = TeamActions(team);
                             }
-                        }
+                            @if (rowActions.Count == 1)
+                            {
+                                <RadzenButton Text="@rowActions[0].Text" Icon="@rowActions[0].Icon" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                                              Click="@(() => InvokeTeamActionAsync(rowActions[0].Value, team))" />
+                            }
+                            else if (rowActions.Count > 1)
+                            {
+                                <RadzenSplitButton Text="@rowActions[0].Text" Icon="@rowActions[0].Icon" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                                                   Click="@(item => OnTeamActionAsync(item, team, rowActions[0].Value))">
+                                    <ChildContent>
+                                        @foreach (var action in rowActions.Skip(1))
+                                        {
+                                            <RadzenSplitButtonItem Text="@action.Text" Value="@action.Value" Icon="@action.Icon" />
+                                        }
+                                    </ChildContent>
+                                </RadzenSplitButton>
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+                <Template Context="team">
+                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" AlignItems="AlignItems.Center">
+                        @* The badges moved to the Team column, where they are readable without expanding
+                           a row. The consent selector stays here: it is a control, and a column of
+                           drop-downs is not a list anyone can scan. *@
                         @if (_showConsentToggle)
                         {
                             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
@@ -76,26 +139,6 @@ else
                                                 Placeholder="No access"
                                                 Change="@(async args => await SetConsent(team, (AccessLevel?)args))" />
                             </RadzenStack>
-                        }
-                        @{
-                            var actions = TeamActions(team);
-                        }
-                        @if (actions.Count == 1)
-                        {
-                            <RadzenButton Text="@actions[0].Text" Icon="@actions[0].Icon" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
-                                          Click="@(() => InvokeTeamActionAsync(actions[0].Value, team))" />
-                        }
-                        else if (actions.Count > 1)
-                        {
-                            <RadzenSplitButton Text="@actions[0].Text" Icon="@actions[0].Icon" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
-                                               Click="@(item => OnTeamActionAsync(item, team, actions[0].Value))">
-                                <ChildContent>
-                                    @foreach (var action in actions.Skip(1))
-                                    {
-                                        <RadzenSplitButtonItem Text="@action.Text" Value="@action.Value" Icon="@action.Icon" />
-                                    }
-                                </ChildContent>
-                            </RadzenSplitButton>
                         }
                     </RadzenStack>
                     <RadzenRow>
@@ -281,9 +324,8 @@ else
                             </RadzenDataGrid>
                         </RadzenColumn>
                     </RadzenRow>
-                    </ChildContent>
-                </ExpandableCard>
-            }
+                </Template>
+            </RadzenDataGrid>
         }
         <RadzenText Visible="@(!_teams.Any() && _allowTeamCreation)">You are not member of a team. Create your own team and start inviting members.</RadzenText>
         <RadzenText Visible="@(!_teams.Any() && !_allowTeamCreation)">You are not member of a team.</RadzenText>
@@ -320,6 +362,37 @@ else
 
     /// <summary>When true (and an <see cref="ITenantRoleRegistry"/> is registered), shows the per-member tenant-role editor column. Default false.</summary>
     [Parameter] public bool ShowRoles { get; set; }
+
+    // --- The teams grid. Deliberately prefixed "Team", because every other parameter on this component
+    // --- configures the *members* grid inside a row, and a bare "AllowSorting" would be ambiguous.
+
+    /// <summary>Sorting on the team list. Default on.</summary>
+    [Parameter] public bool AllowTeamSorting { get; set; } = true;
+
+    /// <summary>
+    /// Forces the team-name filter on or off. Null, the default, shows it once there are
+    /// <see cref="TeamFilterThreshold"/> teams or more.
+    /// </summary>
+    [Parameter] public bool? AllowTeamFiltering { get; set; }
+
+    /// <summary>
+    /// How many teams there must be before the list offers a filter. Defaults to
+    /// <see cref="TeamSelectorGate.DefaultFilterThreshold"/> — the same judgement the selector makes,
+    /// because it is the same question about the same collection.
+    /// </summary>
+    [Parameter] public int TeamFilterThreshold { get; set; } = TeamSelectorGate.DefaultFilterThreshold;
+
+    /// <summary>
+    /// Forces paging on or off. Null, the default, pages only when there is more than one page —
+    /// a pager under a list that fits is a control that does nothing.
+    /// </summary>
+    [Parameter] public bool? AllowTeamPaging { get; set; }
+
+    /// <summary>Teams per page. Default 10.</summary>
+    [Parameter] public int TeamPageSize { get; set; } = 10;
+
+    /// <summary>Page sizes offered. Defaults to 10 / 25 / 50.</summary>
+    [Parameter] public IEnumerable<int> TeamPageSizeOptionsValues { get; set; } = [10, 25, 50];
 
     /// <summary>
     /// Optional callback invoked when the user activates the built-in "Create new Team" button.
@@ -682,6 +755,24 @@ else
         await TeamManagementService.TransferOwnershipAsync(team.Key, selectedKey);
         await ReloadTeams();
         NotificationService.Notify(NotificationSeverity.Success, "Ownership transferred");
+    }
+
+    /// <summary>
+    /// Marks the selected team's row, replacing what <c>ExpandableCard.Selected</c> did.
+    /// </summary>
+    /// <remarks>
+    /// Class rather than inline style so a host can restyle it, and so it follows the theme. The member
+    /// grid marks the signed-in user's own row the same way (<see cref="OnMemberRowRender"/>), so the two
+    /// highlights are consistent devices rather than two inventions.
+    /// </remarks>
+    private void OnTeamRowRender(RowRenderEventArgs<ITeam<TMember>> args)
+    {
+        if (_selectedTeam?.Key == args.Data?.Key)
+        {
+            // Marker attribute, styled on the cells -- a background set on the row element is invisible
+            // under Radzen's own cell backgrounds. Same device and reason as the current-member row.
+            args.Attributes["data-tharga-selected-team"] = "true";
+        }
     }
 
     private async Task DeleteTeam(ITeam<TMember> team)

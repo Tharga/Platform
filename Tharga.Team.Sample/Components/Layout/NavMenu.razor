@@ -12,7 +12,9 @@
             @* Access simulation: the entry point when nothing is simulated, the warning banner and the
                way out when something is. One component, so the way in cannot be wired without the way out. *@
             <AccessSimulationBar />
-            <TeamSelector />
+            @* FilterThreshold lowered from the default 8 so the search box is reachable in a sample
+               that rarely has many teams. A real host should leave it alone. *@
+            <TeamSelector FilterThreshold="2" />
             <LoginDisplay />
         </RadzenStack>
     </RadzenStack>
