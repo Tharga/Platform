@@ -1,4 +1,4 @@
-@page "/team"
+﻿@page "/team"
 @rendermode InteractiveServer
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
@@ -19,7 +19,10 @@
 
 @* ShowAuditLogButton is on because the sample configures MongoDB audit storage; the per-member action
    still hides itself for anyone without audit:read. *@
+@* TeamFilterThreshold lowered to match the selector in NavMenu, so the grid layout and its filter are
+   reachable in a sample that rarely has eight teams. Both default to 8; a real host should leave them. *@
 <TeamComponent TMember="Tharga.Team.Sample.Framework.Team.TeamMember" EnableMemberNameEdit="true"
+               TeamFilterThreshold="2"
                ShowAuditLogButton="true"
                ShowScopeTooltip="_showScopeTooltip" ShowScopeOverrides="_showScopeOverrides" ShowRoles="_showRoles" />
 

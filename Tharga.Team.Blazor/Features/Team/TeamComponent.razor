@@ -72,7 +72,7 @@ else
                its members. A paged, member-less read is a service-contract change and is out of scope. *@
             @if (TeamListPresentation.ShowAsGrid(_teams.Length, TeamFilterThreshold, TeamLayout))
             {
-                <RadzenDataGrid Data="@_teams" TItem="ITeam<TMember>"
+                <RadzenDataGrid @ref="_teamGrid" Data="@_teams" TItem="ITeam<TMember>"
                                 AllowSorting="@AllowTeamSorting"
                                 AllowFiltering="@TeamSelectorGate.ShowFilter(_teams.Length, TeamFilterThreshold, AllowTeamFiltering)"
                                 AllowPaging="@TeamSelectorGate.ShowFilter(_teams.Length, TeamPageSize + 1, AllowTeamPaging)"
@@ -114,20 +114,10 @@ else
                                 }
                             </Template>
                         </RadzenDataGridColumn>
-                        <RadzenDataGridColumn TItem="ITeam<TMember>" Title="Consent" Width="170px" Filterable="false" Sortable="false"
-                                              Visible="@_canSeeAllTeams">
+                        <RadzenDataGridColumn TItem="ITeam<TMember>" Title="Consent" Width="230px" Filterable="false" Sortable="false"
+                                              Visible="@(_canSeeAllTeams || _showConsentToggle)">
                             <Template Context="team">
-                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.35rem" Wrap="FlexWrap.Wrap">
-                                    <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(TeamVisibility.BadgeStyle(ConsentOf(team))))"
-                                                 Variant="Variant.Flat"
-                                                 Text="@TeamVisibility.Label(ConsentOf(team))"
-                                                 title="What this team has consented to grant you." />
-                                    @if (!IsMemberOf(team))
-                                    {
-                                        <RadzenBadge BadgeStyle="BadgeStyle.Light" Variant="Variant.Flat" Text="Not a member"
-                                                     title="You are viewing this team through cross-team access, not membership." />
-                                    }
-                                </RadzenStack>
+                                @TeamConsent(team)
                             </Template>
                         </RadzenDataGridColumn>
                         <RadzenDataGridColumn TItem="ITeam<TMember>" Title="Members" Width="110px" Filterable="false" Sortable="false">
@@ -155,19 +145,8 @@ else
                 {
                     <ExpandableCard Text="@team.Name" Icon="groups" ImageUrl="@TeamIconUrl(team)" Selected="@(_selectedTeam?.Key == team.Key)">
                         <ChildContent>
-                            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" AlignItems="AlignItems.Center" Gap="0.5rem">
-                                @if (_canSeeAllTeams)
-                                {
-                                    <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(TeamVisibility.BadgeStyle(ConsentOf(team))))"
-                                                 Variant="Variant.Flat"
-                                                 Text="@TeamVisibility.Label(ConsentOf(team))"
-                                                 title="What this team has consented to grant you." />
-                                    @if (!IsMemberOf(team))
-                                    {
-                                        <RadzenBadge BadgeStyle="BadgeStyle.Light" Variant="Variant.Flat" Text="Not a member"
-                                                     title="You are viewing this team through cross-team access, not membership." />
-                                    }
-                                }
+                            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" AlignItems="AlignItems.End" Gap="0.75rem">
+                                @TeamConsent(team)
                                 @TeamActionsFragment(team)
                             </RadzenStack>
                             @TeamDetail(team)
@@ -290,6 +269,41 @@ else
     private ITenantRoleRegistry _tenantRoleRegistry;
     private ITenantRoleVisibilityProvider _roleVisibilityProvider;
     private readonly Dictionary<string, IReadOnlyList<TenantRoleDefinition>> _visibleRolesByTeam = new();
+
+    private RadzenDataGrid<ITeam<TMember>> _teamGrid;
+
+    /// <summary>
+    /// Whether the selected team's row has been opened for the current set of teams.
+    /// </summary>
+    /// <remarks>
+    /// Latched so the row is expanded once and then left alone. Without it, every re-render would
+    /// re-open a row the reader had just collapsed — the grid would refuse to stay shut, which reads as
+    /// a broken control rather than as a helpful default. Cleared by <see cref="ReloadTeams"/>, so a
+    /// changed selection or a reloaded list opens the right row again.
+    /// </remarks>
+    private bool _selectedRowExpanded;
+
+    /// <summary>
+    /// Opens the selected team's row, so the surface a caller is actually working in is the one already
+    /// showing.
+    /// </summary>
+    /// <remarks>
+    /// Done here rather than at load because the grid has to exist before a row can be expanded —
+    /// <c>_teamGrid</c> is null until the first render that draws it, and in the cards layout it stays
+    /// null for good.
+    /// </remarks>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+
+        if (_selectedRowExpanded || _teamGrid == null || _teams == null || _selectedTeam == null) return;
+
+        var row = _teams.FirstOrDefault(x => x.Key == _selectedTeam.Key);
+        if (row == null) return;
+
+        _selectedRowExpanded = true;
+        await _teamGrid.ExpandRow(row);
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -622,24 +636,6 @@ else
     /// </remarks>
     private RenderFragment<ITeam<TMember>> TeamDetail => team =>
     @<text>
-        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" AlignItems="AlignItems.Center">
-            @* The badges moved to the Team column, where they are readable without expanding
-               a row. The consent selector stays here: it is a control, and a column of
-               drop-downs is not a list anyone can scan. *@
-            @if (_showConsentToggle)
-            {
-                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem">
-                    <RadzenLabel Text="@($"Consent access for {string.Join(", ", _consentRoles)}")" Style="font-size: 0.85em;" />
-                    <RadzenDropDown TValue="AccessLevel?"
-                                    Value="@ConsentOf(team)"
-                                    Data="@_consentLevels"
-                                    AllowClear="true"
-                                    Disabled="@(!CanEditConsent(team))"
-                                    Placeholder="No access"
-                                    Change="@(async args => await SetConsent(team, (AccessLevel?)args))" />
-                </RadzenStack>
-            }
-        </RadzenStack>
         <RadzenRow>
             <RadzenColumn>
                 @* <RadzenDataGrid Data="@team.Members" Visible="@(HasAccessLevel(team, AccessLevel.Administrator))" TItem="TMember"> *@
@@ -824,6 +820,60 @@ else
             </RadzenColumn>
         </RadzenRow>
     </text>;
+
+    /// <summary>
+    /// What this team grants, and the control to change it. Rendered in the grid's Consent column and in
+    /// a card's header.
+    /// </summary>
+    /// <remarks>
+    /// The label sits <b>above</b> the drop-down rather than beside it. Side by side, the label ran
+    /// straight into the selected level and the two read as one sentence — "Consent access for Developer,
+    /// Administrator" — which states something nobody wrote: that Administrator is a consenting role
+    /// rather than the level being granted. Stacking separates the question from the answer.
+    /// <para>
+    /// The roles are listed in full rather than abbreviated. Naming fewer than actually hold consent
+    /// would be a comfortable label that misstates who can reach the team.
+    /// </para>
+    /// </remarks>
+    private RenderFragment<ITeam<TMember>> TeamConsent => team =>
+    @<text>
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.15rem" AlignItems="AlignItems.Start">
+            @if (_showConsentToggle)
+            {
+                <RadzenLabel Text="@ConsentLabel" Style="font-size: 0.85em; opacity: 0.75;" />
+                <RadzenDropDown TValue="AccessLevel?"
+                                Value="@ConsentOf(team)"
+                                Data="@_consentLevels"
+                                AllowClear="true"
+                                Disabled="@(!CanEditConsent(team))"
+                                Placeholder="No access"
+                                Change="@(async args => await SetConsent(team, (AccessLevel?)args))"
+                                Style="width: 100%;" />
+            }
+            else if (_canSeeAllTeams)
+            {
+                @* No selector to read the level from, so the badge carries it. *@
+                <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(TeamVisibility.BadgeStyle(ConsentOf(team))))"
+                             Variant="Variant.Flat"
+                             Text="@TeamVisibility.Label(ConsentOf(team))"
+                             title="What this team has consented to grant you." />
+            }
+            @if (_canSeeAllTeams && !IsMemberOf(team))
+            {
+                <RadzenBadge BadgeStyle="BadgeStyle.Light" Variant="Variant.Flat" Text="Not a member"
+                             title="You are viewing this team through cross-team access, not membership." />
+            }
+        </RadzenStack>
+    </text>;
+
+    /// <summary>
+    /// "Consent access for Developer" — the roles a team can consent to, named.
+    /// </summary>
+    /// <remarks>
+    /// Computed once rather than per row: it does not vary by team, and rebuilding it inside a template
+    /// that runs per render is work for nothing.
+    /// </remarks>
+    private string ConsentLabel => $"Consent access for {string.Join(", ", _consentRoles)}";
 
     /// <summary>The team-level actions, as a button or a split button. Shared by both layouts.</summary>
     private RenderFragment<ITeam<TMember>> TeamActionsFragment => team =>
@@ -1116,6 +1166,10 @@ else
     private async Task ReloadTeams()
     {
         _teams = null;
+
+        // The list is about to change, so the "already opened" latch no longer refers to anything. A
+        // reload after selecting a different team should open that team's row.
+        _selectedRowExpanded = false;
         _selectedTeam = await TeamStateService.GetSelectedTeamAsync();
         var teams = _canSeeAllTeams
             ? await TeamOversightService.GetAllTeamsAsync<TMember>().ToArrayAsync()
