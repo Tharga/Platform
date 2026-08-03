@@ -1,4 +1,4 @@
-namespace Tharga.Team.Blazor.Features.Team;
+﻿namespace Tharga.Team.Blazor.Features.Team;
 
 /// <summary>
 /// Decides what the team selector offers: a way to create a team when the caller belongs to none, and a
@@ -31,11 +31,10 @@ internal static class TeamSelectorGate
     /// The team count at and above which the selector offers a search box.
     /// </summary>
     /// <remarks>
-    /// A short list is read faster than it is typed into, so a filter below this is a control that costs
-    /// attention and saves none. Around eight is where scanning stops being the quicker option; it is a
-    /// judgement rather than a measurement, which is why <c>FilterThreshold</c> exists to move it.
+    /// Shared with the team list, which uses the same number to decide between cards and a grid. Two
+    /// decisions, but both turn on the same fact about the same collection, so they move together.
     /// </remarks>
-    public const int DefaultFilterThreshold = 8;
+    public const int DefaultFilterThreshold = TeamListPresentation.DefaultThreshold;
 
     /// <summary>
     /// Whether the selector offers a search box.
@@ -57,5 +56,5 @@ internal static class TeamSelectorGate
     /// </para>
     /// </remarks>
     public static bool ShowFilter(int teamCount, int threshold, bool? allowFiltering = null)
-        => allowFiltering ?? teamCount >= threshold;
+        => allowFiltering ?? TeamListPresentation.IsMany(teamCount, threshold);
 }
