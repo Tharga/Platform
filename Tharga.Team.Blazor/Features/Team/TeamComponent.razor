@@ -1300,12 +1300,22 @@ else
         });
     }
 
+    /// <summary>
+    /// The link an invitee follows. Used by the invitation email and by "Copy invitation link" alike —
+    /// one builder, so <see cref="ThargaBlazorOptions.InvitePath"/> reaches both.
+    /// </summary>
+    /// <remarks>
+    /// The clipboard half is why the option exists rather than leaving hosts to rewrite the link
+    /// themselves: an <c>ITeamEmailSender</c> can rewrite what it sends, but nothing can rewrite what an
+    /// administrator copies out of this component.
+    /// </remarks>
     private string BuildInviteLink(string teamKey, string inviteKey)
     {
         var inviteModel = new InviteModel { TeamKey = teamKey, Code = inviteKey };
         var inviteModelJson = JsonSerializer.Serialize(inviteModel);
         var inviteCode = inviteModelJson.ToBase64();
-        return $"{NavigationManager.BaseUri}team?{Constants.TeamInviteCode}={inviteCode}";
+        var path = InvitePathResolver.Resolve(BlazorOptions.Value.InvitePath);
+        return $"{NavigationManager.BaseUri}{path}?{Constants.TeamInviteCode}={inviteCode}";
     }
 
 }
