@@ -48,6 +48,11 @@ builder.AddThargaTeam(o =>
     o.Blazor.AddClaimsEnricher<DeveloperRoleEnricher>();
     o.Blazor.Consent.ShowToggle = true;
 
+    // Let a team owner/administrator view the app as a less privileged member, to check scope-gated UI
+    // without keeping throwaway users. De-escalation only: the effective set is always a subset of what
+    // the caller really holds. Off by default; the sample turns it on so the path is exercised.
+    o.Blazor.Simulation.Enabled = true;
+
     // Demo: revalidate team claims every 20 seconds so a member removal, access downgrade, or consent
     // change is reflected quickly in a live circuit while testing (#127). The production default is a slow
     // 30 minutes; set o.Blazor.ClaimRevalidation.Enabled = false to turn revalidation off entirely.

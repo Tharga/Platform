@@ -1,9 +1,10 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Options;
 using Microsoft.JSInterop;
 using Tharga.Team.Blazor.Framework;
+using Tharga.Team.Service;
 
 namespace Tharga.Team.Blazor.Features.Simulation;
 
@@ -28,6 +29,7 @@ public sealed class AccessSimulationState
     private readonly NavigationManager _navigationManager;
     private readonly IJSRuntime _jsRuntime;
     private readonly AccessSimulationOptions _options;
+    private readonly AccessLevel _consentAccessLevel;
 
     public AccessSimulationState(
         AuthenticationStateProvider authenticationStateProvider,
@@ -47,6 +49,7 @@ public sealed class AccessSimulationState
         _scopeRegistry = scopeRegistry;
         _tenantRoleService = tenantRoleService;
         _options = options.Value.Simulation;
+        _consentAccessLevel = options.Value.Consent.AccessLevel;
     }
 
     /// <summary>Whether the host turned the feature on.</summary>
@@ -186,27 +189,38 @@ public sealed class AccessSimulationState
         return state.User.FindFirst(Constants.TeamKeyCookie)?.Value;
     }
 
+    /// <summary>
+    /// The caller's real access in the selected team.
+    /// </summary>
+    /// <remarks>
+    /// <b>Through <see cref="TeamGrantResolver"/>, not a membership lookup.</b> A caller can hold access
+    /// without being a member — a global role the team consented to grants one — and an earlier version
+    /// of this method returned null for exactly that caller, so the whole feature was invisible to a
+    /// Developer reaching a team by consent. That is the same defect the toolkit already carries a scar
+    /// from: a second place restating a rule the resolver owns. This asks the resolver instead, which is
+    /// also what issues the caller's claims, so the two cannot disagree about what someone holds.
+    /// </remarks>
     private async Task<TeamGrant> ResolveRealGrantAsync()
     {
         var teamKey = await SelectedTeamKeyAsync();
         if (teamKey == null) return null;
 
-        var user = await _userService.GetCurrentUserAsync();
-        if (user?.Key == null) return null;
+        var state = await _authenticationStateProvider.GetAuthenticationStateAsync();
+        var user = await _userService.GetCurrentUserAsync(state.User);
 
-        var member = await _teamService.GetTeamMemberAsync(teamKey, user.Key);
-        if (member == null) return null;
-
-        return new TeamGrant(member.AccessLevel, await EffectiveScopesAsync(teamKey, member), member.Key);
+        return await new TeamGrantResolver(_teamService, _scopeRegistry, _tenantRoleService)
+            .ResolveAsync(state.User, user?.Key, teamKey, _consentAccessLevel);
     }
 
+    /// <remarks>
+    /// Mirrors <see cref="TeamGrantResolver"/>'s member branch rather than calling it, because
+    /// <see cref="ITeamMember"/> carries no user key and the resolver is keyed by one. The two must stay
+    /// in step; if a third copy of this ever appears, give <c>ITeamMember</c> the key instead.
+    /// </remarks>
     private async Task<IReadOnlyList<string>> EffectiveScopesAsync(string teamKey, ITeamMember member)
         => _tenantRoleService != null
             ? await _tenantRoleService.GetEffectiveScopesAsync(teamKey, member.AccessLevel, member.TenantRoles, member.ScopeOverrides)
             : _scopeRegistry?.GetEffectiveScopes(member.AccessLevel, member.TenantRoles, member.ScopeOverrides) ?? [];
-
-    /// <summary>The caller's real access in the selected team, resolved fresh.</summary>
-    public sealed record TeamGrant(AccessLevel AccessLevel, IReadOnlyList<string> Scopes, string MemberKey);
 }
 
 /// <summary>Something that can be simulated, and the access it carries.</summary>

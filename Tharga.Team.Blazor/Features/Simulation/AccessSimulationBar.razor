@@ -1,12 +1,15 @@
 @using Tharga.Team.Blazor.Features.Simulation
 @inject AccessSimulationState SimulationState
+@inject DialogService DialogService
 
-@* Deliberately loud, and deliberately on every page while active. A caller who forgets they are
-   simulating will read missing controls as bugs and file them against their own session. The exit is
-   here rather than behind a menu for the same reason: the way out has to be as visible as the state. *@
+@* One component for a host to place, not two. It is the entry point when nothing is simulated and the
+   indicator when something is, so a host cannot wire up the way in without also wiring up the way out —
+   which is the failure that leaves someone stuck in a reduced session wondering why. *@
 
 @if (_active != null)
 {
+    @* Deliberately loud, and on every page while active. A caller who forgets they are simulating reads
+       missing controls as bugs and files them against their own session. *@
     <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Variant="Variant.Flat" AllowClose="false" class="rz-m-0 rz-p-2">
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
             <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0">
@@ -17,15 +20,28 @@
         </RadzenStack>
     </RadzenAlert>
 }
+else if (_canSimulate)
+{
+    <RadzenButton Text="@Text" Icon="visibility" ButtonStyle="ButtonStyle.Light"
+                  Size="ButtonSize.Small" Variant="Variant.Flat" Click="@Open" />
+}
 
 @code {
+    /// <summary>Label for the entry-point button. Defaults to "View as…".</summary>
+    [Parameter] public string Text { get; set; } = "View as…";
+
     private AccessSimulation _active;
+    private bool _canSimulate;
 
     protected override async Task OnInitializedAsync()
     {
         if (!SimulationState.Enabled) return;
 
         _active = await SimulationState.GetActiveAsync();
+
+        // Only asked when nothing is active. While simulating, the exit must show regardless of whether
+        // the simulation removed the scope that authorizes starting one.
+        if (_active == null) _canSimulate = await SimulationState.CanSimulateAsync();
     }
 
     private static string Describe(AccessSimulation simulation) => simulation.Kind switch
@@ -35,6 +51,12 @@
         AccessSimulationKind.AccessLevel => $"access level {simulation.Label}",
         _ => simulation.Label
     };
+
+    private async Task Open()
+    {
+        await DialogService.OpenAsync<AccessSimulationDialog>("View as another user",
+            options: new DialogOptions { Width = "560px", CloseDialogOnOverlayClick = true });
+    }
 
     private Task Stop() => SimulationState.StopAsync();
 }
