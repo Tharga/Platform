@@ -24,8 +24,20 @@ internal static class TeamSelectorGate
     /// Gating only one would leave the defect in place for whichever hosts use the other.
     /// </para>
     /// </remarks>
-    public static bool ShowCreateTeamLink(int teamCount, bool allowTeamCreation)
-        => teamCount == 0 && allowTeamCreation;
+    /// <param name="teamCount">Teams the caller belongs to.</param>
+    /// <param name="allowTeamCreation">The host's <c>AllowTeamCreation</c> option.</param>
+    /// <param name="showLink">
+    /// The selector's own <c>ShowCreateTeamLink</c> parameter — <b>presentation only</b>. It hides the
+    /// link in the top bar without saying anything about whether teams may be created, which is what
+    /// <paramref name="allowTeamCreation"/> governs and what the service enforces.
+    /// </param>
+    /// <remarks>
+    /// Three inputs, and only one of them is a permission. A host that wants creation reachable from the
+    /// team page but not offered in the top bar is making a layout decision, not an authorization one —
+    /// so it gets its own switch rather than being folded into the option that the service also reads.
+    /// </remarks>
+    public static bool ShowCreateTeamLink(int teamCount, bool allowTeamCreation, bool showLink = true)
+        => teamCount == 0 && allowTeamCreation && showLink;
 
     /// <summary>
     /// The team count at and above which the selector offers a search box.

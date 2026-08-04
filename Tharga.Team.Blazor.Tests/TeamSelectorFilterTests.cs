@@ -1,4 +1,4 @@
-using Tharga.Team.Blazor.Features.Team;
+﻿using Tharga.Team.Blazor.Features.Team;
 
 namespace Tharga.Team.Blazor.Tests;
 
@@ -8,8 +8,8 @@ namespace Tharga.Team.Blazor.Tests;
 /// <remarks>
 /// A short list is read faster than it is typed into, so a filter below the threshold is a control that
 /// costs attention and saves none. The same judgement <c>AuditFilterVisibility</c> makes about the audit
-/// filter bar, applied to a different control — and kept out of markup for the same reason: the project
-/// has no bUnit, so a rule left in a razor file cannot be tested at all.
+/// filter bar, applied to a different control — and kept out of markup so it can be asserted directly
+/// rather than through a render.
 /// </remarks>
 public class TeamSelectorFilterTests
 {
