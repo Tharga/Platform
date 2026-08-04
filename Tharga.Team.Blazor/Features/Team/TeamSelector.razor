@@ -17,7 +17,7 @@
         }
         else if (_teams.Length == 0)
         {
-            @if (TeamSelectorGate.ShowCreateTeamLink(_teams.Length, _allowTeamCreation))
+            @if (TeamSelectorGate.ShowCreateTeamLink(_teams.Length, _allowTeamCreation, ShowCreateTeamLink))
             {
                 @if (CreateTeamRequested.HasDelegate)
                 {
@@ -89,6 +89,21 @@
     /// When unset, the link navigates to <c>CreateTeamPath</c> (if configured) or <c>/team</c>.
     /// </summary>
     [Parameter] public EventCallback CreateTeamRequested { get; set; }
+
+    /// <summary>
+    /// Whether the top bar offers a "Create team" link to a caller who belongs to no team. Default true.
+    /// </summary>
+    /// <remarks>
+    /// <b>Presentation only.</b> This hides a link; it does not stop anyone creating a team. Use it where
+    /// creation should stay reachable from the team page but not be advertised in the top bar — a layout
+    /// decision, not an authorization one.
+    /// <para>
+    /// To actually prevent creation, set <see cref="ThargaBlazorOptions.AllowTeamCreation"/> to false,
+    /// which the service enforces as well as the UI. Setting this parameter instead would hide the link
+    /// and leave the capability, which is the shape of a security bug rather than a fix.
+    /// </para>
+    /// </remarks>
+    [Parameter] public bool ShowCreateTeamLink { get; set; } = true;
 
     /// <summary>
     /// How many teams there must be before the selector offers a search box. Defaults to
