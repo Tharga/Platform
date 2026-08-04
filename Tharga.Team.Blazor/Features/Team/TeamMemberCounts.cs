@@ -1,4 +1,4 @@
-namespace Tharga.Team.Blazor.Features.Team;
+﻿namespace Tharga.Team.Blazor.Features.Team;
 
 /// <summary>
 /// How many members a team has, and how many of those are still invitations.
@@ -32,9 +32,9 @@ public readonly record struct TeamMemberCount(int Members, int Invited, int Susp
 /// Counts a team's roster for display.
 /// </summary>
 /// <remarks>
-/// Pure and static so it is testable — the project has no bUnit, so a rule left in razor markup is
-/// unreachable from tests. Mirrors <see cref="TeamVisibility"/>, <see cref="TeamSelectorGate"/> and
-/// <see cref="TeamListPresentation"/>.
+/// Pure and static so the counting rule can be asserted directly, mirroring <see cref="TeamVisibility"/>,
+/// <see cref="TeamSelectorGate"/> and <see cref="TeamListPresentation"/>. bUnit is available for the
+/// cases that genuinely need a render; this is not one.
 /// </remarks>
 internal static class TeamMemberCounts
 {

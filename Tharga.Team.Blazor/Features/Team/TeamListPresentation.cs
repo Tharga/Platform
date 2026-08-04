@@ -1,4 +1,4 @@
-namespace Tharga.Team.Blazor.Features.Team;
+﻿namespace Tharga.Team.Blazor.Features.Team;
 
 /// <summary>How the team list is drawn.</summary>
 public enum TeamListLayout
@@ -21,8 +21,11 @@ public enum TeamListLayout
 /// decide between cards and a grid. Those are two decisions, but they turn on the same fact about the
 /// same collection, so they share a threshold rather than drifting apart at two numbers.
 /// <para>
-/// Pure and static, like <see cref="TeamSelectorGate"/> and <see cref="TeamVisibility"/> — the project
-/// has no bUnit, so a rule left in razor markup cannot be tested at all.
+/// Pure and static, like <see cref="TeamSelectorGate"/> and <see cref="TeamVisibility"/>, so the rule can
+/// be asserted directly. bUnit <i>is</i> available here — see <c>GranularPathRenderTests</c> — but
+/// rendering a component to check one boolean is a slow and brittle way to ask a question that has no
+/// markup in it. (Several older helpers in this project say bUnit is absent; that has not been true
+/// since the granular-path render tests were added.)
 /// </para>
 /// </remarks>
 internal static class TeamListPresentation

@@ -1,4 +1,4 @@
-namespace Tharga.Team.Blazor.Features.Team;
+﻿namespace Tharga.Team.Blazor.Features.Team;
 
 /// <summary>
 /// Turns a host's configured invite route into the path segment appended to the base URI.
@@ -10,8 +10,9 @@ namespace Tharga.Team.Blazor.Features.Team;
 /// breaks the link silently, which is the failure mode Tharga/Team#191 was reported for in the first
 /// place.
 /// <para>
-/// Pure and static so it is testable — this project has no bUnit, so a rule left inside a razor file
-/// cannot be tested at all. Mirrors <see cref="TeamSelectorGate"/> and <see cref="TeamVisibility"/>.
+/// Pure and static so the path handling can be asserted directly, mirroring <see cref="TeamSelectorGate"/>
+/// and <see cref="TeamVisibility"/>. bUnit is available for cases that need a render; a string rule is
+/// not one.
 /// </para>
 /// </remarks>
 internal static class InvitePathResolver
