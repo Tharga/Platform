@@ -1482,8 +1482,8 @@ access for existing hosts on upgrade, so it must be opted into. The flag compose
 `ConfigureSystemRoles` mapping for the same role rather than conflicting with it.
 
 **What a `teams:read` holder sees.** Each team carries a consent badge — *No access* (red), *Partial
-access* (yellow, Viewer/User) or *Full access* (green, Administrator) — plus a **Not a member** badge on
-teams they don't belong to. The `TeamSelector` shows the same state as a tinted dot.
+access* (yellow, Viewer/User) or *Full access* (green, Administrator) — preceded by a **Not a member**
+badge on teams they don't belong to, so the qualifier is read before the level it qualifies. The `TeamSelector` shows the same state as a tinted dot.
 
 **Selecting a team you don't belong to.** An oversight caller can select any team they can see, and that
 choice is remembered across visits like any other — returning to the site re-selects it. Selection on its
