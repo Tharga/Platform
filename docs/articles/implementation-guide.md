@@ -1723,6 +1723,29 @@ and system keys), and **user administration** (directory verify, bulk verify, us
 | `<AuditLogView />` | Audit log viewer with charts and filtering |
 | `CompositeAuditLogger` | Write your own audit entries. Applies the caller/event filters and fans out to every configured backend. **Inject this, not `IAuditLogger`** — that resolves to a single backend and bypasses the filters. |
 
+### Scoping `<AuditLogView />`
+
+| Parameter | Effect |
+|---|---|
+| `TeamKey` | Scopes the view to one team **and authorizes against it** — a caller holding that team's `audit:read` is admitted. Hides the Team filter, since there is nothing to choose. |
+| `PinnedFilter` | Forces one or more dimensions (team, caller, feature, action, key) and hides their controls. Outranks `TeamKey` when both name a team. |
+| `RestrictCallerType` | Limits entries to one caller type (user or API key). |
+
+Naming **no** team makes the read system-wide, which requires a system grant (`audit:read` via
+`o.ConfigureSystemRoles`, or a system API key) rather than membership of any one team.
+
+```razor
+@* One team, authorized by that team's audit:read *@
+<AuditLogView TeamKey="@teamKey" />
+
+@* Every team the caller can reach; needs a system grant *@
+<AuditLogView />
+```
+
+> Before 3.10, `TeamKey` scoped the query but **not** the access decision, so passing it alone was refused
+> even for a team Owner holding `audit:read`, and hosts worked around it by also passing a `PinnedFilter`
+> naming the same team. That workaround is no longer needed (Tharga/Team#175).
+
 ### Audit entry fields
 
 Each audit entry captures: timestamp, correlation ID, event type, feature/action, caller identity, team key, access level, scope check results, duration, and a `Metadata` dictionary.
