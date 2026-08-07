@@ -9,6 +9,27 @@ using Tharga.Team;
 
 namespace Tharga.Team.Blazor.Features.Team;
 
+/// <summary>
+/// Which team the caller currently has selected, and the set they may choose from.
+/// </summary>
+/// <remarks>
+/// <b>Filtered, not gated — deliberately, and the reason has to be written down because it injects the
+/// unchecked <see cref="ITeamService"/>.</b> This is a first-level read (a person opening the selector) that
+/// names no team, so there is nothing for <c>[RequireScope]</c> to check against: the whole question is
+/// <i>which</i> teams the caller may see. It answers by recomputing visibility per item —
+/// <see cref="GetVisibleTeamsAsync"/> widens to every team only for a caller holding
+/// <c>SystemTeamScopes.Read</c> and otherwise returns their own memberships — which is the "Filtered" row of
+/// the service-classification table.
+/// <para>
+/// Selecting a team carries no access on its own. A non-member gets scopes only where the team has consented
+/// to a role they hold, and that is decided by <c>TeamGrantResolver</c> when claims are built, not here.
+/// </para>
+/// <para>
+/// Because it is not a component, the injection guards in <c>Tharga.Team.Blazor.Tests</c> and
+/// <c>Tharga.Team.Mcp.Tests</c> do not cover it. <b>Do not follow this as a pattern</b> — a new surface
+/// reaching for <see cref="ITeamService"/> almost certainly wants a gated facet instead.
+/// </para>
+/// </remarks>
 internal class TeamStateService : ITeamStateService
 {
     private readonly ITeamService _teamService;

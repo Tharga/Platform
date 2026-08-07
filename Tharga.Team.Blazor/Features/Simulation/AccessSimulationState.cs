@@ -18,6 +18,17 @@ namespace Tharga.Team.Blazor.Features.Simulation;
 /// inspect their own simulation. Re-resolving costs a lookup on an administration screen and avoids
 /// parking the removed scopes on the principal as shadow claims, which is the shape a later reader
 /// mistakes for a grant.
+/// <para>
+/// <b>It injects the unchecked <see cref="Tharga.Team.ITeamService"/>, and that needs justifying.</b>
+/// Re-resolving the real grant is exactly the case the gated facets cannot serve: a caller who has simulated
+/// away their scopes would be refused by <c>[RequireScope]</c> on the very read that tells them what they
+/// simulated. Every entry point that reaches this class is itself gated by
+/// <see cref="SimulationScopes.Simulate"/>, so the check happens above rather than being absent.
+/// </para>
+/// <para>
+/// Because it is not a component, the injection guards in the test projects do not cover it. <b>Do not follow
+/// this as a pattern</b> — a new surface reaching for <c>ITeamService</c> almost certainly wants a gated facet.
+/// </para>
 /// </remarks>
 public sealed class AccessSimulationState
 {
