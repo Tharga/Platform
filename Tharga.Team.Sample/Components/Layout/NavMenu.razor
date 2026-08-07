@@ -58,7 +58,14 @@
 
     protected override async Task OnInitializedAsync()
     {
-        TeamStateService.SelectedTeamChangedEvent += async (_, _) => { await LoadAsync(); await InvokeAsync(StateHasChanged); };
+        // The handler reads the team from the args -- GetSelectedTeamAsync resolves as well as reads, so
+        // calling it from a handler asks for the work the handler is reacting to being done again.
+        TeamStateService.SelectedTeamChangedEvent += async (_, e) =>
+        {
+            _hasTeam = e.SelectedTeam != null;
+            await InvokeAsync(StateHasChanged);
+        };
+
         await LoadAsync();
         await base.OnInitializedAsync();
     }
