@@ -1120,6 +1120,17 @@ break sign-in.
 | **Filtered** | nothing — stated in XML docs | A first-level read naming no team, so it cannot be gated. Recomputes the caller's scopes per item and omits what they may not see |
 | **Internal** | `[EditorBrowsable(Never)]` + XML docs | The contract a host implements. Never inject from a component, controller or MCP provider |
 
+**This is enforced, not just documented.** `InternalServiceInjectionTests` fails if any component or MCP
+provider in the toolkit takes a dependency on a type marked `[EditorBrowsable(Never)]`, reading both
+constructor parameters and `[Inject]` properties. Internal services are discovered by the attribute rather
+than a list, so marking a new contract internal enrols it automatically.
+
+> **The guard cannot see your assembly.** It scans the toolkit's own components and providers. If you write
+> components against these services, add the equivalent test over your assembly — the rule is the same, and
+> a host component injecting `ITeamService` is exactly as unchecked as a toolkit one would be. Reflect over
+> your `IComponent` types, collect constructor parameters and `[Inject]` properties, and assert none is
+> marked `EditorBrowsableState.Never`.
+
 **An entry point's check need not be a scope.** An invitation is authorized by its invite code, because
 the invitee is not yet a member and holds nothing. The rule is that a first-level call is *checked*, not
 that it is checked by a scope.
