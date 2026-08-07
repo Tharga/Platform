@@ -73,6 +73,21 @@ If you see a change that **survives every page reload and corrects only on proce
 stale-cache read. Nothing else looks like that; a write that never landed looks identical on screen and
 has the opposite fix.
 
+#### The team caches
+
+`TeamServiceBase` caches two things, both because the claims path reads them on every authenticating
+request: a member's team membership, and a team's **custom roles**. Neither expires — an entry goes when a
+write drops it.
+
+Both are invalidated by the public methods on `TeamServiceBase`, which are not virtual: a store supplies
+persistence by overriding the `protected` member underneath, so the invalidation cannot be skipped. Writing
+**directly to your own store**, around methods like `SetTeamCustomRolesAsync`, is the case that goes stale —
+with the same restart-only symptom described above.
+
+The **team document itself is deliberately not cached.** It carries the member roster, and the paths that
+suspend a member, remove one, assign an owner or transfer ownership read it precisely because they need
+current state to decide access. A cache there would sit in front of an authorization check.
+
 ## Related packages
 
 | Package | Description |

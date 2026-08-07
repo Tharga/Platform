@@ -11,6 +11,31 @@ public abstract class TeamServiceBase : ITeamService
     private readonly IIconStore _iconStore;
     private static readonly ConcurrentDictionary<string, ITeamMember> _teamMemberCache = new();
 
+    /// <summary>
+    /// A team's custom roles, cached because the claims path reads them on <b>every</b> authenticating
+    /// request whenever <c>AddThargaDynamicTenantRoles</c> is registered:
+    /// <c>TeamServerClaimsTransformation</c> → <c>TenantRoleService.GetEffectiveScopesAsync</c> →
+    /// <see cref="GetTeamCustomRolesAsync"/>, which reads the whole team document. The other two reads on
+    /// that path were already cached, so this was the only one left hitting the store per request.
+    /// </summary>
+    /// <remarks>
+    /// <b>The custom roles, not the team.</b> Caching <see cref="GetTeamAsync(string)"/> itself would also
+    /// cache the member roster, and <see cref="SetMemberSuspendedAsync"/>,
+    /// <see cref="RemoveMemberAsync"/>, <see cref="AssignOwnerAsync{TMember}"/> and
+    /// <see cref="TransferOwnershipAsync{TMember}"/> read the team precisely because they need complete,
+    /// current state to decide access — see the comment in <see cref="SetMemberSuspendedAsync"/>. Custom
+    /// roles have one writer and authorize nothing, so they cache safely where the roster does not.
+    /// <para>
+    /// No expiry, matching <see cref="_teamMemberCache"/>: entries go only when a write drops them. That
+    /// holds because <see cref="SetTeamCustomRolesAsync"/> is the sole path that changes the answer and is
+    /// not virtual, so a host supplying persistence overrides
+    /// <see cref="SetTeamCustomRolesInternalAsync"/> underneath it and cannot skip the invalidation. A host
+    /// writing custom roles straight to its own store, around this class, is the one case that would go
+    /// stale until the process restarts.
+    /// </para>
+    /// </remarks>
+    private static readonly ConcurrentDictionary<string, IReadOnlyList<TenantRoleDefinition>> _customRolesCache = new();
+
     protected TeamServiceBase(IUserService userService, ILogger<TeamServiceBase> logger = null, IIconStore iconStore = null)
     {
         _userService = userService;
@@ -113,6 +138,10 @@ public abstract class TeamServiceBase : ITeamService
 
         var team = await CreateTeamAsync(teamKey, name, user, displayName);
 
+        // A deleted team's key becomes available again -- GetRandomUnsusedTeamKey only checks that no team
+        // holds it -- so both ends of that lifecycle clear the entry rather than trusting the other to have.
+        InvalidateCustomRolesCache(teamKey);
+
         TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
         SelectTeamEvent?.Invoke(this, new SelectTeamEventArgs(team));
 
@@ -132,6 +161,8 @@ public abstract class TeamServiceBase : ITeamService
     public async Task DeleteTeamAsync<TMember>(string teamKey) where TMember : ITeamMember
     {
         await DeleteTeamAsync(teamKey);
+
+        InvalidateCustomRolesCache(teamKey);
 
         TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
     }
@@ -489,16 +520,37 @@ public abstract class TeamServiceBase : ITeamService
         return GetConsentedTeamsInternalAsync(userRoles);
     }
 
+    /// <inheritdoc cref="ITeamManagementService.GetTeamCustomRolesAsync"/>
+    /// <remarks>Served from <see cref="_customRolesCache"/>; see there for why this read is cached and the team read is not.</remarks>
     public async Task<IReadOnlyList<TenantRoleDefinition>> GetTeamCustomRolesAsync(string teamKey)
     {
+        // An unusable key is passed straight through rather than cached under it: ConcurrentDictionary
+        // rejects a null key, and the store's answer for an empty one is its own business.
+        var cacheable = !string.IsNullOrEmpty(teamKey);
+
+        if (cacheable && _customRolesCache.TryGetValue(teamKey, out var cached)) return cached;
+
         var team = await GetTeamAsync(teamKey);
-        return team?.CustomRoles ?? Array.Empty<TenantRoleDefinition>();
+        var customRoles = team?.CustomRoles ?? Array.Empty<TenantRoleDefinition>();
+
+        if (cacheable) _customRolesCache.TryAdd(teamKey, customRoles);
+
+        return customRoles;
     }
 
     public async Task SetTeamCustomRolesAsync(string teamKey, IReadOnlyList<TenantRoleDefinition> customRoles)
     {
         await SetTeamCustomRolesInternalAsync(teamKey, customRoles);
+        InvalidateCustomRolesCache(teamKey);
         TeamsListChangedEvent?.Invoke(this, new TeamsListChangedEventArgs());
+    }
+
+    /// <summary>
+    /// Drops the cached custom roles for one team. Safe to call when nothing is cached, and safe to call twice.
+    /// </summary>
+    private static void InvalidateCustomRolesCache(string teamKey)
+    {
+        if (!string.IsNullOrEmpty(teamKey)) _customRolesCache.TryRemove(teamKey, out _);
     }
 
     private async Task<string> GetRandomUnsusedTeamKey()
