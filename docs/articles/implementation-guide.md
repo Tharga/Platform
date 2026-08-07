@@ -754,6 +754,46 @@ The `TeamClaimsAuthenticationStateProvider` automatically augments the authentic
 
 > **Note:** Team management works without scopes or tenant roles. The `ShowMemberRoles` and `ShowScopeOverrides` options only take effect when the corresponding registries are registered (Step 6 and Step 7). Without them, the team UI shows access levels only — which is sufficient for many applications.
 
+### Reacting to the selected team
+
+Inject `ITeamStateService` to read the current team, or to be told when it changes.
+
+```csharp
+@inject ITeamStateService TeamStateService
+
+@code {
+    private ITeam _team;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // The handler takes the team from the args. Resolve once, here -- never from the handler.
+        TeamStateService.SelectedTeamChangedEvent += async (_, e) =>
+        {
+            _team = e.SelectedTeam;
+            await InvokeAsync(StateHasChanged);
+        };
+
+        _team = await TeamStateService.GetSelectedTeamAsync();
+    }
+}
+```
+
+| Member | What it does | Cost |
+|---|---|---|
+| `GetSelectedTeamAsync()` | **Resolves** the selection: checks the held team is still visible, reads the remembered team from browser local storage, falls back to one of your memberships, may create your first team (`AutoCreateFirstTeam`), may force a page refresh so the team's claims apply, and raises `SelectedTeamChangedEvent` if the selection changed | A JS interop round trip, sometimes a navigation. **Not free to call in a loop** |
+| `TryGetSelectedTeam(out var team)` | Reads the selection **already resolved** on this circuit. No interop, no event, no resolution | Free |
+| `SelectedTeamChangedEvent` | Raised when the selection changes — a different team, or the same team renamed. **The args carry the team** | — |
+| `SetSelectedTeamAsync(team)` | Changes the selection, remembers it across visits, and refreshes so the new claims apply | A navigation |
+
+**Do not call `GetSelectedTeamAsync` from a `SelectedTeamChangedEvent` handler.** The name reads like a
+getter, but it resolves — which is the very work the handler is reacting to — and `e.SelectedTeam` already
+holds the answer. The event is raised only on a real change, so the loop this used to create is gone; reading
+from the args is still both cheaper and clearer about what the handler is for.
+
+`TryGetSelectedTeam` returns `false` when nothing has been resolved yet on this circuit. Treat that as "ask
+`GetSelectedTeamAsync`", **not** as "no team is selected" — the two are different states and only the resolve
+can tell them apart.
+
 ### Claims Enrichment
 
 Team, role, access level, and scope claims are automatically enriched on the `ClaimsPrincipal` when a team is selected. Tharga.Team provides two enrichment paths:

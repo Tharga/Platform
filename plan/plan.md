@@ -47,7 +47,11 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
       first team, force a refresh and raise the event; do not call it from a handler.
 - [x] XML on `SelectedTeamChangedEvent`: raised only on a real change, and the args carry the team.
 - [x] XML on `SelectedTeamChangedEventArgs` — it had none, and it is the answer to the whole issue.
-- [~] `Tharga.Team.Blazor/README.md` + `docs/articles/implementation-guide.md`, as a separate `docs:` commit.
+- [x] `Tharga.Team.Blazor/README.md` + `docs/articles/implementation-guide.md`, as a separate `docs:` commit.
+      **Neither surface mentioned `ITeamStateService` at all**, so this is a new section rather than an edit —
+      a public service consumers inject, whose misuse caused the outage, with no documentation on either
+      surface. New "Reacting to the selected team" section in the guide (the correct handler pattern, and a
+      cost column per member) plus a Components bullet in the README.
 
 ## 6. The sample stops teaching the bug
 
@@ -114,5 +118,10 @@ both discarded the event args and called the getter from the handler — the sam
 audited 21 of their own components for. That is the strongest evidence the API led people here rather than
 this being 20 careless call sites, and it is why §6 counts as part of the fix rather than tidying.
 
-**Next:** the README and implementation-guide half of §5, then §8 when the user confirms the reporter's
-reproduction is quiet.
+**Next:** §8 close-out, once the user confirms the reporter's reproduction is quiet. Everything else is done:
+fix, cheap read, sample, tests, both doc surfaces. Not yet pushed — waiting on approval.
+
+**What still needs a human.** The unit tests pin the mechanism and the mutation run shows they would catch its
+return, but the reported failure was an *authenticated user with no team* on a real circuit. Confirming that
+end to end needs an interactive sign-in, so it is the user's check. The reporter offered to test a
+pre-release against their reproduction, which is the strongest verification available here.
