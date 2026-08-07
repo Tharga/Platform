@@ -157,9 +157,14 @@ break sign-in.
 > A first-level surface injecting it bypasses authorization entirely. That is not hypothetical: it is
 > how `team:read` came to be registered, documented, granted — and checked by nothing.
 
-It is marked `[EditorBrowsable(Never)]`, so it no longer appears in IntelliSense. An architecture test
-fails the build if a component or MCP provider in this repo injects it; nothing yet protects a consumer
-project, which is what the planned Roslyn analyzer is for.
+It is marked `[EditorBrowsable(Never)]`, so it no longer appears in IntelliSense. `InternalServiceInjectionTests`
+(in `Tharga.Team.Blazor.Tests` for components and `Tharga.Team.Mcp.Tests` for providers) fails the build if
+anything in this repo injects it — by constructor parameter or `[Inject]` property. Internal services are
+discovered by the attribute, not a list, so a newly-marked contract is covered automatically.
+
+Nothing protects a consumer project, which is what the planned Roslyn analyzer is for. Until then, the cheap
+substitute is the same test over your own assembly: reflect over your `IComponent` types and assert none
+depends on a type marked `EditorBrowsableState.Never`.
 
 **Three categories, not two**, and only the first is marked by an attribute:
 

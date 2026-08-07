@@ -14,7 +14,7 @@ Domain models, service abstractions, and authorization primitives for multi-tena
 - `Invitation`, `InviteUserModel`, `MembershipState`.
 
 ### Service interfaces
-- `ITeamService` - Team CRUD, member management, invitations. Includes `GetMembersAsync(teamKey)` returning `IAsyncEnumerable<ITeamMember>` for consumers that need to enumerate members without knowing the per-consumer `TMember` type.
+- `ITeamService` - **the storage contract you implement, not the one you inject.** Team CRUD, member management, invitations. Deliberately unchecked, because framework code reads through it while building the very claims that would authorize the read — so it is marked `[EditorBrowsable(Never)]` and a component, controller or MCP provider must inject a gated facet (`ITeamManagementService` and its siblings) instead. Includes `GetMembersAsync(teamKey)` returning `IAsyncEnumerable<ITeamMember>` for consumers that need to enumerate members without knowing the per-consumer `TMember` type.
 - `ITeamManagementService` - Scope-enforced mutations (create, rename, delete, invite, etc.).
 - `IUserService` - Current user resolution.
 - `IApiKeyAdministrationService` / `IApiKeyManagementService` - API key management.
