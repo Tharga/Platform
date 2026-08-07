@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -50,38 +50,94 @@ internal class TeamStateService : ITeamStateService
         var authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
         if (!(authState.User.Identity?.IsAuthenticated ?? false)) return null;
 
+        var (team, notify) = await ResolveAsync(authState.User);
+
+        // Raised outside the lock, and only for a real change. Reading the selection is the natural thing
+        // to do from a handler, so a handler calling back in has to be survivable: raising while holding
+        // the semaphore queued those calls behind the raiser's own lock, and raising unconditionally made
+        // every call produce another one. Together that was unbounded recursion for a caller with no team,
+        // where the selection resolves to null and so never settles.
+        if (notify) SelectedTeamChangedEvent?.Invoke(this, new SelectedTeamChangedEventArgs(team));
+
+        return team;
+    }
+
+    public bool TryGetSelectedTeam(out ITeam team)
+    {
+        // Deliberately unsynchronised: a reference read is atomic, and taking the semaphore would make this
+        // neither cheap nor synchronous — which is the whole point of it.
+        team = _selectedTeam;
+        return team != null;
+    }
+
+    /// <summary>
+    /// Resolves the selection under the lock, reporting what it settled on and whether that is worth an
+    /// event. The decision is returned rather than acted on, because the raise belongs outside the lock.
+    /// </summary>
+    private async Task<(ITeam Team, bool Notify)> ResolveAsync(ClaimsPrincipal principal)
+    {
+        await _semaphore.WaitAsync();
+
         try
         {
-            await _semaphore.WaitAsync();
+            var previous = _selectedTeam;
 
             // Two sets, two purposes. `visibleTeams` (widened for a teams:read holder) decides which
             // *chosen* team is still legitimate; `teams` (own memberships) is the only source for the
             // fallback, so nobody is ever defaulted into a tenant they didn't pick.
             var teams = await _teamService.GetTeamsAsync().ToArrayAsync();
-            var visibleTeams = await GetVisibleTeamsAsync(authState.User, teams);
+            var visibleTeams = await GetVisibleTeamsAsync(principal, teams);
 
-            if (_selectedTeam == null || visibleTeams.All(x => x.Key != _selectedTeam.Key) || visibleTeams.FirstOrDefault(x => x.Key == _selectedTeam.Key)?.Name != _selectedTeam.Name)
+            if (!NeedsResolution(visibleTeams)) return (_selectedTeam, false);
+
+            var currentTeamKey = principal.Claims.FirstOrDefault(x => x.Type == Constants.TeamKeyCookie)?.Value;
+            var rememberedTeamKey = await _localStorageService.GetItemAsStringAsync(Constants.SelectedTeamLocalStorageKey);
+            var team = TeamSelectionResolver.Resolve(currentTeamKey, rememberedTeamKey, visibleTeams, teams);
+
+            if (team == null && !teams.Any() && _options.AutoCreateFirstTeam)
             {
-                var currentTeamKey = authState.User.Claims.FirstOrDefault(x => x.Type == Constants.TeamKeyCookie)?.Value;
-                var rememberedTeamKey = await _localStorageService.GetItemAsStringAsync(Constants.SelectedTeamLocalStorageKey);
-                var team = TeamSelectionResolver.Resolve(currentTeamKey, rememberedTeamKey, visibleTeams, teams);
-
-                if (team == null && !teams.Any() && _options.AutoCreateFirstTeam)
-                {
-                    team = await _teamService.CreateTeamAsync();
-                }
-
-                // Refresh only when the cookie doesn't already name this team — otherwise the claims for
-                // it have been applied on this request and a reload would be pointless.
-                await AssignTeamAsync(team, team != null && team.Key != currentTeamKey);
+                team = await _teamService.CreateTeamAsync();
             }
 
-            return _selectedTeam;
+            _selectedTeam = team;
+
+            // Refresh only when the cookie doesn't already name this team — otherwise the claims for it
+            // have been applied on this request and a reload would be pointless. Nothing is notified on
+            // this path: the page is being replaced, so there is no subscriber left to tell.
+            if (team != null && team.Key != currentTeamKey)
+            {
+                await SetTeamCookieAsync(team.Key);
+                _navigationManager.Refresh(true);
+                return (team, false);
+            }
+
+            return (team, HasChanged(previous, team));
         }
         finally
         {
             _semaphore.Release();
         }
+    }
+
+    /// <summary>
+    /// Whether the held selection still stands. It must exist, still be visible, and still carry the same
+    /// name — a rename leaves the held instance stale even though its key still matches.
+    /// </summary>
+    private bool NeedsResolution(ITeam[] visibleTeams)
+    {
+        if (_selectedTeam == null) return true;
+
+        var visible = visibleTeams.FirstOrDefault(x => x.Key == _selectedTeam.Key);
+        return visible == null || visible.Name != _selectedTeam.Name;
+    }
+
+    /// <summary>
+    /// Whether a resolution is worth an event. Name as well as key, because a rename is a change that
+    /// subscribers render even though it is the same team.
+    /// </summary>
+    private static bool HasChanged(ITeam previous, ITeam current)
+    {
+        return previous?.Key != current?.Key || previous?.Name != current?.Name;
     }
 
     /// <summary>
@@ -103,18 +159,9 @@ internal class TeamStateService : ITeamStateService
         }
     }
 
-    private async Task AssignTeamAsync(ITeam team, bool refresh = false)
+    private async Task SetTeamCookieAsync(string teamKey)
     {
-        _selectedTeam = team;
-
-        if (refresh && team != null)
-        {
-            await _jSRuntime.InvokeVoidAsync("eval", $"document.cookie = 'selected_team_id={team.Key}; path=/'");
-            _navigationManager.Refresh(true);
-            return;
-        }
-
-        SelectedTeamChangedEvent?.Invoke(this, new SelectedTeamChangedEventArgs(_selectedTeam));
+        await _jSRuntime.InvokeVoidAsync("eval", $"document.cookie = '{Constants.SelectedTeamKeyCookie}={teamKey}; path=/'");
     }
 
     public async Task SetSelectedTeamAsync(ITeam selectedTeam)
@@ -130,7 +177,7 @@ internal class TeamStateService : ITeamStateService
         // has consented to a role they hold.
         await _localStorageService.SetItemAsStringAsync(Constants.SelectedTeamLocalStorageKey, selectedTeam.Key);
 
-        await _jSRuntime.InvokeVoidAsync("eval", $"document.cookie = '{Constants.SelectedTeamKeyCookie}={_selectedTeam?.Key}; path=/'");
+        await SetTeamCookieAsync(selectedTeam.Key);
         _navigationManager.Refresh(true);
     }
 }

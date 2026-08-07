@@ -122,20 +122,22 @@
 
     protected override async Task OnInitializedAsync()
     {
-        TeamStateService.SelectedTeamChangedEvent += async (_, _) =>
+        // The team comes from the args -- GetSelectedTeamAsync resolves as well as reads, so calling it
+        // from a handler asks for the work the handler is reacting to being done again.
+        TeamStateService.SelectedTeamChangedEvent += async (_, e) =>
         {
-            await LoadAsync();
+            await LoadAsync(e.SelectedTeam);
             await InvokeAsync(StateHasChanged);
         };
 
-        await LoadAsync();
+        await LoadAsync(await TeamStateService.GetSelectedTeamAsync());
         await base.OnInitializedAsync();
     }
 
-    private async Task LoadAsync()
+    private async Task LoadAsync(ITeam selectedTeam)
     {
         var user = (await AuthStateProvider.GetAuthenticationStateAsync()).User;
-        _selectedTeam = await TeamStateService.GetSelectedTeamAsync();
+        _selectedTeam = selectedTeam;
 
         _identity = user.FindFirst(ClaimTypes.Name)?.Value
                     ?? user.FindFirst("preferred_username")?.Value
