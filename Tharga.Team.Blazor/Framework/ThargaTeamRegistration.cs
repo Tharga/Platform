@@ -88,6 +88,12 @@ public static class ThargaTeamRegistration
             o.IconSettings = options.IconSettings;
             o._iconStoreType = options._iconStoreType;
             o._iconSourceTypes.AddRange(options._iconSourceTypes);
+
+            // Email, the same way and for the same reason. Assigned only when the facade's own option is set,
+            // so a host that configured o.Blazor.Email directly is not overwritten with null by the forwarder
+            // above having already copied it.
+            if (options.Email != null) o.Email = options.Email;
+            if (options._emailSenderType != null) o._emailSenderType = options._emailSenderType;
         }, builder.Configuration);
 
         // API key lifecycle handlers (opt-in) — wrap IApiKeyAdministrationService once and register the
@@ -179,26 +185,10 @@ public static class ThargaTeamRegistration
         // forwarding above. They used to be registered here, which left the granular path unable to render
         // LoginDisplay at all (Tharga/Team#157).
 
-        // Email sender: custom type > SMTP (if EmailOptions set) > nothing
-        if (options._emailSenderType != null)
-        {
-            builder.Services.AddScoped(typeof(ITeamEmailSender), options._emailSenderType);
-        }
-        else if (options.Email != null)
-        {
-            var fromName = options.Email.FromName ?? options.Blazor.Title;
-            builder.Services.Configure<EmailOptions>(o =>
-            {
-                o.SmtpHost = options.Email.SmtpHost;
-                o.SmtpPort = options.Email.SmtpPort;
-                o.UseSsl = options.Email.UseSsl;
-                o.Username = options.Email.Username;
-                o.Password = options.Email.Password;
-                o.FromAddress = options.Email.FromAddress;
-                o.FromName = fromName;
-            });
-            builder.Services.AddScoped<ITeamEmailSender, SmtpTeamEmailSender>();
-        }
+        // The email sender is registered by AddThargaTeamBlazor, which this method already calls -- see the
+        // options forwarding above. It used to be registered here, which left the granular path unable to send
+        // invitations at all (Tharga/Team#176), and silently: the dialogs resolve the sender with GetService
+        // and degrade to manual link copying, so nothing reported the gap.
     }
 
     /// <summary>
