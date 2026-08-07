@@ -81,9 +81,20 @@ public partial class AuditLogView : ComponentBase
     /// Routes a read to the service that can authorize it: the team-bound one when a team is named, the
     /// oversight one otherwise. Both carry <c>[RequireScope]</c>, so this method decides nothing.
     /// </summary>
+    /// <remarks>
+    /// <b><see cref="TeamKey"/> counts here, not only at the query sites</b> (Tharga/Team#175). It used to be
+    /// read when building a query but not when choosing the service, so the access probe — which passes no
+    /// team of its own — fell through to the oversight service and refused a caller holding that team's
+    /// <c>audit:read</c>. A component that filters to one team on the caller's behalf is already asserting the
+    /// caller may see that team, so the parameter belongs in this decision.
+    /// <para>
+    /// Pinning still wins: a pinned filter is the stronger statement, and <c>ApplyPinnedFilter</c> has already
+    /// forced it onto <c>query.TeamKey</c> by the time a grid query arrives here.
+    /// </para>
+    /// </remarks>
     private async Task<AuditQueryResult> QueryAsync(AuditQuery query)
     {
-        var teamKey = query.TeamKey ?? PinnedFilter?.TeamKey;
+        var teamKey = AuditTeamScope.Resolve(query.TeamKey, PinnedFilter?.TeamKey, TeamKey);
 
         if (!string.IsNullOrEmpty(teamKey) && _auditReadService != null)
         {
