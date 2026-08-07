@@ -852,11 +852,16 @@ else
     /// </para>
     /// </remarks>
     /// <summary>
-    /// What this team grants and whether the caller belongs to it, side by side.
+    /// Whether the caller belongs to this team and what it grants, side by side.
     /// </summary>
     /// <remarks>
-    /// Horizontal, because the two are one thought — "full access, but not a member" is the sentence an
+    /// Horizontal, because the two are one thought — "not a member, but full access" is the sentence an
     /// oversight caller is reading. Stacked, they looked like two unrelated properties.
+    /// <para>
+    /// Membership comes first because it qualifies the level that follows: the caller reads why they can
+    /// see the team before reading how much of it they get. Read the other way, the level lands as a plain
+    /// statement of their standing and the qualifier arrives too late to change it.
+    /// </para>
     /// <para>
     /// Read-only by design, which is what lets it sit in a card's <c>TopMenu</c>: that slot lives inside
     /// the header's click handler, so anything interactive there would toggle the card as well as itself.
@@ -865,17 +870,17 @@ else
     private RenderFragment ConsentBadges(ITeam<TMember> team) =>
     @<text>
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.35rem" Wrap="FlexWrap.Wrap">
+            @if (_canSeeAllTeams && !IsMemberOf(team))
+            {
+                <RadzenBadge BadgeStyle="BadgeStyle.Light" Variant="Variant.Flat" Text="Not a member"
+                             title="You are viewing this team through cross-team access, not membership." />
+            }
             @if (_canSeeAllTeams || _showConsentToggle)
             {
                 <RadzenBadge BadgeStyle="@(Enum.Parse<BadgeStyle>(TeamVisibility.BadgeStyle(ConsentOf(team))))"
                              Variant="Variant.Flat"
                              Text="@TeamVisibility.Label(ConsentOf(team))"
                              title="What this team has consented to grant. Select the team to change it." />
-            }
-            @if (_canSeeAllTeams && !IsMemberOf(team))
-            {
-                <RadzenBadge BadgeStyle="BadgeStyle.Light" Variant="Variant.Flat" Text="Not a member"
-                             title="You are viewing this team through cross-team access, not membership." />
             }
         </RadzenStack>
     </text>;

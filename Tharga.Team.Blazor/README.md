@@ -172,8 +172,8 @@ to", and silently promoting that to a global enumeration privilege would widen a
 on upgrade.
 
 A holder of `teams:read` sees every team in `TeamComponent`, `TeamSelector` and `UsersView` → Teams,
-each tagged with what that team has consented to — **No access**, **Partial access** or **Full access** —
-plus a **Not a member** badge where applicable. You can select any team you can see, and the choice is
+each tagged with a **Not a member** badge where applicable, followed by what that team has consented to —
+**No access**, **Partial access** or **Full access**. You can select any team you can see, and the choice is
 remembered across visits — but selection grants no access by itself: a non-member gets scopes only where
 the team has consented to a role they hold. A team you never chose is never selected for you; when there
 is no current or remembered choice, the fallback comes from your own memberships. Enumeration is not
