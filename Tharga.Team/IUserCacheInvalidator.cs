@@ -27,4 +27,18 @@ public interface IUserCacheInvalidator
     /// always safe to call and safe to call twice.
     /// </summary>
     void InvalidateUserByKey(string userKey);
+
+    /// <summary>
+    /// The asynchronous form, which is what the toolkit calls. Prefer implementing this one: the cache may be
+    /// a remote store (see <see cref="ITeamCache"/>), and the synchronous member can then only be served by
+    /// blocking.
+    /// </summary>
+    /// <remarks>
+    /// Defaulted to the synchronous member so an existing implementation keeps compiling and keeps working.
+    /// </remarks>
+    Task InvalidateUserByKeyAsync(string userKey)
+    {
+        InvalidateUserByKey(userKey);
+        return Task.CompletedTask;
+    }
 }

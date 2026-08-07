@@ -73,20 +73,71 @@ If you see a change that **survives every page reload and corrects only on proce
 stale-cache read. Nothing else looks like that; a write that never landed looks identical on screen and
 has the opposite fix.
 
-#### The team caches
+## Caching and multi-instance deployments
 
-`TeamServiceBase` caches two things, both because the claims path reads them on every authenticating
-request: a member's team membership, and a team's **custom roles**. Neither expires — an entry goes when a
-write drops it.
+The claims path runs on **every authenticating request** and performs three lookups: the caller, their
+membership in the selected team, and that team's custom roles. All three go through **`ITeamCache`**.
 
-Both are invalidated by the public methods on `TeamServiceBase`, which are not virtual: a store supplies
-persistence by overriding the `protected` member underneath, so the invalidation cannot be skipped. Writing
-**directly to your own store**, around methods like `SetTeamCustomRolesAsync`, is the case that goes stale —
-with the same restart-only symptom described above.
+The built-in `InMemoryTeamCache` is registered for you. It holds entries in this process with no expiry,
+dropped when a write invalidates them.
 
-The **team document itself is deliberately not cached.** It carries the member roster, and the paths that
-suspend a member, remove one, assign an owner or transfer ownership read it precisely because they need
-current state to decide access. A cache there would sit in front of an authorization check.
+### If you run more than one instance, replace it
+
+**`InMemoryTeamCache` is correct for a single instance only.** A change made through one instance never
+reaches the others, so until that instance restarts:
+
+| Changed on instance A | Instance B keeps |
+|---|---|
+| Member access level, tenant roles, scope overrides | issuing the old claims |
+| **Member suspended** | granting them their full team scopes |
+| **User disabled** | their session alive |
+| Team custom roles | the old role-to-scope mapping |
+
+**Periodic claim revalidation does not correct this** — it recomputes through the same cache, reads the same
+stale entry, and concludes nothing changed.
+
+Register your own implementation over any store every instance can see:
+
+```csharp
+builder.Services.AddSingleton<ITeamCache, RedisTeamCache>();   // before AddThargaTeam
+builder.AddThargaTeam(o => { ... });
+```
+
+The toolkit registers its built-in with `TryAdd`, so yours wins.
+
+**Then forward it from your own service's constructor** — this is the step that is easy to miss, because
+nothing fails without it:
+
+```csharp
+public class TeamService : TeamServiceRepositoryBase<TeamEntity, TeamMember>
+{
+    public TeamService(IUserService userService, ITeamRepository<TeamEntity, TeamMember> repository,
+        IMongoDbServiceFactory factory, IIconStore iconStore = null, ITeamCache cache = null)
+        : base(userService, repository, factory, iconStore, cache) { }   // <- cache
+}
+```
+
+A service that does not forward it silently falls back to the process-local cache, and the table above
+applies again.
+
+### Writing an adapter
+
+- **`Found` and the value are separate.** Both `null` users and `null` memberships are cached deliberately —
+  a non-member is *remembered* as not being one. Return `CachedValue<T>.Miss` for "no entry", not a null
+  value, or every non-member request goes back to the store.
+- **You serialize your own types.** `IUser` and `ITeamMember` are interfaces your entities implement, which
+  is precisely why this is your adapter and not something the toolkit can ship.
+- **Returning `Miss` from every read is valid** and simply disables caching. Prefer reporting a miss over
+  throwing: an uncached read is slow, a throwing one breaks sign-in.
+- **The two by-user removals need an index.** `RemoveUserByKeyAsync` and `RemoveMembersForUserAsync` are not
+  keyed the way their entries are, so expect a companion index from a user key to that user's identity and
+  teams.
+
+### What is deliberately not cached
+
+The **team document**. It carries the member roster, and the paths that suspend a member, remove one, assign
+an owner or transfer ownership read it precisely because they need current state to decide access — a cache
+there would sit in front of an authorization check. The **consent-teams query** is also uncached.
 
 ## Related packages
 

@@ -45,7 +45,9 @@ public sealed class CacheInvalidatingUserServiceDecorator : IUserService
         _invalidator = inner as IUserCacheInvalidator;
     }
 
-    private void Invalidate(string userKey) => _invalidator?.InvalidateUserByKey(userKey);
+    // The async form, because the cache behind it may be remote (see ITeamCache) and the synchronous member
+    // could then only be served by blocking a request thread.
+    private Task InvalidateAsync(string userKey) => _invalidator?.InvalidateUserByKeyAsync(userKey) ?? Task.CompletedTask;
 
     public Task<IUser> GetCurrentUserAsync(ClaimsPrincipal claimsPrincipal = null) => _inner.GetCurrentUserAsync(claimsPrincipal);
 
@@ -60,43 +62,43 @@ public sealed class CacheInvalidatingUserServiceDecorator : IUserService
     public async Task SeedUserNameAsync(string userKey, string name)
     {
         await _inner.SeedUserNameAsync(userKey, name);
-        Invalidate(userKey);
+        await InvalidateAsync(userKey);
     }
 
     public async Task SetUserNameAsync(string userKey, string name)
     {
         await _inner.SetUserNameAsync(userKey, name);
-        Invalidate(userKey);
+        await InvalidateAsync(userKey);
     }
 
     public async Task SetUserDirectoryIdAsync(string userKey, string directoryId)
     {
         await _inner.SetUserDirectoryIdAsync(userKey, directoryId);
-        Invalidate(userKey);
+        await InvalidateAsync(userKey);
     }
 
     public async Task SetUserIconAsync(string userKey, byte[] data, string contentType)
     {
         await _inner.SetUserIconAsync(userKey, data, contentType);
-        Invalidate(userKey);
+        await InvalidateAsync(userKey);
     }
 
     public async Task ClearUserIconAsync(string userKey)
     {
         await _inner.ClearUserIconAsync(userKey);
-        Invalidate(userKey);
+        await InvalidateAsync(userKey);
     }
 
     public async Task SetUserDisabledAsync(string userKey, DateTime? disabledAt, string disabledBy)
     {
         await _inner.SetUserDisabledAsync(userKey, disabledAt, disabledBy);
-        Invalidate(userKey);
+        await InvalidateAsync(userKey);
     }
 
     public async Task DeleteUserAsync(string userKey)
     {
         await _inner.DeleteUserAsync(userKey);
-        Invalidate(userKey);
+        await InvalidateAsync(userKey);
     }
 
     /// <remarks>
@@ -108,7 +110,7 @@ public sealed class CacheInvalidatingUserServiceDecorator : IUserService
     {
         var userKey = (await _inner.GetCurrentUserAsync())?.Key;
         await _inner.SetOwnIconAsync(data, contentType);
-        Invalidate(userKey);
+        await InvalidateAsync(userKey);
     }
 
     /// <inheritdoc cref="SetOwnIconAsync" />
@@ -116,6 +118,6 @@ public sealed class CacheInvalidatingUserServiceDecorator : IUserService
     {
         var userKey = (await _inner.GetCurrentUserAsync())?.Key;
         await _inner.ClearOwnIconAsync();
-        Invalidate(userKey);
+        await InvalidateAsync(userKey);
     }
 }

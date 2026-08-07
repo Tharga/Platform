@@ -7,7 +7,7 @@ internal class TestTeamService : TeamServiceBase
 {
     private readonly Dictionary<string, TestTeam> _teams = new();
 
-    public TestTeamService(IUserService userService) : base(userService) { }
+    public TestTeamService(IUserService userService, ITeamCache cache = null) : base(userService, cache: cache) { }
 
     public void AddTeam(string teamKey, string name, params TestMember[] members)
     {

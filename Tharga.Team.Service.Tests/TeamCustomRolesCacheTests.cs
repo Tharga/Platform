@@ -5,10 +5,12 @@ namespace Tharga.Team.Service.Tests;
 /// authenticating request when dynamic tenant roles are enabled, and that read went to the store each time.
 /// </summary>
 /// <remarks>
-/// <b>Every test uses keys of its own.</b> The cache is <c>static</c>, so it is shared by the whole test
-/// run — a shared key makes an assertion about store reads depend on which tests primed it first, which
-/// has already produced one false failure (see
-/// <see cref="MemberSuspensionTests.Suspending_DropsTheCachedMember"/>).
+/// <b>Each test gets its own <see cref="InMemoryTeamCache"/>.</b> That is what injecting
+/// <see cref="ITeamCache"/> buys here beyond the multi-instance case it was added for: a service constructed
+/// without one falls back to a process-wide shared instance, and an assertion about store reads then depends
+/// on which test primed it first — which has already produced one false failure (see
+/// <see cref="MemberSuspensionTests.Suspending_DropsTheCachedMember"/>). Keys are still distinct per test so
+/// the intent survives someone removing the injection.
 /// <para>
 /// These tests count <c>GetTeamCallCount</c> rather than asserting on returned roles, because the point is
 /// which reads reach the store. Correctness of the merge itself is <see cref="TenantRoleServiceTests"/>.
@@ -34,7 +36,7 @@ public class TeamCustomRolesCacheTests
         userService.GetCurrentUserAsync().Returns(caller);
         userService.GetCurrentUserAsync(Arg.Any<System.Security.Claims.ClaimsPrincipal>()).Returns(caller);
 
-        var sut = new TestTeamService(userService);
+        var sut = new TestTeamService(userService, new InMemoryTeamCache());
         sut.AddTeam(teamKey, "Cache Probe");
         if (customRoles != null) sut.SeedCustomRoles(teamKey, customRoles);
         return sut;

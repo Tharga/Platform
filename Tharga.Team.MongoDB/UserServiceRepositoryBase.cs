@@ -12,8 +12,13 @@ public abstract class UserServiceRepositoryBase<TUserEntity> : UserServiceBase
 {
     private readonly IUserRepository<TUserEntity> _userRepository;
 
-    protected UserServiceRepositoryBase(AuthenticationStateProvider authenticationStateProvider, IUserRepository<TUserEntity> userRepository, ILogger<UserServiceBase> logger = null, IIconStore iconStore = null)
-        : base(authenticationStateProvider, logger, iconStore)
+    /// <param name="cache">
+    /// Optional. <b>Forward it from your own service's constructor</b> when running more than one instance —
+    /// left unforwarded, the resolved-user lookup falls back to a process-local cache that cannot see a user
+    /// disabled through another instance. See <see cref="ITeamCache"/>.
+    /// </param>
+    protected UserServiceRepositoryBase(AuthenticationStateProvider authenticationStateProvider, IUserRepository<TUserEntity> userRepository, ILogger<UserServiceBase> logger = null, IIconStore iconStore = null, ITeamCache cache = null)
+        : base(authenticationStateProvider, logger, iconStore, cache)
     {
         _userRepository = userRepository;
     }

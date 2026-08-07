@@ -1405,12 +1405,72 @@ builder.AddThargaTeam(o =>
 - **Per-team storage** — custom roles are stored on the team document and edited via `ITeamManagementService.SetTeamCustomRolesAsync`, which requires **`team:manage`** on the team by default; set `o.DynamicRoleManageScope` to require a different scope (e.g. **`access:manage`**) instead, honoured by both the service layer and `TenantRoleManager`. Assigning a role to a member is still a **`member:manage`** operation.
 - **No privilege escalation** — the manager only offers scopes registered via `o.ConfigureScopes`, and the server rejects any unregistered scope, duplicate names, or names that collide with a code role.
 - **Resolved like code roles** — when enabled, a member assigned a custom role receives that role's scopes as claims (server, WASM, and API-key paths), and custom roles appear alongside code roles in the role pickers of `<TeamComponent>` (honouring the visibility provider above) and `<ApiKeyView ShowRoles="true">`, so a custom role can be assigned to a team API key.
-- **Cached per process** — enabling dynamic roles puts a team's custom roles on the claims path, which runs on every authenticating request, so they are held in a process-wide cache with no expiry. `SetTeamCustomRolesAsync` drops the entry, so editing through the service layer or `<TenantRoleManager />` always takes effect immediately. A host that writes custom roles **straight to its own store**, around `SetTeamCustomRolesAsync`, keeps serving the previous roles until the process restarts — the symptom being an edit that survives every page reload and corrects only on restart.
+- **Cached** — enabling dynamic roles puts a team's custom roles on the claims path, which runs on every authenticating request. They are cached through `ITeamCache`; `SetTeamCustomRolesAsync` drops the entry, so editing through the service layer or `<TenantRoleManager />` takes effect immediately. A host that writes custom roles **straight to its own store**, around `SetTeamCustomRolesAsync`, keeps serving the previous roles. **If you run more than one instance, read "Claims-path caching" below** — the built-in cache is process-local.
 - **Off by default** — `EnableDynamicRoles = false` leaves behaviour unchanged (code roles only).
 
 ### Verification
 
 Assign a role to a team member, then verify they can access methods protected by the role's scopes.
+
+---
+
+## Step 7a: Claims-path caching (required reading for multi-instance)
+
+The server claims transformation runs on **every authenticating HTTP request** and performs three lookups —
+the caller, their membership in the selected team, and that team's custom roles. All three go through
+**`ITeamCache`**, and the built-in `InMemoryTeamCache` is registered automatically. On a single instance
+there is nothing to configure.
+
+> [!WARNING]
+> **`InMemoryTeamCache` is correct for one instance only.** Entries are process-local, so a change made
+> through one instance never reaches the others. Until that instance restarts, it keeps issuing the old
+> claims — including keeping a **suspended member's scopes** and a **disabled user's session** alive.
+> Periodic claim revalidation does not correct it: it recomputes through the same cache, reads the same
+> stale entry, and concludes nothing changed.
+
+### Replacing it
+
+Register any implementation backed by a store every instance can see. The toolkit uses `TryAdd`, so yours
+wins:
+
+```csharp
+builder.Services.AddSingleton<ITeamCache, RedisTeamCache>();   // before AddThargaTeam
+builder.AddThargaTeam(o => { ... });
+```
+
+Then **forward it from your own service constructors** — the step that is easy to miss, because nothing
+fails without it and the fallback looks like it is working:
+
+```csharp
+public class TeamService : TeamServiceRepositoryBase<TeamEntity, TeamMember>
+{
+    public TeamService(IUserService userService, ITeamRepository<TeamEntity, TeamMember> repository,
+        IMongoDbServiceFactory factory, IIconStore iconStore = null, ITeamCache cache = null)
+        : base(userService, repository, factory, iconStore, cache) { }
+}
+
+public class UserService : UserServiceRepositoryBase<UserEntity>
+{
+    public UserService(AuthenticationStateProvider auth, IUserRepository<UserEntity> repository,
+        ILogger<UserServiceBase> logger = null, IIconStore iconStore = null, ITeamCache cache = null)
+        : base(auth, repository, logger, iconStore, cache) { }
+}
+```
+
+### Implementing one
+
+| Requirement | Why |
+|---|---|
+| Return `CachedValue<T>.Miss` for "no entry" — **not** a null value | `null` users and memberships are cached deliberately: a non-member is *remembered* as not being one. Collapsing the two sends every non-member request to the store. |
+| Serialize your own entity types | `IUser` and `ITeamMember` are interfaces your entities implement. Only you know the concrete types — which is why this is an adapter you own. |
+| Prefer a miss over an exception | An uncached read is slow; a throwing one breaks sign-in. Returning `Miss` from every read is valid and simply disables caching. |
+| Keep a companion index for the by-user removals | `RemoveUserByKeyAsync` and `RemoveMembersForUserAsync` are not keyed the way their entries are. |
+
+### Not cached
+
+The **team document** is deliberately never cached: it carries the member roster, and the paths that suspend
+a member, remove one, assign an owner or transfer ownership read it precisely because they need current state
+to decide access. The **consent-teams query** on the non-member consent path is also uncached.
 
 ---
 
