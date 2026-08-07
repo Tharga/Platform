@@ -36,6 +36,32 @@
                                 </RadzenStack>
                             }
                             <RadzenText TextStyle="TextStyle.Caption">@(_user?.EMail ?? context.User.GetEmail())</RadzenText>
+                            @{
+                                var roles = ProfileRoles.Read(context.User);
+                            }
+                            @if (roles.Any)
+                            {
+                                @* Roles are what people open this page to check, so they are visible here rather
+                                   than behind the collapsed Claims card, keyed by a schema URI. That card stays
+                                   exactly as it was -- this is an addition. *@
+                                <RadzenStack Orientation="Orientation.Horizontal" Wrap="FlexWrap.Wrap" AlignItems="AlignItems.Center" Gap="0.25rem">
+                                    @foreach (var role in roles.App)
+                                    {
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Secondary" Variant="Variant.Flat" Text="@role" class="rz-mr-1 rz-mb-1" />
+                                    }
+                                    @foreach (var role in roles.Team)
+                                    {
+                                        @* A different style, because these follow the team selector rather than
+                                           the person -- see ProfileRoles. *@
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Info" Variant="Variant.Flat" Text="@role" class="rz-mr-1 rz-mb-1"
+                                                     title="From the selected team — changes when you switch teams." />
+                                    }
+                                </RadzenStack>
+                                @if (roles.Team.Length > 0)
+                                {
+                                    <RadzenText TextStyle="TextStyle.Caption">Blue roles come from the selected team.</RadzenText>
+                                }
+                            }
                             @if (_canUpload)
                             {
                                 <RadzenButton Text="Change picture" Icon="photo_camera" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="ChangePicture" />
