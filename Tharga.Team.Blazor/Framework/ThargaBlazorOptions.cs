@@ -1,5 +1,6 @@
 ﻿using Tharga.Blazor.Framework;
 using Tharga.Team;
+using Tharga.Team.Service.Email;
 
 namespace Tharga.Team.Blazor.Framework;
 
@@ -12,12 +13,40 @@ public record ThargaBlazorOptions : BlazorOptions
     internal Type _claimsEnricher;
     internal Type _textProvider;
     internal Type _iconStoreType;
+    internal Type _emailSenderType;
     internal readonly List<Type> _iconSourceTypes = [];
 
     /// <summary>
     /// Icon upload limits — maximum bytes and permitted content types.
     /// </summary>
     public IconOptions Icon { get; set; } = new();
+
+    /// <summary>
+    /// SMTP settings for the built-in email sender. When set — and no custom sender is registered via
+    /// <see cref="AddEmailService{T}"/> — <c>SmtpTeamEmailSender</c> is registered as
+    /// <see cref="ITeamEmailSender"/>. Leave null to send no email.
+    /// </summary>
+    /// <remarks>
+    /// <b>Invitations are the only mail the toolkit sends</b> (<see cref="ITeamEmailSender.SendInviteAsync"/>),
+    /// so configuring this is a decision about invitation delivery only — not about adopting a mail pipeline.
+    /// <para>
+    /// <see cref="EmailOptions.FromName"/> falls back to the application <c>Title</c> when not set.
+    /// </para>
+    /// </remarks>
+    public EmailOptions Email { get; set; }
+
+    /// <summary>
+    /// Send invitations through your own implementation instead of SMTP. Takes precedence over
+    /// <see cref="Email"/>, which is then ignored.
+    /// </summary>
+    /// <remarks>
+    /// Registered scoped. Prefer this over configuring SMTP when the host already has a mail pipeline —
+    /// the toolkit only ever asks it to send an invitation.
+    /// </remarks>
+    public void AddEmailService<T>() where T : class, ITeamEmailSender
+    {
+        _emailSenderType = typeof(T);
+    }
 
     /// <summary>
     /// Runtime-adjustable icon behaviour: Gravatar on/off and style, a default image, upload toggles.

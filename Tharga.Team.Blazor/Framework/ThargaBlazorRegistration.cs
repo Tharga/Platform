@@ -14,6 +14,7 @@ using Tharga.Team;
 using Tharga.Team.Blazor.Features.Team;
 using Tharga.Team.Service;
 using Tharga.Team.Service.Audit;
+using Tharga.Team.Service.Email;
 
 namespace Tharga.Team.Blazor.Framework;
 
@@ -232,6 +233,7 @@ public static class ThargaBlazorRegistration
         }
 
         RegisterIcons(services, o);
+        RegisterEmail(services, o);
 
         services.AddSingleton(Options.Create(o));
     }
@@ -278,6 +280,45 @@ public static class ThargaBlazorRegistration
         services.AddScoped<IIconResolver, IconResolver>();
         services.AddScoped<Features.User.AvatarChangeNotifier>();
         services.AddHttpClient(IconHttpClientName);
+    }
+
+    /// <summary>
+    /// The email sender, as a three-way choice: a custom implementation wins, then SMTP if
+    /// <see cref="ThargaBlazorOptions.Email"/> is set, then nothing.
+    /// </summary>
+    /// <remarks>
+    /// Registered here rather than only in the <c>AddThargaTeam</c> facade (Tharga/Team#176). It used to
+    /// exist only there, so a granular host had to reproduce it by hand against internal knowledge of what
+    /// the facade does — and it failed more quietly than the icon equivalent (#157), because
+    /// <c>InviteUserDialog</c> and <c>TeamComponent</c> both resolve the sender with <c>GetService</c> and
+    /// degrade to manual link copying. A granular host got no error; invitations simply were never sent, and
+    /// the fallback looked like intended behaviour.
+    /// <para>
+    /// Nothing is registered when neither is configured, so <c>GetService&lt;ITeamEmailSender&gt;()</c>
+    /// returning null keeps meaning "no email configured" rather than "wiring forgotten".
+    /// </para>
+    /// </remarks>
+    private static void RegisterEmail(IServiceCollection services, ThargaBlazorOptions o)
+    {
+        if (o._emailSenderType != null)
+        {
+            services.AddScoped(typeof(ITeamEmailSender), o._emailSenderType);
+            return;
+        }
+
+        if (o.Email == null) return;
+
+        // Copied whole rather than property-by-property: a named list is what dropped two IconOptions
+        // properties on this same path (Tharga/Team#177). FromName is assigned after the copy because it
+        // alone has a fallback -- the application title, so an unconfigured sender name is still meaningful.
+        var fromName = o.Email.FromName ?? o.Title;
+        services.Configure<EmailOptions>(eo =>
+        {
+            OptionsForwarder.Copy(o.Email, eo);
+            eo.FromName = fromName;
+        });
+
+        services.AddScoped<ITeamEmailSender, SmtpTeamEmailSender>();
     }
 
     /// <summary>Named client used to fetch remote icon images (e.g. Gravatar).</summary>

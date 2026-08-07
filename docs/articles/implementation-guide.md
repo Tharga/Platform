@@ -1172,6 +1172,40 @@ can rewrite what an administrator copies to the clipboard. Unset, links point at
 The route name is yours; `/invitation` above is only an example, and worth checking against whatever your
 own stack already serves.
 
+### Sending the invitation email
+
+**Invitations are the only mail the toolkit sends.** `ITeamEmailSender` has a single member,
+`SendInviteAsync`, so configuring email here is a decision about invitation delivery — not about handing the
+toolkit your mail pipeline.
+
+Three-way choice, and it works identically on the facade and granular paths:
+
+```csharp
+// 1. Your own sender — wins over SMTP, which is then ignored.
+o.AddEmailService<MyEmailSender>();          // any ITeamEmailSender
+
+// 2. Or the built-in SMTP sender.
+o.Email = new EmailOptions
+{
+    SmtpHost = "smtp.example.com",
+    FromAddress = "no-reply@example.com",
+    // FromName falls back to the application Title when unset.
+};
+
+// 3. Or neither — no email is sent, and no sender is registered.
+```
+
+On the granular path set these on `AddThargaTeamBlazor`; on the facade set them on `AddThargaTeam` (or on its
+`o.Blazor` section — the facade's own `Email` wins if both are set).
+
+> **With no sender registered, invitations are not sent and nothing reports it.** `InviteUserDialog` and
+> `TeamComponent` resolve the sender with `GetService`, so they degrade to **"Copy invitation link"** and an
+> administrator delivers it by hand. That is deliberate — it is what option 3 means — but it looks the same as
+> forgetting to configure email. If invitations seem to vanish, check whether a sender is registered at all.
+>
+> Before 3.10, `AddThargaTeamBlazor` could not register a sender at all, so a granular host hit this state
+> without having chosen it (Tharga/Team#176).
+
 ### Team services and system services
 
 Every scope-enforced service is registered as exactly one of two kinds. The choice is made once, at
