@@ -18,6 +18,9 @@ public abstract class UserServiceBase : IUserService, IUserCacheInvalidator
     private readonly IIconStore _iconStore;
     private readonly ITeamCache _cache;
 
+    /// <param name="authenticationStateProvider">Resolves the calling principal when none is supplied.</param>
+    /// <param name="logger">Optional. Used to report activity-stamping failures, which never fail a resolve.</param>
+    /// <param name="iconStore">Optional. Required only for user icons; see <see cref="SetUserIconAsync"/>.</param>
     /// <param name="cache">
     /// Where resolved users are kept. Defaults to the process-local <see cref="InMemoryTeamCache"/>, which is
     /// correct for a single instance only — <b>forward this parameter from your own service's
@@ -264,7 +267,7 @@ public abstract class UserServiceBase : IUserService, IUserCacheInvalidator
             $"user deletion (the '{SystemUserScopes.Manage}' system scope).");
 
     /// <summary>
-    /// Drops the cached user for <paramml name="identity"/>. Retained for hosts that call it; the toolkit's own
+    /// Drops the cached user for <paramref name="identity"/>. Retained for hosts that call it; the toolkit's own
     /// paths use <see cref="ITeamCache.RemoveUserAsync"/> directly.
     /// </summary>
     /// <remarks>

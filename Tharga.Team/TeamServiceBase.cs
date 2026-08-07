@@ -10,6 +10,9 @@ public abstract class TeamServiceBase : ITeamService
     private readonly IIconStore _iconStore;
     private readonly ITeamCache _cache;
 
+    /// <param name="userService">Resolves the calling user.</param>
+    /// <param name="logger">Optional. Used to report ambiguous member matches.</param>
+    /// <param name="iconStore">Optional. Required only for team icons; see <see cref="SetTeamIconAsync"/>.</param>
     /// <param name="cache">
     /// Where the membership and custom-role lookups are kept. Defaults to the process-local
     /// <see cref="InMemoryTeamCache"/>, which is correct for a single instance only —

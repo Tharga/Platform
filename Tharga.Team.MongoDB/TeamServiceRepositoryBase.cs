@@ -9,6 +9,10 @@ public abstract class TeamServiceRepositoryBase<TTeamEntity, TMember> : TeamServ
     private readonly ITeamRepository<TTeamEntity, TMember> _teamRepository;
     private readonly IMongoDbServiceFactory _mongoDbServiceFactory;
 
+    /// <param name="userService">Resolves the calling user.</param>
+    /// <param name="teamRepository">The team collection this service reads and writes.</param>
+    /// <param name="mongoDbServiceFactory">Used for the operations that go outside the repository.</param>
+    /// <param name="iconStore">Optional. Required only for team icons.</param>
     /// <param name="cache">
     /// Optional. <b>Forward it from your own service's constructor</b> when running more than one instance —
     /// left unforwarded, the claims-path lookups fall back to a process-local cache that cannot see another
