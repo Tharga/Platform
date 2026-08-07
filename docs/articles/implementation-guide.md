@@ -1483,8 +1483,10 @@ builder.Services.AddSingleton<ITeamCache, RedisTeamCache>();   // before AddThar
 builder.AddThargaTeam(o => { ... });
 ```
 
-Then **forward it from your own service constructors** — the step that is easy to miss, because nothing
-fails without it and the fallback looks like it is working:
+Then **forward it from your own service constructors**. Since 3.10.8 this cannot be missed silently: the
+toolkit **fails at startup** when a custom cache is registered that your services never received, naming the
+types and the fix. It compares the cache each service actually holds against the registered one, so a host
+that registered nothing custom never sees it:
 
 ```csharp
 public class TeamService : TeamServiceRepositoryBase<TeamEntity, TeamMember>

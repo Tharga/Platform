@@ -40,6 +40,12 @@ public abstract class UserServiceBase : IUserService, IUserCacheInvalidator
     }
 
     /// <summary>
+    /// The cache this instance actually ended up with, so <see cref="TeamCacheWiring"/> can tell a forwarded
+    /// <see cref="ITeamCache"/> from the process-local fallback. Internal: a diagnostic, not API.
+    /// </summary>
+    internal ITeamCache CacheInUse => _cache;
+
+    /// <summary>
     /// How often (at most) <see cref="IUser.LastSeen"/> is written on resolve. Null disables stamping;
     /// <see cref="TimeSpan.Zero"/> stamps on every resolve. The throttle is per process, so a multi-instance
     /// deployment writes at most once per interval per instance.
