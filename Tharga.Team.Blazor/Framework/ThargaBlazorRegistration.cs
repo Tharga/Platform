@@ -252,11 +252,12 @@ public static class ThargaBlazorRegistration
     /// </remarks>
     private static void RegisterIcons(IServiceCollection services, ThargaBlazorOptions o)
     {
-        services.Configure<IconOptions>(io =>
-        {
-            io.MaxBytes = o.Icon.MaxBytes;
-            io.AllowedContentTypes = o.Icon.AllowedContentTypes;
-        });
+        // Every property, not a named list. Copying only MaxBytes and AllowedContentTypes meant
+        // o.Icon.MaxUploadBytes and o.Icon.MaxDimension compiled, read naturally and did nothing
+        // (Tharga/Team#177) -- and MaxUploadBytes is the one a consumer most often needs to raise, because with
+        // an image processor registered it is the only thing standing between a phone photo and a successful
+        // upload.
+        services.Configure<IconOptions>(io => OptionsForwarder.Copy(o.Icon, io));
 
         if (o._iconStoreType != null)
         {
