@@ -32,6 +32,12 @@ public abstract class TeamServiceBase : ITeamService
         _cache = cache ?? InMemoryTeamCache.Shared;
     }
 
+    /// <summary>
+    /// The cache this instance actually ended up with, so <see cref="TeamCacheWiring"/> can tell a forwarded
+    /// <see cref="ITeamCache"/> from the process-local fallback. Internal: a diagnostic, not API.
+    /// </summary>
+    internal ITeamCache CacheInUse => _cache;
+
     public event EventHandler<TeamsListChangedEventArgs> TeamsListChangedEvent;
     public event EventHandler<SelectTeamEventArgs> SelectTeamEvent;
 

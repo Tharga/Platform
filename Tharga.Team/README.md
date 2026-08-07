@@ -105,8 +105,9 @@ builder.AddThargaTeam(o => { ... });
 
 The toolkit registers its built-in with `TryAdd`, so yours wins.
 
-**Then forward it from your own service's constructor** — this is the step that is easy to miss, because
-nothing fails without it:
+**Then forward it from your own service's constructor.** Since 3.10.8 the toolkit **fails at startup** if you
+register a custom cache your services never received, naming the types — so this step can no longer be missed
+silently:
 
 ```csharp
 public class TeamService : TeamServiceRepositoryBase<TeamEntity, TeamMember>
@@ -117,8 +118,10 @@ public class TeamService : TeamServiceRepositoryBase<TeamEntity, TeamMember>
 }
 ```
 
-A service that does not forward it silently falls back to the process-local cache, and the table above
-applies again.
+A service that does not forward it falls back to the process-local cache, and the table above would apply
+again — which is why registering a custom cache without forwarding it is a startup failure rather than a
+warning. The check compares the cache each service actually holds against the registered one, so it cannot
+misfire; a host that has registered nothing custom never sees it.
 
 ### Writing an adapter
 

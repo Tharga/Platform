@@ -104,6 +104,12 @@ public static class ThargaBlazorRegistration
                 sp, teamServiceType, throwOnIncompleteTeam,
                 sp.GetService<ILogger<TeamServiceCompletenessCheck>>()));
 
+            // A custom ITeamCache that the host's own services never received is the one way this seam can be
+            // configured and silently not take effect -- and what it silently fails to do is keep authorization
+            // fresh across instances. Registered unconditionally; it no-ops unless a custom cache is present.
+            services.AddSingleton<IHostedService>(sp => new TeamCacheWiringCheck(
+                sp, teamServiceType, userServiceType));
+
             if (o._apiKeyService != null)
             {
                 services.AddAuditedApiKeyAdministrationService(o._apiKeyService);
