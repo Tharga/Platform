@@ -44,6 +44,12 @@ public static class ThargaBlazorRegistration
         }
         services.TryAddSingleton<IThargaTextProvider, DefaultThargaTextProvider>();
 
+        // Where the claims path keeps its lookups. TryAdd, so a host running more than one instance registers
+        // a shared implementation and wins -- the built-in is process-local and cannot see another instance's
+        // writes. Singleton because the services reading it are scoped: a scoped cache would live for one
+        // request and cache nothing across the requests it exists to serve.
+        services.TryAddSingleton<ITeamCache, InMemoryTeamCache>();
+
         if (o._teamService != null)
         {
             services.AddScoped<ITeamStateService, TeamStateService>();

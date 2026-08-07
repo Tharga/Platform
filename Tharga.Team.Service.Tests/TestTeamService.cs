@@ -7,7 +7,7 @@ internal class TestTeamService : TeamServiceBase
 {
     private readonly Dictionary<string, TestTeam> _teams = new();
 
-    public TestTeamService(IUserService userService) : base(userService) { }
+    public TestTeamService(IUserService userService, ITeamCache cache = null) : base(userService, cache: cache) { }
 
     public void AddTeam(string teamKey, string name, params TestMember[] members)
     {
@@ -21,8 +21,12 @@ internal class TestTeamService : TeamServiceBase
 
     protected override IAsyncEnumerable<ITeam> GetTeamsAsync(IUser user) => _teams.Values.ToAsyncEnumerable<ITeam>();
 
+    public int GetTeamCallCount { get; private set; }
+
     protected override Task<ITeam> GetTeamAsync(string teamKey)
     {
+        GetTeamCallCount++;
+        if (teamKey == null) return Task.FromResult<ITeam>(null);
         _teams.TryGetValue(teamKey, out var team);
         return Task.FromResult<ITeam>(team);
     }
@@ -105,6 +109,16 @@ internal class TestTeamService : TeamServiceBase
         if (_teams.TryGetValue(teamKey, out var team))
             _teams[teamKey] = team with { CustomRoles = customRoles };
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Puts custom roles into the store <b>without</b> going through <c>SetTeamCustomRolesAsync</c>, so a
+    /// test can establish what the store holds without the write path invalidating the cache first.
+    /// </summary>
+    public void SeedCustomRoles(string teamKey, IReadOnlyList<TenantRoleDefinition> customRoles)
+    {
+        if (_teams.TryGetValue(teamKey, out var team))
+            _teams[teamKey] = team with { CustomRoles = customRoles };
     }
 }
 

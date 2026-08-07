@@ -10,17 +10,33 @@ public abstract class UserServiceBase : IUserService, IUserCacheInvalidator
 {
     protected readonly AuthenticationStateProvider _authenticationStateProvider;
 
-    private static readonly ConcurrentDictionary<string, IUser> _userCache = new();
+    // Throttles rather than caches: they record what this process has already done, so nothing about them is
+    // wrong per-instance -- a second instance stamping LastSeen once per interval of its own is correct.
     private static readonly ConcurrentDictionary<string, DateTime> _lastSeenStamped = new();
     private static readonly ConcurrentDictionary<string, byte> _directoryIdBackfillAttempted = new();
     private readonly ILogger<UserServiceBase> _logger;
     private readonly IIconStore _iconStore;
+    private readonly ITeamCache _cache;
 
-    protected UserServiceBase(AuthenticationStateProvider authenticationStateProvider, ILogger<UserServiceBase> logger = null, IIconStore iconStore = null)
+    /// <param name="authenticationStateProvider">Resolves the calling principal when none is supplied.</param>
+    /// <param name="logger">Optional. Used to report activity-stamping failures, which never fail a resolve.</param>
+    /// <param name="iconStore">Optional. Required only for user icons; see <see cref="SetUserIconAsync"/>.</param>
+    /// <param name="cache">
+    /// Where resolved users are kept. Defaults to the process-local <see cref="InMemoryTeamCache"/>, which is
+    /// correct for a single instance only — <b>forward this parameter from your own service's
+    /// constructor</b> so a shared implementation can be registered, or a multi-instance deployment will not
+    /// see a user disabled through another instance. See <see cref="ITeamCache"/>.
+    /// </param>
+    protected UserServiceBase(
+        AuthenticationStateProvider authenticationStateProvider,
+        ILogger<UserServiceBase> logger = null,
+        IIconStore iconStore = null,
+        ITeamCache cache = null)
     {
         _authenticationStateProvider = authenticationStateProvider;
         _logger = logger;
         _iconStore = iconStore;
+        _cache = cache ?? InMemoryTeamCache.Shared;
     }
 
     /// <summary>
@@ -51,10 +67,12 @@ public abstract class UserServiceBase : IUserService, IUserCacheInvalidator
         var identity = claimsPrincipal.GetIdentity().Identity;
         if (identity == null) return null;
 
-        if (!_userCache.TryGetValue(identity, out var user))
+        var cached = await _cache.GetUserAsync(identity);
+        var user = cached.Value;
+        if (!cached.Found)
         {
             user = await GetUserAsync(claimsPrincipal);
-            _userCache.TryAdd(identity, user);
+            await _cache.SetUserAsync(identity, user);
         }
 
         await TouchUserAsync(user, claimsPrincipal);
@@ -171,7 +189,7 @@ public abstract class UserServiceBase : IUserService, IUserCacheInvalidator
         if (!string.IsNullOrEmpty(previousReference))
             await store.DeleteAsync(previousReference);
 
-        InvalidateUserCache(user.Identity);
+        await _cache.RemoveUserAsync(user.Identity);
     }
 
     public virtual async Task ClearOwnIconAsync()
@@ -186,7 +204,7 @@ public abstract class UserServiceBase : IUserService, IUserCacheInvalidator
         await SetUserIconReferenceAsync(user.Key, null);
         await store.DeleteAsync(previousReference);
 
-        InvalidateUserCache(user.Identity);
+        await _cache.RemoveUserAsync(user.Identity);
     }
 
     public virtual async Task SetUserIconAsync(string userKey, byte[] data, string contentType)
@@ -204,7 +222,7 @@ public abstract class UserServiceBase : IUserService, IUserCacheInvalidator
         if (!string.IsNullOrEmpty(previousReference))
             await store.DeleteAsync(previousReference);
 
-        InvalidateUserCache(user.Identity);
+        await _cache.RemoveUserAsync(user.Identity);
     }
 
     public virtual async Task ClearUserIconAsync(string userKey)
@@ -219,7 +237,7 @@ public abstract class UserServiceBase : IUserService, IUserCacheInvalidator
         await SetUserIconReferenceAsync(user.Key, null);
         await store.DeleteAsync(previousReference);
 
-        InvalidateUserCache(user.Identity);
+        await _cache.RemoveUserAsync(user.Identity);
     }
 
     private IIconStore RequireIconStore()
@@ -248,24 +266,25 @@ public abstract class UserServiceBase : IUserService, IUserCacheInvalidator
             $"'{GetType().Name}' does not implement {nameof(DeleteUserAsync)}. Implement it to support " +
             $"user deletion (the '{SystemUserScopes.Manage}' system scope).");
 
-    protected void InvalidateUserCache(string identity)
-    {
-        if (!string.IsNullOrEmpty(identity)) _userCache.TryRemove(identity, out _);
-    }
+    /// <summary>
+    /// Drops the cached user for <paramref name="identity"/>. Retained for hosts that call it; the toolkit's own
+    /// paths use <see cref="ITeamCache.RemoveUserAsync"/> directly.
+    /// </summary>
+    /// <remarks>
+    /// Synchronous, so it waits on the cache. That is free for the built-in
+    /// <see cref="InMemoryTeamCache"/> — every member completes synchronously — but a host that has
+    /// registered a <b>remote</b> <see cref="ITeamCache"/> should prefer
+    /// <see cref="InvalidateUserCacheAsync"/> rather than blocking a request thread on it.
+    /// </remarks>
+    protected void InvalidateUserCache(string identity) => InvalidateUserCacheAsync(identity).GetAwaiter().GetResult();
+
+    /// <summary>Drops the cached user for <paramref name="identity"/>. A no-op when nothing is cached.</summary>
+    protected Task InvalidateUserCacheAsync(string identity) => _cache.RemoveUserAsync(identity);
 
     /// <inheritdoc />
-    /// <remarks>
-    /// The cache is keyed by identity, so this scans by <see cref="IUser.Key"/>. One entry per signed-in
-    /// user per process makes the scan cheaper than a second index that would then need invalidating
-    /// too.
-    /// </remarks>
-    public void InvalidateUserByKey(string userKey)
-    {
-        if (string.IsNullOrEmpty(userKey)) return;
+    /// <remarks>See <see cref="InvalidateUserCache"/> on why blocking here is safe for the built-in cache and not for a remote one.</remarks>
+    public void InvalidateUserByKey(string userKey) => InvalidateUserByKeyAsync(userKey).GetAwaiter().GetResult();
 
-        foreach (var entry in _userCache)
-        {
-            if (entry.Value?.Key == userKey) _userCache.TryRemove(entry.Key, out _);
-        }
-    }
+    /// <inheritdoc />
+    public Task InvalidateUserByKeyAsync(string userKey) => _cache.RemoveUserByKeyAsync(userKey);
 }
